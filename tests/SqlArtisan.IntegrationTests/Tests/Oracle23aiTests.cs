@@ -23,6 +23,26 @@ public sealed class Oracle23aiTests : IClassFixture<Oracle23aiFixture>
         _fixture = fixture;
     }
 
+    // Temporary (#828): records the release the floating tag resolves to.
+    [Fact]
+    public void Probe828_ServerRelease()
+    {
+        using IDbConnection connection = _fixture.OpenConnection();
+        string banner = string.Join(" | ", connection.Query<string>(
+            "SELECT banner_full FROM v$version"));
+        string? full = null;
+        try
+        {
+            full = connection.ExecuteScalar<string>("SELECT version_full FROM v$instance");
+        }
+        catch (DbException ex)
+        {
+            full = "v$instance: " + ex.Message;
+        }
+
+        Assert.Fail($"PROBE828 RELEASE {banner} || {full}");
+    }
+
     // OracleDialect.DmlTableAliasSeparator is a space: Oracle rejects AS before a DML
     // target's alias, and runs the alias without it (#679).
     [Fact]
