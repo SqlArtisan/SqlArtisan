@@ -502,7 +502,8 @@ internal static class MergeGenerators
         };
 
     // An ordered, row-limited subquery as a MERGE INSERT value fails with ORA-38101: on XE
-    // 21.3.0 any row limit, on Free 23ai an OFFSET (#828); every row-limited one is replaced.
+    // 21.3.0 any row limit, on Free 23ai an OFFSET (#828). All are replaced, not just those:
+    // generated limits are ordered, both Oracle lanes share rows, and a nested one runs off Oracle.
     private static Gen<SpecExpression> InsertValue(DmlCaseRow row, GenScope scope, SpecType type)
     {
         if (row.Dbms != Dbms.Oracle)
