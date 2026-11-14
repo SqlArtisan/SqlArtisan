@@ -136,8 +136,8 @@ A context rule (`SQLA0102`, ADR 0013) names the dialects that reject a
 position, and a dialect can stop rejecting it at a version: Oracle 23ai added
 `UPDATE ... FROM`, the multi-row `VALUES` table value constructor,
 `DELETE ... USING` and `DELETE`'s `FROM` opener, and SQLite 3.33 added
-`UPDATE ... FROM`; Free 23ai runs an ordered `FETCH FIRST` query as a `MERGE`
-insert value, which XE 21.3.0 rejects (#828). Each such
+`UPDATE ... FROM`; Free 23ai 23.26.3 runs an ordered `FETCH FIRST` query as a
+`MERGE` insert value, which XE 21.3.0 rejects (#828). Each such
 pairing carries a floor (`DialectUsageAnalyzer.DmlShapeFloors`, and
 `ContextRules.WalkFloors` for a rule that reads the chain), with a row and
 a source in

@@ -609,8 +609,8 @@ release the Free 23ai lane's floating tag resolved to then. The same page's
 `FROM` opener rests on live runs alone: XE 21.3.0 rejects it, and Free 23ai
 23.26.3 deletes the joined rows when the target is not re-listed and rejects the
 re-listed lead (ORA-00942). The ordered `FetchFirst` query in a MERGE INSERT's
-`Values` rests on live runs alone, as no Oracle page documents the change: XE
-21.3.0 rejects it (ORA-38101) and Free 23ai runs it.
+`Values` rests on live runs alone: XE 21.3.0 rejects it (ORA-38101) and Free
+23ai 23.26.3 runs it, the release the lane's floating tag resolved to then.
 
 **PostgreSQL** — the
 [version 15 release notes](https://www.postgresql.org/docs/15/release-15.html)
@@ -973,8 +973,8 @@ var q = MergeInto(t).Using(s).On(t.Id == s.Id)
 **An ordered, row-limited query as a `MERGE` insert value.** Oracle rejects a
 query passed to a `MERGE`'s `ThenInsert(...).Values(...)` that carries an
 `OrderBy(...)` and a row limit (ORA-38101, naming the sort key): XE 21.3.0 with
-`FetchFirst(n)` or `OffsetRows(...)`, and Free 23ai with `OffsetRows(...)` alone,
-so `FetchFirst(n)` reports below the
+`FetchFirst(n)` or `OffsetRows(...)`, and Free 23ai with `OffsetRows(...)`,
+`FetchNext(...)` after it or not, so `FetchFirst(n)` reports below the
 [context-rule floor](#version-bound-constructs). Both run the same query without
 its `OrderBy(...)`, nested in an expression such as `Coalesce(...)`, in
 `ThenUpdateSet(...)` and in a plain `INSERT`'s `Values(...)`. Select the value in
@@ -2022,7 +2022,7 @@ integration test matrix runs against):
 | Dialect | Verified against |
 |---|---|
 | MySQL | MySQL 8.0 |
-| Oracle | Oracle Database XE 21c (`gvenzl/oracle-xe:21.3.0-slim-faststart`), plus Oracle Database Free 23ai (`gvenzl/oracle-free:23-slim-faststart`) for the version-bound entries `SQLA0101` reports and the Oracle 23 floors of the `SQLA0102` DML rules |
+| Oracle | Oracle Database XE 21c (`gvenzl/oracle-xe:21.3.0-slim-faststart`), plus Oracle Database Free 23ai (`gvenzl/oracle-free:23-slim-faststart`) for the version-bound entries `SQLA0101` reports and the Oracle 23 floors of `SQLA0102` |
 | PostgreSQL | PostgreSQL 16, plus PostgreSQL 17 (`postgres:17`) for the version-bound entries above 16 |
 | SQLite | `SQLitePCLRaw.bundle_e_sqlite3` 3.0.3 (via `Microsoft.Data.Sqlite` 9.0.5) |
 | SQL Server | SQL Server 2022, plus SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`) for the version-bound entries above 2022 and its `RegexpOptions` alphabet |

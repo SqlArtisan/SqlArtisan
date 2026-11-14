@@ -1495,12 +1495,12 @@ and since Oracle has no `WHEN ... AND`, `THEN DELETE` or `BY SOURCE` branch,
 
 **Dialect note:** Oracle rejects a query passed to the insert's `Values(...)`
 that carries both an `OrderBy(...)` and a row limit (ORA-38101, naming the sort
-key): one with `OffsetRows(...)` on every version, and one with `FetchFirst(n)`
-below a specific release (see the
+key): one with `OffsetRows(...)`, and one with `FetchFirst(n)` below a specific
+release (see the
 [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
-The same query runs in `ThenUpdateSet(...)` and without its `OrderBy(...)`
-(observed on Oracle XE 21.3.0 and Free 23ai), and `SQLA0102` reports the
-rejected position. Select the value in a derived table that the `MERGE` uses as
+The same query runs in `ThenUpdateSet(...)` and without its `OrderBy(...)`. Both
+the rejections and the runs were observed on Oracle XE 21.3.0 and Free 23ai, and
+`SQLA0102` reports the rejected position. Select the value in a derived table that the `MERGE` uses as
 its source, and pass that column:
 
 ```csharp
