@@ -61,4 +61,11 @@ internal interface IDbmsDialect
     /// but accepts <c>users.id</c>), so a target column renders table-qualified.
     /// </summary>
     bool ReturningIgnoresTargetAlias { get; }
+
+    /// <summary>
+    /// Whether an <c>UPDATE ... FROM</c> that leaves its target out of <c>FROM</c> qualifies each
+    /// <c>SET</c> column by the target's alias (true only on Oracle: Free 23.26.3 reads a bare one
+    /// against the source too, ORA-00918, where PostgreSQL 16 rejects a qualified one).
+    /// </summary>
+    bool UpdateFromQualifiesSetColumns { get; }
 }

@@ -43,7 +43,14 @@ internal sealed class UpdateSetClause : SqlPart
         else
         {
             AssignmentResolver.ThrowIfNotTargetColumn(_assignments, _target, Keywords.Set);
-            buffer.AppendAssignmentsCsv(_assignments);
+            if (_state.HasFrom && buffer.UpdateFromQualifiesSetColumns)
+            {
+                buffer.AppendAssignmentsCsv(_assignments, _target);
+            }
+            else
+            {
+                buffer.AppendAssignmentsCsv(_assignments);
+            }
         }
     }
 }

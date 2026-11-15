@@ -1080,6 +1080,9 @@ SqlStatement sql =
 // FROM ledger "u" WHERE "t".id = "u".id
 ```
 
+On Oracle, each `SET` column renders qualified by the target's alias:
+`UPDATE acct "t" SET "t".total = "u".amount FROM ledger "u" WHERE "t".id = "u".id`.
+
 **SQL Server** re-lists the target in `FROM` and joins with `ON`:
 
 ```csharp

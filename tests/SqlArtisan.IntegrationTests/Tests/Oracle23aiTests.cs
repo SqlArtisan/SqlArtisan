@@ -254,36 +254,24 @@ public sealed class Oracle23aiTests : IClassFixture<Oracle23aiFixture>
         transaction.Rollback();
     }
 
-    // TEMPORARY probe: which SET spellings 23ai runs when the FROM source shares the column.
+    // OracleDialect.UpdateFromQualifiesSetColumns: 23ai reads a bare SET column against the
+    // FROM source too, so a name the source shares is ambiguous; qualified, it runs (#838).
     [Fact]
-    public void JoinedUpdateFrom_SharedSetColumn_Probe()
+    public void JoinedUpdateFrom_BareSharedSetColumn_IsRejectedByTheEngine()
     {
+        UsersTable u = new("u");
+        OrdersTable o = new("o");
         using IDbConnection connection = _fixture.OpenConnection();
-        const string Source = " FROM (SELECT id, name FROM users) \"s\" WHERE \"s\".id = ";
-        string[] statements =
-        [
-            "UPDATE users \"u\" SET name = \"s\".name" + Source + "\"u\".id",
-            "UPDATE users \"u\" SET \"u\".name = \"s\".name" + Source + "\"u\".id",
-            "UPDATE users SET users.name = \"s\".name" + Source + "users.id",
-            "UPDATE users SET name = \"s\".name" + Source + "users.id",
-        ];
-        List<string> results = [];
-        foreach (string sql in statements)
-        {
-            using IDbTransaction transaction = connection.BeginTransaction();
-            try
-            {
-                results.Add($"{sql} => RUNS {connection.Execute(sql, transaction: transaction)}");
-            }
-            catch (DbException ex)
-            {
-                results.Add($"{sql} => {ex.Message}");
-            }
+        using IDbTransaction transaction = connection.BeginTransaction();
 
-            transaction.Rollback();
-        }
-
-        Assert.Fail("PROBE " + string.Join(" || ", results));
+        DbException ex = Assert.ThrowsAny<DbException>(() => connection.Execute(
+            "UPDATE users \"u\" SET id = \"o\".id FROM orders \"o\" WHERE \"o\".id = \"u\".id",
+            transaction: transaction));
+        Assert.Contains("ORA-00918", ex.Message);
+        connection.Execute(
+            Update(u).Set(u.Id == o.Id).From(o).Where(o.Id == u.Id),
+            transaction);
+        transaction.Rollback();
     }
 
     // #582: 23ai added UPDATE ... FROM, but the joined forms SqlArtisan withholds
