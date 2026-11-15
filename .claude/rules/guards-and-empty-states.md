@@ -71,8 +71,11 @@ emit `DECODE(x, :0)`, which PostgreSQL 16.15 runs as its binary
   with `OUTPUT`, rejects (SQL Server 2022,
   `OutputInto_AliasedDestination_IsRejectedByTheEngine`; #679);
   `Returning(...).Into(...)` (Oracle's)
-  beside `OnConflict(...)`, which Oracle lacks, or after a leading `WITH`, which
-  Oracle takes on no DML statement, and Oracle's MERGE action `WHERE` /
+  beside `OnConflict(...)`, which Oracle lacks, after a leading `WITH`, which
+  Oracle takes on no DML statement, or beside a second `VALUES` row, which Oracle
+  Free 23.26.3 refuses with it (ORA-63809,
+  `Oracle23aiTests.MultiRowValues_ReturningInto_IsRejectedByTheEngine`; #839),
+  and Oracle's MERGE action `WHERE` /
   `DELETE WHERE` after a leading `WITH` too, since the engines with one refuse
   an action `WHERE`, and beside a `WHEN ... AND`, `THEN DELETE` or `BY SOURCE`
   branch anywhere in the same `MERGE`, which Oracle refuses (#679); `TOP ... WITH TIES` with no

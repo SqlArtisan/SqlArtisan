@@ -71,6 +71,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   source shares was ambiguous (ORA-00918, observed on Oracle Free 23.26.3) and the
   statement had no spelling that ran. PostgreSQL and SQLite keep the bare column,
   and Oracle's `UPDATE` without `FROM` is unchanged. (#838)
+- `Returning(...).Into(...)` after a second `VALUES` row throws at `Build()` on
+  every target. It built without complaint, though `RETURNING ... INTO` is
+  Oracle's alone and Oracle rejects the pair (ORA-63809, observed on Oracle Free
+  23.26.3); one row per statement runs. (#839)
 
 ### Docs
 - `docs/query-statements.md` notes that on SQL Server a compound's

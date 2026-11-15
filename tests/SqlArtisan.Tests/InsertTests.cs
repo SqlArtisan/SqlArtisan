@@ -5,6 +5,10 @@ namespace SqlArtisan.Tests;
 
 public class InsertTests
 {
+    private const string MultiRowReturningIntoMessage =
+        "RETURNING ... INTO cannot be combined with a multi-row VALUES; "
+            + "insert one row per statement instead.";
+
     [Fact]
     public void InsertInto_WithoutColumnList_SqlWithValuesOnly()
     {
@@ -706,6 +710,91 @@ public class InsertTests
             "OUTPUT cannot be combined with a WITH between INSERT INTO and its SELECT; "
                 + "put the WITH ahead of INSERT INTO instead.",
             ex.Message);
+    }
+
+    [Fact]
+    public void InsertInto_ReturningIntoAfterSecondValuesRow_ThrowsArgumentException()
+    {
+        TestTable t = new();
+        OutputParameter code = new("code", System.Data.DbType.Int32);
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(() =>
+            InsertInto(t, t.Code)
+            .Values(1)
+            .Values(2)
+            .Returning(t.Code)
+            .Into(code)
+            .Build(Dbms.Oracle));
+
+        Assert.Equal(MultiRowReturningIntoMessage, ex.Message);
+    }
+
+    [Fact]
+    public void InsertInto_ReturningIntoAfterRowsOverload_ThrowsArgumentException()
+    {
+        TestTable t = new();
+        OutputParameter code = new("code", System.Data.DbType.Int32);
+        object?[][] rows = [[1], [2]];
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(() =>
+            InsertInto(t, t.Code)
+            .Values(rows)
+            .Returning(t.Code)
+            .Into(code)
+            .Build(Dbms.Oracle));
+
+        Assert.Equal(MultiRowReturningIntoMessage, ex.Message);
+    }
+
+    // A held stage grows its VALUES clause after the INTO, so the guard reads the built shape.
+    [Fact]
+    public void InsertInto_HeldStageRowAddedAfterReturningInto_ThrowsArgumentException()
+    {
+        TestTable t = new();
+        OutputParameter code = new("code", System.Data.DbType.Int32);
+        IInsertBuilderValues values = InsertInto(t, t.Code).Values(1);
+        ISqlBuilder statement = values.Returning(t.Code).Into(code);
+        values.Values(2);
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => statement.Build(Dbms.Oracle));
+
+        Assert.Equal(MultiRowReturningIntoMessage, ex.Message);
+    }
+
+    [Fact]
+    public void InsertInto_ReturningIntoAfterOneValuesRow_CorrectSql()
+    {
+        TestTable t = new();
+        OutputParameter code = new("code", System.Data.DbType.Int32);
+
+        SqlStatement sql =
+            InsertInto(t, t.Code)
+            .Values(1)
+            .Returning(t.Code)
+            .Into(code)
+            .Build(Dbms.Oracle);
+
+        Assert.Equal(
+            "INSERT INTO test_table (code) VALUES (:0) RETURNING code INTO :code", sql.Text);
+        Assert.Equal(1, sql.Parameters.Get<int>(":0"));
+    }
+
+    [Fact]
+    public void InsertInto_ReturningAfterSecondValuesRow_CorrectSql()
+    {
+        TestTable t = new();
+
+        SqlStatement sql =
+            InsertInto(t, t.Code)
+            .Values(1)
+            .Values(2)
+            .Returning(t.Code)
+            .Build(Dbms.PostgreSql);
+
+        Assert.Equal("INSERT INTO test_table (code) VALUES (:0), (:1) RETURNING code", sql.Text);
+        Assert.Equal(1, sql.Parameters.Get<int>(":0"));
+        Assert.Equal(2, sql.Parameters.Get<int>(":1"));
     }
 
     // Oracle, the one engine with RETURNING ... INTO, takes no leading WITH on DML,

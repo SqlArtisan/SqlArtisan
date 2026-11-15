@@ -219,6 +219,8 @@ internal sealed class InsertBuilder :
         DmlTargetGuard.ThrowIfLeadingWithBeforeOnDuplicateKeyUpdate(
             PartsSpan, onDuplicateKeyUpdate);
         ReturningGuard.ThrowIfIntoAfterLeadingWith(PartsSpan, FindPart<ReturningIntoClause>());
+        ReturningGuard.ThrowIfIntoCombinedWithMultiRowValues(
+            _valuesClause, FindPart<ReturningIntoClause>());
         DmlTargetGuard.ThrowIfLeadingWithUnsupported(PartsSpan, dbms, insert: true);
         DmlTargetGuard.ThrowIfAliasedOnSqlServer(_table, dbms, Keywords.Insert);
         DmlTargetGuard.ThrowIfInsertTargetAliasedOnMySql(_table, dbms);

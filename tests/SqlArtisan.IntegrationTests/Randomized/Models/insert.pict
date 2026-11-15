@@ -27,8 +27,8 @@ IF [Recursive] = "Yes" THEN [Dbms] IN {"MySql", "PostgreSql", "Sqlite"};
 # DmlShape.InsertValuesRow: Oracle takes a second VALUES row from 23, above its baseline.
 IF [Source] = "MultiValues" THEN [Dbms] <> "Oracle";
 
-# Oracle 23ai rejects RETURNING ... INTO after a second VALUES row (ORA-63809,
-# MultiValues_Oracle23ai_ReturningInto_IsRejectedByTheEngine).
+# ReturningGuard.ThrowIfIntoCombinedWithMultiRowValues, on every dialect: Oracle 23ai rejects
+# RETURNING ... INTO after a second VALUES row (Oracle23aiTests, ORA-63809).
 IF [Source] = "MultiValues" AND [Dbms] = "Oracle23ai" THEN [Output] <> "Returning";
 
 # DmlShape.InsertSelectWith: SQL Server takes no WITH between INSERT INTO and its SELECT.
