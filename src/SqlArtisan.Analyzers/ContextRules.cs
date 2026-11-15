@@ -607,7 +607,8 @@ internal static class ContextRules
                     : null;
         }
 
-        // Out of sight, or beside TOP, which Build() rejects with any OFFSET on every dialect.
+        // Out of sight; beside TOP, which Build() rejects with OFFSET in one block; or after a
+        // branch's TOP, which Build() takes and no lane has run without an ORDER BY.
         if (cursor is null || top)
         {
             return;

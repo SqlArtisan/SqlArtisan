@@ -4846,10 +4846,13 @@ var q = Select(u.Id).From(u).Where(u.Id.In(Select(o.UserId).From(o).OrderBy(o.Us
 part of an `ORDER BY`, so it rejects `OffsetRows(...)` after any other step: at
 the top level, in every subquery, derived table, CTE body and `APPLY` source,
 and after a compound's last branch (Msg 102, observed on SQL Server 2022). Add
-the `OrderBy(...)` the page is meant to follow. The rule warns where the query,
-its `Select(...)` included, is written in the chain; a query held first in a
-`var` stays silent, and so does one with `Top(n)`, which `Build()` rejects
-beside any `OFFSET`, in a branch of a compound too, where no lane has run one.
+the `OrderBy(...)` the page is meant to follow. The rule warns where the query
+is begun in the chain, with `Select(...)`, `With(...)` or `WithRecursive(...)`; a
+query held first in a `var`, or begun another way such as
+`InsertInto(...).Select(...)`, stays silent. So does a query with `Top(n)`, which
+`Build()` rejects beside any `OFFSET` in the same query, and a compound with
+`Top(n)` in a branch, which `Build()` takes but no lane has run without an
+`ORDER BY`.
 
 ```csharp
 // sqlartisan_syntax_sqlserver = any

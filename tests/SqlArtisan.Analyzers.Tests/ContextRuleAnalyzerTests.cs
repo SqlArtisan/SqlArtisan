@@ -1962,7 +1962,8 @@ public class ContextRuleAnalyzerTests
     public Task OffsetRowsWithoutOrderBy_SqlServer_ReportsSqla0102(string statements) =>
         RunReporting(statements, "sqlserver");
 
-    // Ordered, out of sight, or beside TOP, which Build() rejects with any OFFSET.
+    // Ordered; out of sight; beside TOP, which Build() rejects with OFFSET in one query; or
+    // after a branch's TOP, which Build() takes and no lane has run without an ORDER BY.
     [Theory]
     [InlineData("var q = Select(t.Id).From(t).OrderBy(t.Id).OffsetRows(0).FetchNext(1);")]
     [InlineData("""
