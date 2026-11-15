@@ -762,6 +762,30 @@ public class InsertTests
         Assert.Equal(MultiRowReturningIntoMessage, ex.Message);
     }
 
+    // Both guards refuse this chain; the leading-WITH one runs first, so its remedy is named.
+    [Fact]
+    public void InsertInto_ReturningIntoAfterLeadingWithAndSecondRow_ThrowsArgumentException()
+    {
+        TestTable t = new();
+        TestTable s = new("s");
+        TestCte c = new("c");
+        OutputParameter code = new("code", System.Data.DbType.Int32);
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(() =>
+            With(c.As(Select(s.Code.As(c.CteCode)).From(s)))
+            .InsertInto(t, t.Code)
+            .Values(1)
+            .Values(2)
+            .Returning(t.Code)
+            .Into(code)
+            .Build(Dbms.Oracle));
+
+        Assert.Equal(
+            "RETURNING ... INTO cannot be combined with a leading WITH; "
+                + "inline the subquery instead.",
+            ex.Message);
+    }
+
     [Fact]
     public void InsertInto_ReturningIntoAfterOneValuesRow_CorrectSql()
     {

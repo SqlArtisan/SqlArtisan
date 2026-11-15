@@ -1011,6 +1011,10 @@ that can reach both halves needs a `Build()` backstop, since a type
 constrains one chain and not a held instance (the walk, `ReturningGuard`); a
 cast does not (ADR 0011, the leading-`WITH`-before-`MERGE` entry). A fact no
 type carries — a dialect, a table instance's identity — is a guard outright.
+So is a row count that a collection carries: `RETURNING ... INTO` beside a
+multi-row `VALUES` stays a guard alone (#839), since `Values(rows)` knows its
+count only at run time, and a stage split would withhold `Into(...)` from the
+repeated-`Values(...)` route alone, the guard staying for the rest.
 
 ## When to throw: eagerly vs at Build()
 
