@@ -617,8 +617,8 @@ internal static class QueryGenerators
     }
 
     // MySQL 8.0.46 evaluates x [NOT] IN (a INTERSECT|EXCEPT b) wrongly: it pushes x = a.col,
-    // a NULL test and LIMIT 1 into each branch. Repro: a = {1, NULL}, b = {1} gives
-    // 1 NOT IN (a EXCEPT b) = 1, not NULL; the same set as a derived table answers right.
+    // a NULL test and LIMIT 1 into each branch; a derived table over the same set answers right
+    // (MySqlTests.InSubquery_IntersectOrExceptOverNull_ReturnsAWrongResult, #833).
     private static SetOperatorLevel[] SubquerySetOperators(Dbms dbms, bool quantified) =>
         quantified && dbms == Dbms.MySql
             ? [SetOperatorLevel.Union, SetOperatorLevel.UnionAll]
@@ -631,7 +631,7 @@ internal static class QueryGenerators
 
     // MySQL 8.0.46's IN-to-EXISTS rewrite finds a NULL group the HAVING drops: over names
     // {a, a, a, NULL, b}, 'x' NOT IN (SELECT name ... GROUP BY name HAVING COUNT(*) > 2) and its
-    // IN give NULL, not 1 and 0; the same set as a derived table answers right.
+    // IN give NULL, not 1 and 0 (MySqlTests.InSubquery_GroupByHaving_ReturnsAWrongResult, #833).
     private static SpecCondition? QuantifiedHaving(
         Dbms dbms,
         bool quantified,

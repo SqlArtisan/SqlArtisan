@@ -75,6 +75,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   registered, and a list reading such as `In(...)`'s of an array stays. It said
   that such a converter would start to throw. (#814)
 
+### Tests
+- MySQL twins pin two wrong results of MySQL 8.0.46 that the combinatorial
+  generators avoid: a `WHERE` `NotIn(...)`, or `Not(...)` over `In(...)`, whose
+  subquery is an `Intersect` or `Except` holding a NULL, or a
+  `GroupBy(...).Having(...)` with a NULL group, returns other rows than the same
+  set read through a derived table, which returns the right rows. A twin failing
+  names the server's release, so the avoidance can be lifted when MySQL changes.
+  (#833)
+
 ## [0.15.0-beta.1] - 2026-11-11
 ### Added
 - `Sql.Function(name, args...)` calls a function SqlArtisan has no factory for

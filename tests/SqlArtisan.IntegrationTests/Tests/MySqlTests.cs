@@ -1333,6 +1333,113 @@ public sealed class MySqlTests : IntegrationTestBase, IClassFixture<MySqlFixture
         }
     }
 
+    // MySQL 8.0.46 answers x [NOT] IN over an INTERSECT or EXCEPT holding a NULL wrongly, with
+    // no error, and a derived table over the same set answers right. The generators avoid the
+    // shape (QueryGenerators.SubquerySetOperators, #833): when this fails, lift that and this.
+    [Fact]
+    public void InSubquery_IntersectOrExceptOverNull_ReturnsAWrongResult()
+    {
+        using IDbConnection connection = _fixture.OpenConnection();
+        connection.Execute("DROP TABLE IF EXISTS in_set_t, in_set_a, in_set_b");
+        connection.Execute("CREATE TABLE in_set_t (id INT PRIMARY KEY, x INT)");
+        connection.Execute("CREATE TABLE in_set_a (c INT)");
+        connection.Execute("CREATE TABLE in_set_b (c INT)");
+        try
+        {
+            connection.Execute("INSERT INTO in_set_t VALUES (1, 1), (2, 2)");
+            connection.Execute("INSERT INTO in_set_a VALUES (1), (NULL)");
+            connection.Execute("INSERT INTO in_set_b VALUES (1)");
+            DbTable t = new("in_set_t");
+            DbTable a = new("in_set_a");
+            DbTable b = new("in_set_b");
+            DbColumn x = t.Column("x");
+            ISubquery Except() =>
+                Select(a.Column("c")).From(a).Except.Select(b.Column("c")).From(b);
+            ISubquery Intersect() =>
+                Select(a.Column("c")).From(a).Intersect.Select(b.Column("c")).From(b);
+            InSubqueryRows rows = new(connection, t);
+
+            // a EXCEPT b is {NULL}, so no row passes; a INTERSECT b is {1}, so row 2 does.
+            rows.Wrong("x NOT IN (a EXCEPT b)", x.NotIn(Except()), 1);
+            rows.Right("x NOT IN (derived EXCEPT)", x.NotIn(rows.Derived(Except(), "c")));
+            rows.Wrong("NOT (x IN (a EXCEPT b))", Not(x.In(Except())), 1);
+            rows.Right("NOT (x IN (derived EXCEPT))", Not(x.In(rows.Derived(Except(), "c"))));
+            rows.Wrong("x NOT IN (a INTERSECT b)", x.NotIn(Intersect()));
+            rows.Right(
+                "x NOT IN (derived INTERSECT)", x.NotIn(rows.Derived(Intersect(), "c")), 2);
+        }
+        finally
+        {
+            connection.Execute("DROP TABLE IF EXISTS in_set_t, in_set_a, in_set_b");
+        }
+    }
+
+    // MySQL 8.0.46 answers x [NOT] IN over a GROUP BY ... HAVING with a NULL group wrongly, as
+    // above. The generators avoid the shape (QueryGenerators.QuantifiedHaving, #833).
+    [Fact]
+    public void InSubquery_GroupByHaving_ReturnsAWrongResult()
+    {
+        using IDbConnection connection = _fixture.OpenConnection();
+        connection.Execute("DROP TABLE IF EXISTS in_having_t, in_having_u");
+        connection.Execute("CREATE TABLE in_having_t (id INT PRIMARY KEY, n VARCHAR(5))");
+        connection.Execute("CREATE TABLE in_having_u (name VARCHAR(5))");
+        try
+        {
+            connection.Execute("INSERT INTO in_having_t VALUES (1, 'x'), (2, 'x')");
+            connection.Execute(
+                "INSERT INTO in_having_u VALUES ('a'), ('a'), ('a'), (NULL), ('b')");
+            DbTable t = new("in_having_t");
+            DbTable u = new("in_having_u");
+            DbColumn n = t.Column("n");
+            ISubquery Grouped() => Select(u.Column("name"))
+                .From(u)
+                .GroupBy(u.Column("name"))
+                .Having(Count(Asterisk) > 2);
+            InSubqueryRows rows = new(connection, t);
+
+            // Only the 'a' group passes HAVING, so 'x' is in no group and both rows pass.
+            rows.Wrong("n NOT IN (grouped)", n.NotIn(Grouped()));
+            rows.Right(
+                "n NOT IN (derived grouped)", n.NotIn(rows.Derived(Grouped(), "name")), 1, 2);
+            rows.Wrong("NOT (n IN (grouped))", Not(n.In(Grouped())));
+            rows.Right(
+                "NOT (n IN (derived grouped))", Not(n.In(rows.Derived(Grouped(), "name"))), 1, 2);
+        }
+        finally
+        {
+            connection.Execute("DROP TABLE IF EXISTS in_having_t, in_having_u");
+        }
+    }
+
+    // A failing assertion names the server's release: the lane's mysql:8.0 tag floats.
+    private sealed class InSubqueryRows(IDbConnection connection, DbTable t)
+    {
+        private readonly string _version =
+            connection.ExecuteScalar<string>("SELECT VERSION()") ?? "unknown";
+
+        public ISubquery Derived(ISubquery set, string column)
+        {
+            SubqueryDerivedTable d = set.AsTable("d");
+            return Select(d.Column(column)).From(d);
+        }
+
+        public void Wrong(string shape, SqlCondition where, params int[] ids) =>
+            Check(shape, where, ids, "the wrong rows it returned before");
+
+        public void Right(string shape, SqlCondition where, params int[] ids) =>
+            Check(shape, where, ids, "the right rows");
+
+        private void Check(string shape, SqlCondition where, int[] expected, string meaning)
+        {
+            int[] ids = [.. connection.Query<int>(
+                Select(t.Column("id")).From(t).Where(where).OrderBy(t.Column("id")))];
+            Xunit.Assert.True(
+                ids.SequenceEqual(expected),
+                $"MySQL {_version}, {shape}: expected {meaning} [{string.Join(", ", expected)}]"
+                    + $", got [{string.Join(", ", ids)}].");
+        }
+    }
+
     // docs/analyzer.md (SQLA0200): the default sql_mode rejects a zero date, but INSERT
     // IGNORE and a non-strict mode store one, and IS NULL on a NOT NULL DATE or DATETIME
     // column finds it at a WHERE's top level or under its AND.
