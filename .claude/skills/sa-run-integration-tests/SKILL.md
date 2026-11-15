@@ -172,8 +172,10 @@ engine's baseline through a `Dbms` level naming the lane above it (`Oracle23ai`,
 `PostgreSql17`, `SqlServer2025`; `MatrixLookup.NewerLaneName`): that lane runs its
 own rows beside its baseline lane's, which never run them, and the gates judge them
 at that lane's version. The merge model uses it for PostgreSQL 17's BY SOURCE and
-Oracle 23ai's VALUES source; the SELECT model names no such lane, so its lanes above
-a baseline re-run the baseline rows. `rt_users.code`, a unique nullable integer no SELECT reads,
+Oracle 23ai's VALUES source, and the insert, update and delete models for Oracle
+23ai's multi-row `VALUES`, `UPDATE ... FROM`, `DELETE ... USING` and a `DELETE ...
+FROM` that does not re-list its target; the SELECT model names no such lane, so its
+lanes above a baseline re-run the baseline rows. `rt_users.code`, a unique nullable integer no SELECT reads,
 is the upsert's second arbiter; a positional INSERT writes it NULL. Every statement, and the read-back
 of `rt_users` and `rt_depts` after it, runs inside one rolled-back transaction.
 The relations: the state and output equal `DmlReference`'s (R1; a text scalar

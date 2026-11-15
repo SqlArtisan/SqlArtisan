@@ -434,6 +434,30 @@ public sealed partial class OracleCombinatorialDmlTests
 
 public sealed partial class Oracle23aiCombinatorialDmlTests
 {
+    // RETURNING ... INTO binds one row's values into its output parameters; the insert model
+    // leaves a second VALUES row beside it out (insert.pict). Recorded on the first CI run.
+    [Fact]
+    public void MultiValues_Oracle23ai_ReturningInto_Probe()
+    {
+        RandomUsersTable t = new("");
+        string? single = Rejection(UpsertMergeTwins.Statement(
+            "InsertInto(t, t.Id).Values(700).Returning(t.Id).Into(o)",
+            () => InsertInto(t, t.Id)
+                .Values(700)
+                .Returning(t.Id)
+                .Into(new OutputParameter("o", System.Data.DbType.Int32))));
+        string? multi = Rejection(UpsertMergeTwins.Statement(
+            "InsertInto(t, t.Id).Values(700).Values(701).Returning(t.Id).Into(o)",
+            () => InsertInto(t, t.Id)
+                .Values(700)
+                .Values(701)
+                .Returning(t.Id)
+                .Into(new OutputParameter("o", System.Data.DbType.Int32))));
+
+        Assert.Null(single);
+        Assert.Fail($"PROBE multi-row RETURNING INTO: {multi ?? "RUNS"}");
+    }
+
     // Free 23ai runs an ordered FETCH FIRST as the INSERT's value, but rejects an ordered OFFSET
     // there, naming its ORDER BY key, as XE 21.3.0 rejects both (SQLA0102's floor, #828).
     [Fact]

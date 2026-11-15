@@ -288,6 +288,11 @@ internal static class DmlLevelKeys
                 ["Output", "Inserted", "Deleted", .. Into(level)],
             ("delete", "Join", "Using") =>
                 ["Using", ContextRules.DmlShape.DeleteUsing, BuildGuards.DeleteUsingOnSqlServer],
+            ("delete", "Join", "From") =>
+            [
+                "From", new ShapeKey(ContextRules.DmlShape.JoinedDeleteLead, Relisted: false),
+                BuildGuards.DeleteFromNotRelistedOffOracle,
+            ],
             ("delete", "Join", "FromRelisted") =>
                 ["From", "InnerJoin", "LeftJoin", "On", ContextRules.DmlShape.JoinedDeleteLead],
             ("delete", "Output", "Output" or "OutputInto") => ["Output", "Deleted", .. Into(level)],

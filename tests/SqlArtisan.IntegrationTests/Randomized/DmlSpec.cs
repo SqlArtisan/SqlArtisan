@@ -7,8 +7,9 @@ namespace SqlArtisan.IntegrationTests.Randomized;
 internal enum DmlKind { Insert, Update, Delete, Upsert, Merge }
 
 /// <summary>How a joined UPDATE or DELETE reaches its source table: MySQL's direct join, a
-/// FROM that leaves the target out (PostgreSQL, SQLite), one that re-lists it (SQL Server's
-/// UPDATE, MySQL's and SQL Server's DELETE), or PostgreSQL's <c>DELETE ... USING</c>.</summary>
+/// FROM that leaves the target out (PostgreSQL's and SQLite's UPDATE, and Oracle 23ai's UPDATE
+/// and DELETE), one that re-lists it (SQL Server's UPDATE, MySQL's and SQL Server's DELETE), or
+/// <c>DELETE ... USING</c> (PostgreSQL, Oracle 23ai).</summary>
 internal enum DmlJoinForm { Direct, From, FromRelisted, Using }
 
 /// <summary>The joined source, always the aliased <c>rt_depts</c> <c>d</c>: its <c>id</c> is
@@ -435,6 +436,12 @@ internal sealed record DmlSpec
             return where is null ? joined : joined.Where(where);
         }
 
+        // The API offers no Returning after a DELETE ... FROM; the model leaves the pair out.
+        if (Join is { Form: DmlJoinForm.From })
+        {
+            return afterOutput.From(context.Table("d")).Where(where!);
+        }
+
         IReturning stage = Join is { Form: DmlJoinForm.Using }
             ? afterOutput.Using(context.Table("d")).Where(where!)
             : where is null ? afterOutput : afterOutput.Where(where);
@@ -611,6 +618,7 @@ internal sealed record DmlSpec
         string join = Join switch
         {
             { Form: DmlJoinForm.Using } => ".Using(d)",
+            { Form: DmlJoinForm.From } => ".From(d)",
             { Form: DmlJoinForm.FromRelisted } j =>
                 $".From(u).{(j.IsInner ? "Inner" : "Left")}Join(d).On({j.On.ToCSharp()})",
             _ => "",

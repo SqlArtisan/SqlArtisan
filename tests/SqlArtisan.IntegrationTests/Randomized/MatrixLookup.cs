@@ -22,9 +22,11 @@ internal sealed record MemberKey(string Member, int? Arity) : LevelKey
     public override string ToString() => Arity is null ? Member : $"{Member}/{Arity}";
 }
 
-internal sealed record ShapeKey(ContextRules.DmlShape Shape) : LevelKey
+/// <summary>A DML shape; <paramref name="Relisted"/> is false for a joined DELETE lead that does
+/// not re-list its target, which past Oracle's floor the analyzer no longer reports.</summary>
+internal sealed record ShapeKey(ContextRules.DmlShape Shape, bool Relisted = true) : LevelKey
 {
-    public override string ToString() => Shape.ToString();
+    public override string ToString() => Relisted ? Shape.ToString() : $"{Shape} (not re-listed)";
 }
 
 /// <summary>A dialect-scoped <c>Build()</c> guard (ADR 0011) the analyzer does not report, named
@@ -89,7 +91,7 @@ internal static class MatrixLookup
     public static string? Verdict(Dbms dbms, LevelKey key, bool newer = false) => key switch
     {
         MemberKey member => MemberVerdict(ToTarget(dbms), dbms, member, At(dbms, newer)),
-        ShapeKey shape => ShapeVerdict(ToTarget(dbms), dbms, shape.Shape, At(dbms, newer)),
+        ShapeKey shape => ShapeVerdict(ToTarget(dbms), dbms, shape, At(dbms, newer)),
         GuardKey guard => guard.RejectedOn.Contains(dbms)
             ? $"Build() rejects it on {dbms} ({guard.Guard})"
             : null,
@@ -134,14 +136,15 @@ internal static class MatrixLookup
             : $"DialectMatrix marks {key} unsupported on {dbms}";
     }
 
-    // Past its floor the analyzer still reports a DELETE lead that re-lists its target, the
-    // shape this key names, so only the lead that does not re-list it passes there.
+    // Past its floor the analyzer still reports a DELETE lead that re-lists its target, so only
+    // the lead that does not re-list it passes there (ProvablyRelistsDeleteTarget).
     private static string? ShapeVerdict(
         TargetDbms target,
         Dbms dbms,
-        ContextRules.DmlShape shape,
+        ShapeKey key,
         LaneVersion at)
     {
+        ContextRules.DmlShape shape = key.Shape;
         if (shape == ContextRules.DmlShape.None)
         {
             throw new ArgumentOutOfRangeException(nameof(shape), shape, message: null);
@@ -162,7 +165,7 @@ internal static class MatrixLookup
                     return $"{shape} needs {dbms} {floor.From}, above {at.Name}";
                 }
 
-                return shape == ContextRules.DmlShape.JoinedDeleteLead
+                return shape == ContextRules.DmlShape.JoinedDeleteLead && key.Relisted
                     ? $"DialectUsageAnalyzer still reports a re-listed {shape} at {at.Name}"
                     : null;
             }
