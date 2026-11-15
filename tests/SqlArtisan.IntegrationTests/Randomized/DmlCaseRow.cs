@@ -93,8 +93,8 @@ internal sealed record DmlCaseRow(
 
     public MergeSubqueryLevel MergeSubquery { get; init; }
 
-    /// <summary>A row only the lane above its engine's baseline runs: a <c>Version</c> factor at
-    /// <c>Newer</c> (<see cref="MatrixLookup.NewerLane"/>).</summary>
+    /// <summary>A row only the lane above its engine's baseline runs: its <c>Dbms</c> level names
+    /// that lane (<see cref="MatrixLookup.NewerLaneName"/>).</summary>
     public bool Newer { get; init; }
 
     public static readonly IReadOnlyDictionary<string, string[]> FactorNames =
@@ -121,8 +121,8 @@ internal sealed record DmlCaseRow(
             ],
             ["merge"] =
             [
-                "Dbms", "Version", "Source", "Matched", "MatchedFilter", "NotMatched",
-                "NotMatchedFilter", "BySource", "Subquery",
+                "Dbms", "Source", "Matched", "MatchedFilter", "NotMatched", "NotMatchedFilter",
+                "BySource", "Subquery",
             ],
         };
 
@@ -154,10 +154,11 @@ internal sealed record DmlCaseRow(
         // The merge model's Source and Subquery spell their own levels.
         bool merge = model == "merge";
         DmlCteLevel cte = Read<DmlCteLevel>("Cte");
+        (Dbms dbms, bool newer) = MatrixLookup.ParseLane(level["Dbms"]);
         return new DmlCaseRow(
             model,
             number,
-            Read<Dbms>("Dbms"),
+            dbms,
             Read<TargetAliasLevel>("TargetAlias"),
             Read<DmlJoinLevel>("Join"),
             Read<WhereLevel>("Where"),
@@ -184,7 +185,7 @@ internal sealed record DmlCaseRow(
             NotMatchedFilter = Read<MergeFilterLevel>("NotMatchedFilter"),
             BySource = Read<BySourceLevel>("BySource"),
             MergeSubquery = merge ? Read<MergeSubqueryLevel>("Subquery") : default,
-            Newer = level.TryGetValue("Version", out string? version) && version == "Newer",
+            Newer = newer,
         };
     }
 }

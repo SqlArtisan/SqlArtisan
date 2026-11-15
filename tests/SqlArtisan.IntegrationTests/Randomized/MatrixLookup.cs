@@ -40,8 +40,8 @@ internal sealed record GuardKey(
 }
 
 /// <summary>Reads the analyzer's verdicts for one engine at the baseline of its oldest
-/// integration lane, the version every lane of that engine is at least, or for a Newer row
-/// at the version of the lane above it (<see cref="NewerLane"/>).</summary>
+/// integration lane, the version every lane of that engine is at least, or for a row of the
+/// lane above it at that lane's version (<see cref="NewerLane"/>).</summary>
 internal static class MatrixLookup
 {
     /// <summary>The version of each engine's lane above its baseline, as its fixture's image
@@ -53,6 +53,30 @@ internal static class MatrixLookup
             [Dbms.PostgreSql] = DialectMatrix.V("17"),
             [Dbms.SqlServer] = DialectMatrix.V("2025"),
         };
+
+    /// <summary>The <c>Dbms</c> level a DML model names a lane above its engine's baseline by,
+    /// so PICT covers that lane's pairs apart from the baseline lane's.</summary>
+    public static readonly IReadOnlyDictionary<Dbms, string> NewerLaneName =
+        new Dictionary<Dbms, string>
+        {
+            [Dbms.Oracle] = "Oracle23ai",
+            [Dbms.PostgreSql] = "PostgreSql17",
+            [Dbms.SqlServer] = "SqlServer2025",
+        };
+
+    /// <summary>The engine and lane a DML model's <c>Dbms</c> level names.</summary>
+    public static (Dbms Dbms, bool Newer) ParseLane(string level)
+    {
+        foreach ((Dbms dbms, string name) in NewerLaneName)
+        {
+            if (name == level)
+            {
+                return (dbms, true);
+            }
+        }
+
+        return (Enum.Parse<Dbms>(level), false);
+    }
 
     public static bool Supports(Dbms dbms, LevelKey key, bool newer = false) =>
         Verdict(dbms, key, newer) is null;

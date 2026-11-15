@@ -167,7 +167,13 @@ it back (`SqliteCombinatorialTransactionTests` proves the rollback).
 Each lane's `<Engine>CombinatorialDmlTests`, a class of its own so its container
 starts beside the SELECT one, runs the five DML models' rows the same way
 (`DmlGenerators`, `DmlPlanner`, `DmlChecker`; the upsert and MERGE pieces sit in
-`UpsertMerge*.cs`). `rt_users.code`, a unique nullable integer no SELECT reads,
+`UpsertMerge*.cs`). A DML model reaches a construct whose floor sits above an
+engine's baseline through a `Dbms` level naming the lane above it (`Oracle23ai`,
+`PostgreSql17`, `SqlServer2025`; `MatrixLookup.NewerLaneName`): that lane runs its
+own rows beside its baseline lane's, which never run them, and the gates judge them
+at that lane's version. The merge model uses it for PostgreSQL 17's BY SOURCE and
+Oracle 23ai's VALUES source; the SELECT model names no such lane, so its lanes above
+a baseline re-run the baseline rows. `rt_users.code`, a unique nullable integer no SELECT reads,
 is the upsert's second arbiter; a positional INSERT writes it NULL. Every statement, and the read-back
 of `rt_users` and `rt_depts` after it, runs inside one rolled-back transaction.
 The relations: the state and output equal `DmlReference`'s (R1; a text scalar
@@ -199,8 +205,10 @@ twins of the Oracle and SQL Server readings run only in CI.
   model's CSV comes out byte for byte the same) and commit the CSV with the
   model. A new model also needs its binding, or `PictModelTests` fails.
   `PictModelTests` runs every check per model: it fails the PR on a value
-  outside the model, a row its constraints or the analyzer's verdicts exclude,
-  and a valid pair or sub-model tuple no row holds. It does not compare the CSV
+  outside the model, a row its constraints or the analyzer's verdicts exclude
+  (a lane above a baseline's row read at that lane's version), a valid pair or
+  sub-model tuple no row holds, and a lane-above-a-baseline row its baseline lane
+  could run. It does not compare the CSV
   with PICT's output, so a relaxed constraint whose new combinations span three
   or more factors passes it.
 - **`CombinatorialBuildTests`** builds, with no database, every statement a lane
