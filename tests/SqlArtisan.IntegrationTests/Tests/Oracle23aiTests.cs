@@ -274,6 +274,27 @@ public sealed class Oracle23aiTests : IClassFixture<Oracle23aiFixture>
         transaction.Rollback();
     }
 
+    // ReturningGuard.ThrowIfIntoCombinedWithMultiRowValues: 23ai rejects RETURNING ... INTO
+    // after a second VALUES row, which Build() now refuses, so the twin is raw SQL (#839).
+    [Fact]
+    public void MultiRowValues_ReturningInto_IsRejectedByTheEngine()
+    {
+        using IDbConnection connection = _fixture.OpenConnection();
+        using IDbTransaction transaction = connection.BeginTransaction();
+        DynamicParameters output = new();
+        output.Add("o", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+        DbException ex = Assert.ThrowsAny<DbException>(() => connection.Execute(
+            "INSERT INTO users (id) VALUES (701), (702) RETURNING id INTO :o",
+            output,
+            transaction));
+        Assert.Contains("ORA-63809", ex.Message);
+        connection.Execute(
+            "INSERT INTO users (id) VALUES (701) RETURNING id INTO :o", output, transaction);
+        Assert.Equal(701, Convert.ToInt32(output.Get<object>("o")!.ToString()));
+        transaction.Rollback();
+    }
+
     // #582: 23ai added UPDATE ... FROM, but the joined forms SqlArtisan withholds
     // RETURNING from stay rejected; the FROM control, led by the table name, runs.
     // Its source is one row per user: ORA-30926 rejects a row updated twice.

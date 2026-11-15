@@ -17,6 +17,8 @@ internal sealed class InsertValuesClause : SqlPart
 
     internal int RowWidth => _rows[0].Length;
 
+    internal int RowCount => _rows.Count;
+
     internal void AddResolvedRow(SqlExpression[] row) => _rows.Add(row);
 
     internal void AddRow(object?[] values, string position = "InsertValue")

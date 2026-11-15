@@ -434,30 +434,6 @@ public sealed partial class OracleCombinatorialDmlTests
 
 public sealed partial class Oracle23aiCombinatorialDmlTests
 {
-    // Free 23ai rejects RETURNING ... INTO after a second VALUES row, which the insert model
-    // leaves out (insert.pict); after one row it runs.
-    [Fact]
-    public void MultiValues_Oracle23ai_ReturningInto_IsRejectedByTheEngine()
-    {
-        RandomUsersTable t = new("");
-        string? single = Rejection(UpsertMergeTwins.Statement(
-            "InsertInto(t, t.Id).Values(700).Returning(t.Id).Into(o)",
-            () => InsertInto(t, t.Id)
-                .Values(700)
-                .Returning(t.Id)
-                .Into(new OutputParameter("o", System.Data.DbType.Int32))));
-        string? multi = Rejection(UpsertMergeTwins.Statement(
-            "InsertInto(t, t.Id).Values(700).Values(701).Returning(t.Id).Into(o)",
-            () => InsertInto(t, t.Id)
-                .Values(700)
-                .Values(701)
-                .Returning(t.Id)
-                .Into(new OutputParameter("o", System.Data.DbType.Int32))));
-
-        Assert.Null(single);
-        Assert.Contains("ORA-63809", multi);
-    }
-
     // Free 23ai runs an ordered FETCH FIRST as the INSERT's value, but rejects an ordered OFFSET
     // there, naming its ORDER BY key, as XE 21.3.0 rejects both (SQLA0102's floor, #828).
     [Fact]

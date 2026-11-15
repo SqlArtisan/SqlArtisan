@@ -46,6 +46,19 @@ internal static class ReturningGuard
         }
     }
 
+    // Oracle Free 23.26.3 rejects RETURNING ... INTO after a second VALUES row (ORA-63809),
+    // and XE 21.3.0 any second row, so no target runs the pair.
+    internal static void ThrowIfIntoCombinedWithMultiRowValues(
+        InsertValuesClause? values, ReturningIntoClause? returningInto)
+    {
+        if (returningInto is not null && values is { RowCount: > 1 })
+        {
+            throw new ArgumentException(
+                "RETURNING ... INTO cannot be combined with a multi-row VALUES; "
+                    + "insert one row per statement instead.");
+        }
+    }
+
     // The typestate withholds RETURNING on these joined forms, which MySQL and SQL Server
     // spell without one and Oracle 23.26.3 rejects re-listed; this backstops a held stage.
     internal static void ThrowIfDeleteCombinedWithRepeatedTarget(
