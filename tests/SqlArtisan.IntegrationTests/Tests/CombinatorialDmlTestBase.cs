@@ -24,10 +24,13 @@ public abstract class CombinatorialDmlTestBase
     private static readonly ConcurrentDictionary<Type, bool> s_shrunkLanes = new();
 
     private readonly IDatabaseFixture _fixture;
+    private readonly bool _newer;
 
-    protected CombinatorialDmlTestBase(IDatabaseFixture fixture)
+    // newer: the lane runs above its engine's baseline, so it takes the Newer rows too.
+    protected CombinatorialDmlTestBase(IDatabaseFixture fixture, bool newer = false)
     {
         _fixture = fixture;
+        _newer = newer;
         RandomSchema.EnsureCreated(fixture);
     }
 
@@ -143,8 +146,8 @@ public abstract class CombinatorialDmlTestBase
         return runner.RunInRolledBackTransaction(t => runner.Run(statement, t)).Error;
     }
 
-    private IEnumerable<DmlSpec> FirstSeedSpecs() => DmlCaseTable.Rows
-        .Where(r => r.Dbms == _fixture.Dbms)
+    private IEnumerable<DmlSpec> FirstSeedSpecs() => DmlCaseTable
+        .ForLane(_fixture.Dbms, _newer)
         .Select(r => DmlGenerators.For(r)
             .Generate(PCG.Parse(CaseSeeds.For(r.Number)[0]), null!, out _));
 
@@ -339,12 +342,13 @@ public sealed partial class PostgreSqlCombinatorialDmlTests
 public sealed partial class PostgreSql17CombinatorialDmlTests
     : CombinatorialDmlTestBase, IClassFixture<PostgreSql17Fixture>
 {
-    public PostgreSql17CombinatorialDmlTests(PostgreSql17Fixture fixture) : base(fixture)
+    public PostgreSql17CombinatorialDmlTests(PostgreSql17Fixture fixture)
+        : base(fixture, newer: true)
     {
     }
 
     public static TheoryData<string, int, string> Rows =>
-        DmlCaseTable.TheoryRows(Dbms.PostgreSql);
+        DmlCaseTable.TheoryRows(Dbms.PostgreSql, newer: true);
 
     [Theory]
     [MemberData(nameof(Rows))]
@@ -517,12 +521,13 @@ public sealed partial class SqlServerCombinatorialDmlTests
 public sealed partial class SqlServer2025CombinatorialDmlTests
     : CombinatorialDmlTestBase, IClassFixture<SqlServer2025Fixture>
 {
-    public SqlServer2025CombinatorialDmlTests(SqlServer2025Fixture fixture) : base(fixture)
+    public SqlServer2025CombinatorialDmlTests(SqlServer2025Fixture fixture)
+        : base(fixture, newer: true)
     {
     }
 
     public static TheoryData<string, int, string> Rows =>
-        DmlCaseTable.TheoryRows(Dbms.SqlServer);
+        DmlCaseTable.TheoryRows(Dbms.SqlServer, newer: true);
 
     [Theory]
     [MemberData(nameof(Rows))]
@@ -554,11 +559,13 @@ public sealed partial class OracleCombinatorialDmlTests
 public sealed partial class Oracle23aiCombinatorialDmlTests
     : CombinatorialDmlTestBase, IClassFixture<Oracle23aiFixture>
 {
-    public Oracle23aiCombinatorialDmlTests(Oracle23aiFixture fixture) : base(fixture)
+    public Oracle23aiCombinatorialDmlTests(Oracle23aiFixture fixture)
+        : base(fixture, newer: true)
     {
     }
 
-    public static TheoryData<string, int, string> Rows => DmlCaseTable.TheoryRows(Dbms.Oracle);
+    public static TheoryData<string, int, string> Rows =>
+        DmlCaseTable.TheoryRows(Dbms.Oracle, newer: true);
 
     [Theory]
     [MemberData(nameof(Rows))]

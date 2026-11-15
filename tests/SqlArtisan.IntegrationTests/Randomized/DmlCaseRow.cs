@@ -93,6 +93,10 @@ internal sealed record DmlCaseRow(
 
     public MergeSubqueryLevel MergeSubquery { get; init; }
 
+    /// <summary>A row only the lane above its engine's baseline runs: a <c>Version</c> factor at
+    /// <c>Newer</c> (<see cref="MatrixLookup.NewerLane"/>).</summary>
+    public bool Newer { get; init; }
+
     public static readonly IReadOnlyDictionary<string, string[]> FactorNames =
         new Dictionary<string, string[]>
         {
@@ -117,8 +121,8 @@ internal sealed record DmlCaseRow(
             ],
             ["merge"] =
             [
-                "Dbms", "Source", "Matched", "MatchedFilter", "NotMatched", "NotMatchedFilter",
-                "BySource", "Subquery",
+                "Dbms", "Version", "Source", "Matched", "MatchedFilter", "NotMatched",
+                "NotMatchedFilter", "BySource", "Subquery",
             ],
         };
 
@@ -180,6 +184,7 @@ internal sealed record DmlCaseRow(
             NotMatchedFilter = Read<MergeFilterLevel>("NotMatchedFilter"),
             BySource = Read<BySourceLevel>("BySource"),
             MergeSubquery = merge ? Read<MergeSubqueryLevel>("Subquery") : default,
+            Newer = level.TryGetValue("Version", out string? version) && version == "Newer",
         };
     }
 }
@@ -193,10 +198,15 @@ internal static class DmlCaseTable
 
     public static IReadOnlyList<DmlCaseRow> Rows => s_rows.Value;
 
-    public static TheoryData<string, int, string> TheoryRows(Dbms dbms)
+    /// <summary>The rows a lane runs: its engine's baseline rows, and on the lane above that
+    /// engine's baseline (<paramref name="newer"/>) its Newer rows too.</summary>
+    public static IEnumerable<DmlCaseRow> ForLane(Dbms dbms, bool newer) =>
+        Rows.Where(r => r.Dbms == dbms && (newer || !r.Newer));
+
+    public static TheoryData<string, int, string> TheoryRows(Dbms dbms, bool newer = false)
     {
         TheoryData<string, int, string> data = [];
-        foreach (DmlCaseRow row in Rows.Where(r => r.Dbms == dbms))
+        foreach (DmlCaseRow row in ForLane(dbms, newer))
         {
             data.Add(row.Model, row.Number, row.Summary);
         }

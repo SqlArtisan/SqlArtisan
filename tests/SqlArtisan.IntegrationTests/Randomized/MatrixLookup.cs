@@ -40,28 +40,55 @@ internal sealed record GuardKey(
 }
 
 /// <summary>Reads the analyzer's verdicts for one engine at the baseline of its oldest
-/// integration lane, the version every lane of that engine is at least.</summary>
+/// integration lane, the version every lane of that engine is at least, or for a Newer row
+/// at the version of the lane above it (<see cref="NewerLane"/>).</summary>
 internal static class MatrixLookup
 {
-    public static bool Supports(Dbms dbms, LevelKey key) => Verdict(dbms, key) is null;
+    /// <summary>The version of each engine's lane above its baseline, as its fixture's image
+    /// pins it: Oracle23aiFixture, PostgreSql17Fixture and SqlServer2025Fixture.</summary>
+    public static readonly IReadOnlyDictionary<Dbms, EngineVersion> NewerLane =
+        new Dictionary<Dbms, EngineVersion>
+        {
+            [Dbms.Oracle] = DialectMatrix.V("23"),
+            [Dbms.PostgreSql] = DialectMatrix.V("17"),
+            [Dbms.SqlServer] = DialectMatrix.V("2025"),
+        };
 
-    public static bool SupportsAll(Dbms dbms, IEnumerable<LevelKey> keys) =>
-        keys.All(key => Supports(dbms, key));
+    public static bool Supports(Dbms dbms, LevelKey key, bool newer = false) =>
+        Verdict(dbms, key, newer) is null;
+
+    public static bool SupportsAll(Dbms dbms, IEnumerable<LevelKey> keys, bool newer = false) =>
+        keys.All(key => Supports(dbms, key, newer));
 
     /// <summary>Why <paramref name="key"/> does not run on <paramref name="dbms"/>, or
     /// <see langword="null"/> when it does.</summary>
-    public static string? Verdict(Dbms dbms, LevelKey key) => key switch
+    public static string? Verdict(Dbms dbms, LevelKey key, bool newer = false) => key switch
     {
-        MemberKey member => MemberVerdict(ToTarget(dbms), dbms, member),
-        ShapeKey shape => ShapeVerdict(ToTarget(dbms), dbms, shape.Shape),
+        MemberKey member => MemberVerdict(ToTarget(dbms), dbms, member, At(dbms, newer)),
+        ShapeKey shape => ShapeVerdict(ToTarget(dbms), dbms, shape.Shape, At(dbms, newer)),
         GuardKey guard => guard.RejectedOn.Contains(dbms)
             ? $"Build() rejects it on {dbms} ({guard.Guard})"
             : null,
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, message: null),
     };
 
+    // The version a verdict reads, and how its message names it.
+    private readonly record struct LaneVersion(EngineVersion Version, string Name);
+
+    private static LaneVersion At(Dbms dbms, bool newer)
+    {
+        EngineVersion version = newer
+            ? NewerLane[dbms]
+            : DialectMatrix.BaselineVersion[ToTarget(dbms)];
+        return new(version, $"the {version} {(newer ? "lane" : "baseline")}");
+    }
+
     // An arity with no row of its own falls back to the member's row, as the analyzer reads it.
-    private static string? MemberVerdict(TargetDbms target, Dbms dbms, MemberKey key)
+    private static string? MemberVerdict(
+        TargetDbms target,
+        Dbms dbms,
+        MemberKey key,
+        LaneVersion at)
     {
         if (!DialectMatrix.TryGetEntry(
             key.Member, key.Arity, out DbmsSupport support, out bool wasArityMatch))
@@ -69,25 +96,27 @@ internal static class MatrixLookup
             return $"{key} has no DialectMatrix entry";
         }
 
-        if (!support.IsSupported(target))
+        // As DialectSupportResolver.Evaluate reads a declared version: a floor decides alone,
+        // so a cell the baseline leaves false opens at the lane above it.
+        MatrixKey matched = new(key.Member, wasArityMatch ? key.Arity : null);
+        bool bounded = DialectMatrix.TryGetMinVersion(matched, target, out EngineVersion min);
+        if (bounded && at.Version.CompareTo(min) >= 0)
         {
-            return $"DialectMatrix marks {key} unsupported on {dbms}";
+            return null;
         }
 
-        EngineVersion baseline = DialectMatrix.BaselineVersion[target];
-        MatrixKey matched = new(key.Member, wasArityMatch ? key.Arity : null);
-        return DialectMatrix.TryGetMinVersion(matched, target, out EngineVersion min)
-            && baseline.CompareTo(min) < 0
-            ? $"{key} needs {dbms} {min}, above the {baseline} baseline"
-            : null;
+        return bounded ? $"{key} needs {dbms} {min}, above {at.Name}"
+            : support.IsSupported(target) ? null
+            : $"DialectMatrix marks {key} unsupported on {dbms}";
     }
 
-    // Past a floor the analyzer still reports a DELETE lead that re-lists its target; that
-    // floor is Oracle's 23, above its baseline, so the floor alone decides here.
+    // Past its floor the analyzer still reports a DELETE lead that re-lists its target, the
+    // shape this key names, so only the lead that does not re-list it passes there.
     private static string? ShapeVerdict(
         TargetDbms target,
         Dbms dbms,
-        ContextRules.DmlShape shape)
+        ContextRules.DmlShape shape,
+        LaneVersion at)
     {
         if (shape == ContextRules.DmlShape.None)
         {
@@ -99,15 +128,19 @@ internal static class MatrixLookup
             return null;
         }
 
-        EngineVersion baseline = DialectMatrix.BaselineVersion[target];
         foreach ((ContextRules.DmlShape Shape, TargetDbms Dbms, EngineVersion From) floor
             in DialectUsageAnalyzer.DmlShapeFloors)
         {
             if (floor.Shape == shape && floor.Dbms == target)
             {
-                return baseline.CompareTo(floor.From) >= 0
-                    ? null
-                    : $"{shape} needs {dbms} {floor.From}, above the {baseline} baseline";
+                if (at.Version.CompareTo(floor.From) < 0)
+                {
+                    return $"{shape} needs {dbms} {floor.From}, above {at.Name}";
+                }
+
+                return shape == ContextRules.DmlShape.JoinedDeleteLead
+                    ? $"DialectUsageAnalyzer still reports a re-listed {shape} at {at.Name}"
+                    : null;
             }
         }
 

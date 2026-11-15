@@ -5,6 +5,7 @@
 # Returning.
 
 Dbms:             Oracle, PostgreSql, SqlServer
+Version:          Baseline, Newer
 Source:           Table, Derived, Cte, Values
 Matched:          None, Update, Delete, UpdateDelete, UpdateDeleteWhere
 MatchedFilter:    None, WhenAnd, ActionWhere
@@ -19,7 +20,7 @@ Subquery:         None, Uncorrelated, Correlated
 { Dbms, Source, Matched } @ 3
 
 # DialectMatrix ("Values", 3): Oracle takes a VALUES source from 23, above its baseline.
-IF [Source] = "Values" THEN [Dbms] <> "Oracle";
+IF [Source] = "Values" THEN [Dbms] <> "Oracle" OR [Version] = "Newer";
 
 # DmlTargetGuard.ThrowIfLeadingWithUnsupportedOnMerge: Oracle's MERGE takes no leading WITH.
 IF [Source] = "Cte" THEN [Dbms] <> "Oracle";
@@ -30,7 +31,13 @@ IF [Source] = "Cte" THEN [Dbms] <> "Oracle";
 IF [Matched] IN {"Delete", "UpdateDelete"} THEN [Dbms] <> "Oracle";
 IF [Matched] = "UpdateDeleteWhere" THEN [Dbms] = "Oracle";
 IF [MatchedFilter] = "WhenAnd" OR [NotMatchedFilter] = "WhenAnd" THEN [Dbms] <> "Oracle";
-IF [BySource] <> "None" THEN [Dbms] = "SqlServer";
+IF [BySource] <> "None"
+    THEN [Dbms] = "SqlServer" OR ([Dbms] = "PostgreSql" AND [Version] = "Newer");
+
+# A Newer row runs only on the lane above its engine's baseline (MatrixLookup.NewerLane), and
+# exercises a level that lane alone takes, so it adds no row a baseline lane already runs.
+IF [Version] = "Newer" THEN ([Dbms] = "PostgreSql" AND [BySource] <> "None")
+    OR ([Dbms] = "Oracle" AND [Source] = "Values");
 
 # DialectUsageAnalyzer's MergeActionWhere shape: only Oracle filters a MERGE action.
 IF [MatchedFilter] = "ActionWhere" OR [NotMatchedFilter] = "ActionWhere" THEN [Dbms] = "Oracle";
