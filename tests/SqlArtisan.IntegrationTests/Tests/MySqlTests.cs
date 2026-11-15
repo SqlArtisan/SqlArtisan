@@ -1333,8 +1333,8 @@ public sealed class MySqlTests : IntegrationTestBase, IClassFixture<MySqlFixture
         }
     }
 
-    // MySQL 8.0.46 answers x [NOT] IN over an INTERSECT or EXCEPT wrongly when a branch or x is
-    // NULL, with no error, and a derived table over the same set answers right. The generators
+    // MySQL 8.0.46 can answer x [NOT] IN over an INTERSECT or EXCEPT wrongly when a branch or x
+    // is NULL, with no error, where a derived table over the same set answers right. The generators
     // avoid the shape (QueryGenerators.SubquerySetOperators, #833): when this fails, lift both.
     [Fact]
     public void InSubquery_IntersectOrExceptOverNull_ReturnsAWrongResult()

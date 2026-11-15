@@ -190,7 +190,7 @@ has a twin in its lane's `<Engine>CombinatorialDmlTests`:
 
 The query generator holds the same discipline for two wrong results of MySQL
 8.0.46. `x IN` over an `INTERSECT` or `EXCEPT` where a branch or `x` is NULL, and
-over a `GROUP BY ... HAVING` with a NULL group, yields another truth value than
+over a `GROUP BY ... HAVING` with a NULL group, can yield another truth value than
 the same set read through a derived table. A bare `IN` in a `WHERE` still filters
 the same rows, but `NOT IN` and a negated `IN` match other rows.
 `Randomized/QueryGenerators.cs` builds neither on MySQL, in a `SELECT` or in the
