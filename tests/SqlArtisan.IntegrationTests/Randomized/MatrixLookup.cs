@@ -75,7 +75,7 @@ internal static class MatrixLookup
             }
         }
 
-        return (Enum.Parse<Dbms>(level), false);
+        return (CaseRow.Level<Dbms>(level), false);
     }
 
     public static bool Supports(Dbms dbms, LevelKey key, bool newer = false) =>

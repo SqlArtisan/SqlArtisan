@@ -193,7 +193,7 @@ public sealed class PictModelTests
         // the lane above it where only that lane does and the model names it, or null.
         string? Lane(string engine, IEnumerable<LevelKey> keys)
         {
-            Dbms dbms = Enum.Parse<Dbms>(engine);
+            Dbms dbms = MatrixLookup.ParseLane(engine).Dbms;
             if (MatrixLookup.SupportsAll(dbms, keys))
             {
                 return engine;
