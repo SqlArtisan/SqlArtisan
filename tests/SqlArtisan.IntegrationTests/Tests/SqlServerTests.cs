@@ -977,6 +977,87 @@ public sealed class SqlServerTests : IntegrationTestBase, IClassFixture<SqlServe
         ISelectBuilderWhere Compound() => UserOneThenNoOrderUserId(setOperator);
     }
 
+    // SQLA0102 (#832): OFFSET ... ROWS belongs to an ORDER BY, so SQL Server 2022 rejects it
+    // after any other step, in every position; ordered, the same query runs in the same spot.
+    [Theory]
+    [InlineData("from")]
+    [InlineData("where")]
+    [InlineData("groupby")]
+    [InlineData("with")]
+    public void ContextRule_OffsetRowsWithoutOrderBy_Rejected(string step)
+    {
+        UsersTable u = new();
+        Cte c = new("c");
+        using IDbConnection connection = _fixture.OpenConnection();
+
+        ISqlBuilder Query(bool ordered) => step switch
+        {
+            "from" => ordered
+                ? Select(u.Id).From(u).OrderBy(u.Id).OffsetRows(0)
+                : Select(u.Id).From(u).OffsetRows(0),
+            "where" => ordered
+                ? Select(u.Id).From(u).Where(u.Id > 0).OrderBy(u.Id).OffsetRows(0).FetchNext(1)
+                : Select(u.Id).From(u).Where(u.Id > 0).OffsetRows(0).FetchNext(1),
+            "groupby" => ordered
+                ? Select(u.Id).From(u).GroupBy(u.Id).OrderBy(u.Id).OffsetRows(0)
+                : Select(u.Id).From(u).GroupBy(u.Id).OffsetRows(0),
+            _ => ordered
+                ? With(c.As(Select(u.Id).From(u)))
+                    .Select(c.Column("id")).From(c).OrderBy(c.Column("id")).OffsetRows(0)
+                : With(c.As(Select(u.Id).From(u))).Select(c.Column("id")).From(c).OffsetRows(0),
+        };
+
+        Assert.StartsWith("[", Outcome(connection, Query(ordered: true)));
+        Assert.Equal("Msg 102", Outcome(connection, Query(ordered: false)));
+    }
+
+    [Theory]
+    [InlineData("in")]
+    [InlineData("notin")]
+    [InlineData("exists")]
+    [InlineData("notexists")]
+    [InlineData("any")]
+    [InlineData("all")]
+    [InlineData("some")]
+    [InlineData("derived")]
+    [InlineData("cte")]
+    [InlineData("scalar")]
+    [InlineData("crossapply")]
+    [InlineData("outerapply")]
+    public void ContextRule_OffsetRowsWithoutOrderByInSubquery_Rejected(string position)
+    {
+        UsersTable u = new();
+        OrdersTable o = new("o");
+        using IDbConnection connection = _fixture.OpenConnection();
+
+        ISubquery ordered =
+            Select(Max(o.UserId).As("m")).From(o).OrderBy(Max(o.UserId)).OffsetRows(0);
+        ISubquery bare = Select(Max(o.UserId).As("m")).From(o).OffsetRows(0);
+
+        connection.ExecuteScalar(InPosition(position, u, ordered));
+        Assert.Equal("Msg 102", Outcome(connection, InPosition(position, u, bare)));
+    }
+
+    // A compound's OFFSET needs its trailing ORDER BY too, at the top level and embedded.
+    [Theory]
+    [MemberData(nameof(EmbeddedCompounds.EveryPosition), MemberType = typeof(EmbeddedCompounds))]
+    public void ContextRule_OffsetRowsWithoutOrderByAfterSetOperator_Rejected(
+        string setOperator,
+        string position)
+    {
+        UsersTable u = new();
+        using IDbConnection connection = _fixture.OpenConnection();
+
+        connection.ExecuteScalar(InPosition(position, u, Compound().OrderBy(1).OffsetRows(0)));
+        Assert.StartsWith("[", Outcome(connection, Compound().OrderBy(1).OffsetRows(0)));
+        Assert.Equal("Msg 102", Outcome(connection, Compound().OffsetRows(0)));
+        Assert.Equal(
+            "Msg 102",
+            Outcome(connection, InPosition(position, u, Compound().OffsetRows(0))));
+
+        ISelectBuilderWhere Compound() => UserOneThenNoOrderUserId(setOperator);
+    }
+
     // #679: the pairing OutputClauseGuard rejects on every dialect. With OUTPUT the
     // WITH is still taken only ahead of INSERT INTO, so no engine runs both halves.
     [Fact]

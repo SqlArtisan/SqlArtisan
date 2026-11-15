@@ -1266,7 +1266,7 @@ SqlStatement sql =
 
 - Use `OffsetRows(m)` alone for `OFFSET m ROWS`.
 - Use `FetchFirst(n)` for `FETCH FIRST n ROWS ONLY` (no offset). This standalone form is valid on **Oracle** (and PostgreSQL); **SQL Server requires an `OFFSET`**, so on SQL Server use `OffsetRows(0).FetchNext(n)` instead.
-- This clause requires `ORDER BY` on SQL Server.
+- This clause requires `ORDER BY` on SQL Server: SQL Server 2022 rejects an `OffsetRows(...)` with no `OrderBy(...)` before it (Msg 102), at the top level, in a subquery and after a compound, and `SQLA0102` reports one.
 
 The row counts are parameterized like other literals, so the bind-parameter prefix follows the target dialect (`:` / `@` / `?`).
 
@@ -4633,7 +4633,7 @@ A construct can be valid on a dialect in one position and rejected by the same
 engine in another, or run there with another meaning. The construct-level
 warnings above cannot express that — the construct itself *is* supported — so
 these facts ship as **context rules**: `SQLA0102` fires when the offending
-position is visible in the expression where the construct is used. In all, 28 rules ship today — 21 reading
+position is visible in the expression where the construct is used. In all, 29 rules ship today — 22 reading
 the construct's surroundings, seven reading the DML statement a clause sits in.
 Every rejection below, and every other meaning, is live-verified on the pinned lanes — MySQL 8.0, Oracle
 XE 21.3.0, PostgreSQL 16, SQLite 3.50 and SQL Server 2022, the Oracle floors on
@@ -4840,6 +4840,24 @@ one.
 // sqlartisan_syntax_sqlserver = any
 var q = Select(u.Id).From(u).Where(u.Id.In(Select(o.UserId).From(o).OrderBy(o.UserId)));
 // warning SQLA0102: 'OrderBy' is not supported in a subquery without a row limit on SQL Server
+```
+
+**`OFFSET` without an `ORDER BY`.** SQL Server takes `OFFSET ... ROWS` only as
+part of an `ORDER BY`, so it rejects `OffsetRows(...)` after any other step: at
+the top level, in every subquery, derived table, CTE body and `APPLY` source,
+and after a compound's last branch (Msg 102, observed on SQL Server 2022). Add
+the `OrderBy(...)` the page is meant to follow. The rule warns where the query
+is begun in the chain, with `Select(...)`, `With(...)` or `WithRecursive(...)`; a
+query held first in a `var`, or begun another way such as
+`InsertInto(...).Select(...)`, stays silent. So does a query with `Top(n)`, which
+`Build()` rejects beside any `OFFSET` in the same query, and a compound with
+`Top(n)` in a branch, which `Build()` takes but no lane has run without an
+`ORDER BY`.
+
+```csharp
+// sqlartisan_syntax_sqlserver = any
+var q = Select(u.Id).From(u).OffsetRows(0).FetchNext(10);
+// warning SQLA0102: 'OffsetRows' is not supported without an ORDER BY on SQL Server
 ```
 
 **A compound's row limit in a subquery.** At the top level, SQL Server sorts and
@@ -5094,7 +5112,7 @@ one turns on whether two builder calls name the *same* table instance, which
 the analyzer cannot see, so `Build(Dbms)` rejects it instead.
 
 A context rule warns only when the position is provable from the expression
-itself. For the 21 that read the construct's surroundings, any shape the
+itself. For the 22 that read the construct's surroundings, any shape the
 analyzer doesn't recognize stays silent — and, for those that read back up the
 chain, so does a subquery held in a variable or a builder chain continued from a
 helper method — the same under-warn-but-never-false-positive principle the
