@@ -88,12 +88,12 @@ public sealed class PictModelTests
         (string[] header, List<string[]> rows) = CaseModels.ReadRaw(model);
         for (int i = 0; i < rows.Count; i++)
         {
-            Dbms dbms = Enum.Parse<Dbms>(rows[i][0]);
+            (Dbms dbms, bool newer) = MatrixLookup.ParseLane(rows[i][0]);
             for (int f = 1; f < header.Length; f++)
             {
                 foreach (LevelKey key in binding.LevelKeys(header[f], rows[i][f]))
                 {
-                    if (MatrixLookup.Verdict(dbms, key) is { } verdict)
+                    if (MatrixLookup.Verdict(dbms, key, newer) is { } verdict)
                     {
                         unsupported.Add($"row {i + 1} {header[f]}={rows[i][f]}: {verdict}");
                     }
@@ -106,7 +106,7 @@ public sealed class PictModelTests
             {
                 foreach (LevelKey key in combo.Keys)
                 {
-                    if (MatrixLookup.Verdict(dbms, key) is { } verdict)
+                    if (MatrixLookup.Verdict(dbms, key, newer) is { } verdict)
                     {
                         unsupported.Add($"row {i + 1} {combo}: {verdict}");
                     }
@@ -126,20 +126,23 @@ public sealed class PictModelTests
     {
         PictModel pict = CaseModels.Model(model);
         CaseModelBinding binding = CaseModelCatalog.For(model);
-        string[] engines = pict.Factors[0].Levels;
+        string[] lanes = pict.Factors[0].Levels;
         List<string> excluded = [];
         foreach ((string factor, string[] levels) in pict.Factors.Skip(1))
         {
             foreach (string level in levels)
             {
-                foreach (string engine in engines.Where(e => MatrixLookup.SupportsAll(
-                    Enum.Parse<Dbms>(e),
-                    binding.LevelKeys(factor, level))))
+                foreach (string engine in lanes.Where(l => !MatrixLookup.ParseLane(l).Newer))
                 {
-                    Dictionary<string, string> pair = new() { ["Dbms"] = engine, [factor] = level };
+                    if (Lane(engine, binding.LevelKeys(factor, level)) is not { } lane)
+                    {
+                        continue;
+                    }
+
+                    Dictionary<string, string> pair = new() { ["Dbms"] = lane, [factor] = level };
                     if (!pict.IsSatisfiable(pair))
                     {
-                        excluded.Add($"{factor}={level} on {engine}");
+                        excluded.Add($"{factor}={level} on {lane}");
                     }
                 }
             }
@@ -158,19 +161,24 @@ public sealed class PictModelTests
 
             foreach (Dictionary<string, string> tuple in tuples)
             {
-                foreach (string engine in engines.Where(e => MatrixLookup.SupportsAll(
-                    Enum.Parse<Dbms>(e),
+                foreach (string engine in lanes.Where(l => !MatrixLookup.ParseLane(l).Newer))
+                {
+                    LevelKey[] keys =
                     [
                         .. combo.Keys,
                         .. tuple.SelectMany(kv => binding.LevelKeys(kv.Key, kv.Value)),
-                    ])))
-                {
-                    Dictionary<string, string> cell = new(tuple) { ["Dbms"] = engine };
+                    ];
+                    if (Lane(engine, keys) is not { } lane)
+                    {
+                        continue;
+                    }
+
+                    Dictionary<string, string> cell = new(tuple) { ["Dbms"] = lane };
                     if (!pict.IsSatisfiable(cell))
                     {
                         string levels =
                             string.Join(", ", tuple.Select(kv => $"{kv.Key}={kv.Value}"));
-                        excluded.Add($"{levels} on {engine}");
+                        excluded.Add($"{levels} on {lane}");
                     }
                 }
             }
@@ -180,6 +188,52 @@ public sealed class PictModelTests
             excluded.Count == 0,
             $"Levels the analyzer supports but {model}.pict never generates (an over-tight "
                 + "constraint):\n  " + string.Join("\n  ", excluded));
+
+        // The lane a cell needs: the engine's baseline lane where the baseline runs the keys,
+        // the lane above it where only that lane does and the model names it, or null.
+        string? Lane(string engine, IEnumerable<LevelKey> keys)
+        {
+            Dbms dbms = MatrixLookup.ParseLane(engine).Dbms;
+            if (MatrixLookup.SupportsAll(dbms, keys))
+            {
+                return engine;
+            }
+
+            return MatrixLookup.NewerLaneName.TryGetValue(dbms, out string? newer)
+                && lanes.Contains(newer)
+                && MatrixLookup.SupportsAll(dbms, keys, newer: true)
+                    ? newer
+                    : null;
+        }
+    }
+
+    // A row of the lane above a baseline runs there only, so one the baseline would run as well
+    // spends that lane's time on a cell its baseline lane already covers.
+    [Theory]
+    [MemberData(nameof(Models))]
+    public void CasesCsv_EveryNewerLaneRow_NeedsItsLane(string model)
+    {
+        CaseModelBinding binding = CaseModelCatalog.For(model);
+        (string[] header, List<string[]> rows) = CaseModels.ReadRaw(model);
+        List<string> idle = [];
+        for (int i = 0; i < rows.Count; i++)
+        {
+            (Dbms dbms, bool newer) = MatrixLookup.ParseLane(rows[i][0]);
+            LevelKey[] keys =
+            [
+                .. Enumerable.Range(1, header.Length - 1)
+                    .SelectMany(f => binding.LevelKeys(header[f], rows[i][f])),
+            ];
+            if (newer && MatrixLookup.SupportsAll(dbms, keys))
+            {
+                idle.Add($"row {i + 1} on {rows[i][0]}");
+            }
+        }
+
+        Assert.True(
+            idle.Count == 0,
+            $"Rows in {model}.cases.csv a lane above the baseline runs but its baseline could:\n  "
+                + string.Join("\n  ", idle));
     }
 
     [Theory]
@@ -264,6 +318,26 @@ public sealed class PictModelTests
         Assert.Equal(
             "JoinedUpdateFrom needs Oracle 23, above the 21.3 baseline",
             MatrixLookup.Verdict(Dbms.Oracle, ContextRules.DmlShape.JoinedUpdateFrom));
+        Assert.Null(MatrixLookup.Verdict(
+            Dbms.Oracle, ContextRules.DmlShape.JoinedUpdateFrom, newer: true));
+    }
+
+    // A floor decides a row of the lane above a baseline alone, as a declared version does for
+    // the analyzer: the matrix cell stays false for the baseline.
+    [Fact]
+    public void Verdict_NewerLane_ReadsTheFloorAtTheLaneAboveTheBaseline()
+    {
+        Assert.Equal(
+            "WhenNotMatchedBySource needs PostgreSql 17, above the 16 baseline",
+            MatrixLookup.Verdict(Dbms.PostgreSql, "WhenNotMatchedBySource"));
+        Assert.Null(MatrixLookup.Verdict(Dbms.PostgreSql, "WhenNotMatchedBySource", newer: true));
+        Assert.Null(MatrixLookup.Verdict(Dbms.Oracle, ("Values", 3), newer: true));
+        Assert.Equal(
+            "DialectMatrix marks WhenNotMatchedBySource unsupported on Oracle",
+            MatrixLookup.Verdict(Dbms.Oracle, "WhenNotMatchedBySource", newer: true));
+        Assert.Equal(
+            "DialectUsageAnalyzer still reports a re-listed JoinedDeleteLead at the 23 lane",
+            MatrixLookup.Verdict(Dbms.Oracle, ContextRules.DmlShape.JoinedDeleteLead, newer: true));
     }
 
     [Fact]

@@ -93,6 +93,10 @@ internal sealed record DmlCaseRow(
 
     public MergeSubqueryLevel MergeSubquery { get; init; }
 
+    /// <summary>A row only the lane above its engine's baseline runs: its <c>Dbms</c> level names
+    /// that lane (<see cref="MatrixLookup.NewerLaneName"/>).</summary>
+    public bool Newer { get; init; }
+
     public static readonly IReadOnlyDictionary<string, string[]> FactorNames =
         new Dictionary<string, string[]>
         {
@@ -150,10 +154,11 @@ internal sealed record DmlCaseRow(
         // The merge model's Source and Subquery spell their own levels.
         bool merge = model == "merge";
         DmlCteLevel cte = Read<DmlCteLevel>("Cte");
+        (Dbms dbms, bool newer) = MatrixLookup.ParseLane(level["Dbms"]);
         return new DmlCaseRow(
             model,
             number,
-            Read<Dbms>("Dbms"),
+            dbms,
             Read<TargetAliasLevel>("TargetAlias"),
             Read<DmlJoinLevel>("Join"),
             Read<WhereLevel>("Where"),
@@ -180,6 +185,7 @@ internal sealed record DmlCaseRow(
             NotMatchedFilter = Read<MergeFilterLevel>("NotMatchedFilter"),
             BySource = Read<BySourceLevel>("BySource"),
             MergeSubquery = merge ? Read<MergeSubqueryLevel>("Subquery") : default,
+            Newer = newer,
         };
     }
 }
@@ -193,10 +199,15 @@ internal static class DmlCaseTable
 
     public static IReadOnlyList<DmlCaseRow> Rows => s_rows.Value;
 
-    public static TheoryData<string, int, string> TheoryRows(Dbms dbms)
+    /// <summary>The rows a lane runs: its engine's baseline rows, and on the lane above that
+    /// engine's baseline (<paramref name="newer"/>) its Newer rows too.</summary>
+    public static IEnumerable<DmlCaseRow> ForLane(Dbms dbms, bool newer) =>
+        Rows.Where(r => r.Dbms == dbms && (newer || !r.Newer));
+
+    public static TheoryData<string, int, string> TheoryRows(Dbms dbms, bool newer = false)
     {
         TheoryData<string, int, string> data = [];
-        foreach (DmlCaseRow row in Rows.Where(r => r.Dbms == dbms))
+        foreach (DmlCaseRow row in ForLane(dbms, newer))
         {
             data.Add(row.Model, row.Number, row.Summary);
         }
