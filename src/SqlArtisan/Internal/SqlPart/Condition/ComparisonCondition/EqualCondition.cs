@@ -35,4 +35,14 @@ internal sealed class EqualCondition(
 
         buffer.EncloseInSpaces(Operators.Equal).Append(RightSide);
     }
+
+    // By the target's alias, not the column's owner: the SET guard matches a column by its
+    // table's name alone, so another handle's alias would name another relation.
+    internal void FormatAsAssignment(SqlBuildingBuffer buffer, DbTableBase target)
+    {
+        buffer.EncloseInAliasQuotes(target.CorrelationName);
+        buffer.Append('.');
+        ((DbColumn)LeftSide).FormatUnqualified(buffer);
+        buffer.EncloseInSpaces(Operators.Equal).Append(RightSide);
+    }
 }

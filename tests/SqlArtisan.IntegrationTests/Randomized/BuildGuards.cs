@@ -89,6 +89,12 @@ internal static class BuildGuards
             + "target table.",
         [() => DeleteFrom(Users("u")).Using(s_d).Where(Users("u").DeptId == s_d.Id)]);
 
+    public static readonly GuardKey DeleteFromNotRelistedOffOracle = new(
+        "DmlTargetGuard.ThrowIfDeleteTargetNotRepeatedInFromOffOracle",
+        [Dbms.MySql, Dbms.PostgreSql, Dbms.Sqlite, Dbms.SqlServer],
+        "A joined DELETE ... FROM must re-list the target table in the FROM clause.",
+        [() => DeleteFrom(Users("u")).From(s_d).Where(Users("u").DeptId == s_d.Id)]);
+
     public static readonly GuardKey TargetlessDoUpdateOnPostgreSql = new(
         "InsertBuilder.Validate (targetless DO UPDATE on PostgreSQL)",
         [Dbms.PostgreSql],
@@ -119,6 +125,7 @@ internal static class BuildGuards
         UpdateFromNotRelistedOnSqlServer,
         UpdateRelistedOffSqlServer,
         DeleteUsingOnSqlServer,
+        DeleteFromNotRelistedOffOracle,
         TargetlessDoUpdateOnPostgreSql,
         LeadingWithOnOracleMerge,
     ];

@@ -24,4 +24,6 @@ internal sealed class PostgreSqlDialect : IDbmsDialect
     public char ParameterMarker => ':';
 
     public bool ReturningIgnoresTargetAlias => false;
+
+    public bool UpdateFromQualifiesSetColumns => false;
 }

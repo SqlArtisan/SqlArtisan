@@ -355,6 +355,77 @@ public class UpdateTests
     }
 
     [Fact]
+    public void Update_Oracle_FromAliasedTarget_QualifiesSetColumns()
+    {
+        TestTable t = new("t");
+        TestTable s = new("s");
+
+        SqlStatement sql =
+            Update(t)
+            .Set(t.Name == s.Name, t.Code == 1)
+            .From(s)
+            .Where(t.Code == s.Code)
+            .Build(Dbms.Oracle);
+
+        StringBuilder expected = new();
+        expected.Append("UPDATE test_table \"t\" ");
+        expected.Append("SET \"t\".name = \"s\".name, \"t\".code = :0 ");
+        expected.Append("FROM test_table \"s\" ");
+        expected.Append("WHERE \"t\".code = \"s\".code");
+
+        Assert.Equal(expected.ToString(), sql.Text);
+        Assert.Equal(1, sql.Parameters.Get<int>(":0"));
+    }
+
+    [Fact]
+    public void Update_Oracle_FromSetColumnOfAnotherHandle_QualifiesByTheTarget()
+    {
+        TestTable t = new("t");
+        TestTable other = new("x");
+        TestTable s = new("s");
+
+        SqlStatement sql =
+            Update(t)
+            .Set(other.Name == s.Name)
+            .From(s)
+            .Where(t.Code == s.Code)
+            .Build(Dbms.Oracle);
+
+        StringBuilder expected = new();
+        expected.Append("UPDATE test_table \"t\" ");
+        expected.Append("SET \"t\".name = \"s\".name ");
+        expected.Append("FROM test_table \"s\" ");
+        expected.Append("WHERE \"t\".code = \"s\".code");
+
+        Assert.Equal(expected.ToString(), sql.Text);
+    }
+
+    [Fact]
+    public void Update_Oracle_FromJoin_QualifiesSetColumns()
+    {
+        TestTable t = new("t");
+        TestTable s = new("s");
+        TestTable u = new("u");
+
+        SqlStatement sql =
+            Update(t)
+            .Set(t.Name == s.Name)
+            .From(s)
+            .InnerJoin(u).On(s.Code == u.Code)
+            .Where(t.Code == s.Code)
+            .Build(Dbms.Oracle);
+
+        StringBuilder expected = new();
+        expected.Append("UPDATE test_table \"t\" ");
+        expected.Append("SET \"t\".name = \"s\".name ");
+        expected.Append("FROM test_table \"s\" ");
+        expected.Append("INNER JOIN test_table \"u\" ON \"s\".code = \"u\".code ");
+        expected.Append("WHERE \"t\".code = \"s\".code");
+
+        Assert.Equal(expected.ToString(), sql.Text);
+    }
+
+    [Fact]
     public void Update_PostgreSql_From_CorrectSql()
     {
         // PostgreSQL UPDATE ... FROM: the target is not repeated, the SET target

@@ -65,6 +65,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   ran. A column the `INSERT` does not list ran bare and runs qualified with the
   same meaning; the left side, `Excluded(...)` and a subquery's own columns are
   unchanged. (#827)
+- On Oracle, an `UPDATE ... FROM` that does not re-list its target qualifies each
+  `SET` column by the target's alias (`SET "u".name = "d".name`). It rendered the
+  column bare, which Oracle reads against the `FROM` source too, so a column the
+  source shares was ambiguous (ORA-00918, observed on Oracle Free 23.26.3) and the
+  statement had no spelling that ran. PostgreSQL and SQLite keep the bare column,
+  and Oracle's `UPDATE` without `FROM` is unchanged. (#838)
 
 ### Docs
 - `docs/query-statements.md` notes that on SQL Server a compound's

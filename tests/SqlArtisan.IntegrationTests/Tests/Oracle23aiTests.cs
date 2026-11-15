@@ -254,6 +254,26 @@ public sealed class Oracle23aiTests : IClassFixture<Oracle23aiFixture>
         transaction.Rollback();
     }
 
+    // OracleDialect.UpdateFromQualifiesSetColumns: 23ai reads a bare SET column against the
+    // FROM source too, so a name the source shares is ambiguous; qualified, it runs (#838).
+    [Fact]
+    public void JoinedUpdateFrom_BareSharedSetColumn_IsRejectedByTheEngine()
+    {
+        UsersTable u = new("u");
+        OrdersTable o = new("o");
+        using IDbConnection connection = _fixture.OpenConnection();
+        using IDbTransaction transaction = connection.BeginTransaction();
+
+        DbException ex = Assert.ThrowsAny<DbException>(() => connection.Execute(
+            "UPDATE users \"u\" SET id = \"o\".id FROM orders \"o\" WHERE \"o\".id = \"u\".id",
+            transaction: transaction));
+        Assert.Contains("ORA-00918", ex.Message);
+        connection.Execute(
+            Update(u).Set(u.Id == o.Id).From(o).Where(o.Id == u.Id),
+            transaction);
+        transaction.Rollback();
+    }
+
     // #582: 23ai added UPDATE ... FROM, but the joined forms SqlArtisan withholds
     // RETURNING from stay rejected; the FROM control, led by the table name, runs.
     // Its source is one row per user: ORA-30926 rejects a row updated twice.

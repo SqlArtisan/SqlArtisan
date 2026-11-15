@@ -21,4 +21,6 @@ internal sealed class OracleDialect : IDbmsDialect
     public char ParameterMarker => ':';
 
     public bool ReturningIgnoresTargetAlias => false;
+
+    public bool UpdateFromQualifiesSetColumns => true;
 }

@@ -21,4 +21,6 @@ internal sealed class SqliteDialect : IDbmsDialect
     public char ParameterMarker => ':';
 
     public bool ReturningIgnoresTargetAlias => true;
+
+    public bool UpdateFromQualifiesSetColumns => false;
 }

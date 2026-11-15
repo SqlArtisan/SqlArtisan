@@ -161,6 +161,23 @@ internal sealed class SqlBuildingBuffer : IDisposable
         return this;
     }
 
+    internal SqlBuildingBuffer AppendAssignmentsCsv(
+        EqualCondition[] assignments,
+        DbTableBase target)
+    {
+        for (int i = 0; i < assignments.Length; i++)
+        {
+            if (i > 0)
+            {
+                Append(", ");
+            }
+
+            assignments[i].FormatAsAssignment(this, target);
+        }
+
+        return this;
+    }
+
     // Renders a comma-separated list of bare column names, for the positions
     // that forbid a table-alias qualifier. DbColumn[] binds here via array
     // covariance.
@@ -423,6 +440,8 @@ internal sealed class SqlBuildingBuffer : IDisposable
         _pseudoRowTarget is not { } target || ColumnListGuard.IsColumnOf(column, target);
 
     internal string ExcludedName => _dialect.ExcludedName;
+
+    internal bool UpdateFromQualifiesSetColumns => _dialect.UpdateFromQualifiesSetColumns;
 
     internal void EnableUpsertTargetQualification() => _qualifiesUpsertTarget = true;
 
