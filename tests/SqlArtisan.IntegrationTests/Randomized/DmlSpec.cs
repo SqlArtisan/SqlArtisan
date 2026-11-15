@@ -6,10 +6,9 @@ namespace SqlArtisan.IntegrationTests.Randomized;
 
 internal enum DmlKind { Insert, Update, Delete, Upsert, Merge }
 
-/// <summary>How a joined UPDATE or DELETE reaches its source table: MySQL's direct join, a
-/// FROM that leaves the target out (PostgreSQL's and SQLite's UPDATE, and Oracle 23ai's UPDATE
-/// and DELETE), one that re-lists it (SQL Server's UPDATE, MySQL's and SQL Server's DELETE), or
-/// <c>DELETE ... USING</c> (PostgreSQL, Oracle 23ai).</summary>
+/// <summary>How a joined UPDATE or DELETE reaches its source: MySQL's direct join, a FROM that
+/// leaves the target out (PostgreSQL's and SQLite's UPDATE, Oracle 23ai's both), one that
+/// re-lists it (SQL Server; MySQL's DELETE), or <c>DELETE ... USING</c>.</summary>
 internal enum DmlJoinForm { Direct, From, FromRelisted, Using }
 
 /// <summary>The joined source, always the aliased <c>rt_depts</c> <c>d</c>: its <c>id</c> is
