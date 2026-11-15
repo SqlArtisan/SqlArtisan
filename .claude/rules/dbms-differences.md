@@ -187,3 +187,12 @@ has a twin in its lane's `<Engine>CombinatorialDmlTests`:
   running sum `SET v = (SELECT SUM(z.v) FROM t z WHERE z.id <= t.id)` over 1, 2,
   3 gives 1, 3, 7, where PostgreSQL 16.15 gives 1, 3, 6. With a `FROM` source
   the same `SET` reads the starting rows and gives 1, 3, 6.
+
+The query generator holds the same discipline for two wrong results of MySQL
+8.0.46. `x IN` over an `INTERSECT` or `EXCEPT` where a branch or `x` is NULL, and
+over a `GROUP BY ... HAVING` with a NULL group, can yield another truth value than
+the same set read through a derived table. A bare `IN` in a `WHERE` still filters
+the same rows, but `NOT IN` and a negated `IN` match other rows.
+`Randomized/QueryGenerators.cs` builds neither on MySQL, in a `SELECT` or in the
+DML `WHERE` that reuses its predicates, and the twins sit in `MySqlTests`
+(`InSubquery_*_ReturnsAWrongResult`, #833).
