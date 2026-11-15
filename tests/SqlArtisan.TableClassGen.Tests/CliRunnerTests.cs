@@ -23,9 +23,7 @@ public class CliRunnerTests
     [Fact]
     public void Run_NoArgumentsWithRedirectedStdin_ReportsErrorWithoutPrompting()
     {
-        Assert.True(Console.IsInputRedirected, "the test host must redirect stdin for this test");
-
-        string stderr = CaptureError(() => CliRunner.Run([]));
+        string stderr = CaptureError(() => CliRunner.Run([], isInputRedirected: true));
 
         Assert.Contains(
             "error: No options given and stdin is not a terminal; pass --dbms and the "
