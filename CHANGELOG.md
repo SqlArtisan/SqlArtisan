@@ -78,9 +78,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Tests
 - MySQL twins pin two wrong results of MySQL 8.0.46 that the combinatorial
   generators avoid: a `WHERE` `NotIn(...)`, or `Not(...)` over `In(...)`, whose
-  subquery is an `Intersect` or `Except` holding a NULL, or a
-  `GroupBy(...).Having(...)` with a NULL group, returns other rows than the same
-  set read through a derived table, which returns the right rows. A twin failing
+  subquery is an `Intersect` or `Except` with a NULL in a branch or in the
+  compared value, or a `GroupBy(...).Having(...)` with a NULL group, returns other
+  rows than the same set read through a derived table, which returns the right
+  rows. A twin failing
   names the server's release, so the avoidance can be lifted when MySQL changes.
   (#833)
 

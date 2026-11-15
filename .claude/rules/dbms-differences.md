@@ -189,8 +189,10 @@ has a twin in its lane's `<Engine>CombinatorialDmlTests`:
   the same `SET` reads the starting rows and gives 1, 3, 6.
 
 The query generator holds the same discipline for two wrong results of MySQL
-8.0.46: a `WHERE` `IN` / `NOT IN` over an `INTERSECT` or `EXCEPT` holding a NULL,
-and over a `GROUP BY ... HAVING` with a NULL group, return other rows than the
-same set read through a derived table. `Randomized/QueryGenerators.cs` builds
-neither on MySQL, in a `SELECT` or in the DML `WHERE` that reuses its predicates,
-and the twins sit in `MySqlTests` (`InSubquery_*_ReturnsAWrongResult`, #833).
+8.0.46. `x IN` over an `INTERSECT` or `EXCEPT` where a branch or `x` is NULL, and
+over a `GROUP BY ... HAVING` with a NULL group, yields another truth value than
+the same set read through a derived table. A bare `IN` in a `WHERE` still filters
+the same rows, but `NOT IN` and a negated `IN` match other rows.
+`Randomized/QueryGenerators.cs` builds neither on MySQL, in a `SELECT` or in the
+DML `WHERE` that reuses its predicates, and the twins sit in `MySqlTests`
+(`InSubquery_*_ReturnsAWrongResult`, #833).

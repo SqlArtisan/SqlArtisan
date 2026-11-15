@@ -1333,9 +1333,9 @@ public sealed class MySqlTests : IntegrationTestBase, IClassFixture<MySqlFixture
         }
     }
 
-    // MySQL 8.0.46 answers x [NOT] IN over an INTERSECT or EXCEPT holding a NULL wrongly, with
-    // no error, and a derived table over the same set answers right. The generators avoid the
-    // shape (QueryGenerators.SubquerySetOperators, #833): when this fails, lift that and this.
+    // MySQL 8.0.46 answers x [NOT] IN over an INTERSECT or EXCEPT wrongly when a branch or x is
+    // NULL, with no error, and a derived table over the same set answers right. The generators
+    // avoid the shape (QueryGenerators.SubquerySetOperators, #833): when this fails, lift both.
     [Fact]
     public void InSubquery_IntersectOrExceptOverNull_ReturnsAWrongResult()
     {
@@ -1367,6 +1367,24 @@ public sealed class MySqlTests : IntegrationTestBase, IClassFixture<MySqlFixture
             rows.Wrong("x NOT IN (a INTERSECT b)", x.NotIn(Intersect()));
             rows.Right(
                 "x NOT IN (derived INTERSECT)", x.NotIn(rows.Derived(Intersect(), "c")), 2);
+
+            // With NULL-free branches, a NULL x alone: a INTERSECT b is {1}, a EXCEPT b is
+            // empty, so x NOT IN the first passes row 2 only, and NOT (x IN the second) all.
+            connection.Execute("DELETE FROM in_set_a");
+            connection.Execute("DELETE FROM in_set_b");
+            connection.Execute("INSERT INTO in_set_t VALUES (3, NULL)");
+            connection.Execute("INSERT INTO in_set_a VALUES (1)");
+            connection.Execute("INSERT INTO in_set_b VALUES (2), (1)");
+            rows.Wrong("NULL x NOT IN (a INTERSECT b)", x.NotIn(Intersect()), 2, 3);
+            rows.Right(
+                "NULL x NOT IN (derived INTERSECT)", x.NotIn(rows.Derived(Intersect(), "c")), 2);
+            rows.Wrong("NOT (NULL x IN (a EXCEPT b))", Not(x.In(Except())), 1, 2);
+            rows.Right(
+                "NOT (NULL x IN (derived EXCEPT))",
+                Not(x.In(rows.Derived(Except(), "c"))),
+                1,
+                2,
+                3);
         }
         finally
         {
