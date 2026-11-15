@@ -254,6 +254,38 @@ public sealed class Oracle23aiTests : IClassFixture<Oracle23aiFixture>
         transaction.Rollback();
     }
 
+    // TEMPORARY probe: which SET spellings 23ai runs when the FROM source shares the column.
+    [Fact]
+    public void JoinedUpdateFrom_SharedSetColumn_Probe()
+    {
+        using IDbConnection connection = _fixture.OpenConnection();
+        const string Source = " FROM (SELECT id, name FROM users) \"s\" WHERE \"s\".id = ";
+        string[] statements =
+        [
+            "UPDATE users \"u\" SET name = \"s\".name" + Source + "\"u\".id",
+            "UPDATE users \"u\" SET \"u\".name = \"s\".name" + Source + "\"u\".id",
+            "UPDATE users SET users.name = \"s\".name" + Source + "users.id",
+            "UPDATE users SET name = \"s\".name" + Source + "users.id",
+        ];
+        List<string> results = [];
+        foreach (string sql in statements)
+        {
+            using IDbTransaction transaction = connection.BeginTransaction();
+            try
+            {
+                results.Add($"{sql} => RUNS {connection.Execute(sql, transaction: transaction)}");
+            }
+            catch (DbException ex)
+            {
+                results.Add($"{sql} => {ex.Message}");
+            }
+
+            transaction.Rollback();
+        }
+
+        Assert.Fail("PROBE " + string.Join(" || ", results));
+    }
+
     // #582: 23ai added UPDATE ... FROM, but the joined forms SqlArtisan withholds
     // RETURNING from stay rejected; the FROM control, led by the table name, runs.
     // Its source is one row per user: ORA-30926 rejects a row updated twice.
