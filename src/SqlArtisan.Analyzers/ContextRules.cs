@@ -564,6 +564,64 @@ internal static class ContextRules
     }
 
     /// <summary>
+    /// SQL Server takes <c>OFFSET ... ROWS</c> only inside an <c>ORDER BY</c>, so SQL Server 2022
+    /// rejects it after any other step (Msg 102), in every position. Live twins on that lane.
+    /// </summary>
+    public static void CheckOffsetRowsWithoutOrderBy(
+        OperationAnalysisContext context, IInvocationOperation offsetRows, string dialectName)
+    {
+        bool top = false;
+        IInvocationOperation? cursor = ChainChild(offsetRows);
+        while (cursor is not null)
+        {
+            string name = cursor.TargetMethod.Name;
+            if (name == "OrderBy")
+            {
+                return;
+            }
+
+            if (name != "Select")
+            {
+                cursor = ChainChild(cursor);
+                continue;
+            }
+
+            top |= HasTopArgument(cursor);
+            if (cursor.Instance is null
+                || ChainChild(cursor) is
+                {
+                    Instance: null,
+                    TargetMethod.Name: "With" or "WithRecursive",
+                })
+            {
+                break;
+            }
+
+            // A branch's own steps cannot hold an ORDER BY, so the walk only reads its TOP.
+            cursor = FollowsSetOperator(cursor)
+                && ((IPropertyReferenceOperation)UnwrapConversions(cursor.Instance)).Instance
+                    is { } left
+                && UnwrapConversions(left) is IInvocationOperation query
+                && DialectUsageAnalyzer.IsFromSqlArtisan(query.TargetMethod.ContainingAssembly)
+                    ? query
+                    : null;
+        }
+
+        // Out of sight, or beside TOP, which Build() rejects with any OFFSET on every dialect.
+        if (cursor is null || top)
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            DiagnosticDescriptors.ContextRestrictedConstruct,
+            offsetRows.Syntax.GetLocation(),
+            "OffsetRows",
+            "without an ORDER BY",
+            dialectName));
+    }
+
+    /// <summary>
     /// Oracle takes the for_update_clause only in a top-level <c>SELECT</c>; XE 21.3.0
     /// and Free 23ai reject a locked <c>IN</c> subquery, CTE body and derived table,
     /// which MySQL 8.0 and PostgreSQL 16 run. Live twins on those four lanes.

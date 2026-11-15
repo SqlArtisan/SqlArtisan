@@ -817,7 +817,7 @@ SqlStatement sql =
 
 - Use `OffsetRows(m)` alone for `OFFSET m ROWS`.
 - Use `FetchFirst(n)` for `FETCH FIRST n ROWS ONLY` (no offset). This standalone form is valid on **Oracle** (and PostgreSQL); **SQL Server requires an `OFFSET`**, so on SQL Server use `OffsetRows(0).FetchNext(n)` instead.
-- This clause requires `ORDER BY` on SQL Server.
+- This clause requires `ORDER BY` on SQL Server: SQL Server 2022 rejects an `OffsetRows(...)` with no `OrderBy(...)` before it (Msg 102), at the top level, in a subquery and after a compound, and `SQLA0102` reports one.
 
 The row counts are parameterized like other literals, so the bind-parameter prefix follows the target dialect (`:` / `@` / `?`).
 

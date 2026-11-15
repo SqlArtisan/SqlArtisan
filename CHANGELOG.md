@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   for a query that is not a compound. (#822)
 - `SQLA0102` reports `ForUpdate(...)` after a set operator on MySQL too, where
   MySQL 8.0 runs it and locks the last branch's rows only. (#822)
+- `SQLA0102` reports, on SQL Server, an `OffsetRows(...)` with no `OrderBy(...)`
+  before it in its query, which SQL Server 2022 rejects as a syntax error at the
+  top level, in a subquery and after a compound's last branch. (#832)
 - `SQLA0102` reports, on Oracle, a query with an `OrderBy(...)` and a row limit
   passed to a `MERGE`'s `ThenInsert(...).Values(...)`, which Oracle rejects with
   ORA-38101: XE 21.3.0 with `FetchFirst(n)` or `OffsetRows(...)`, Free 23ai with

@@ -977,8 +977,8 @@ public sealed class SqlServerTests : IntegrationTestBase, IClassFixture<SqlServe
         ISelectBuilderWhere Compound() => UserOneThenNoOrderUserId(setOperator);
     }
 
-    // SQLA0102 (#832): OFFSET ... ROWS belongs to an ORDER BY, so SQL Server rejects it after
-    // any other step, in every position; ordered, the same query runs in the same spot.
+    // SQLA0102 (#832): OFFSET ... ROWS belongs to an ORDER BY, so SQL Server 2022 rejects it
+    // after any other step, in every position; ordered, the same query runs in the same spot.
     [Theory]
     [InlineData("from")]
     [InlineData("where")]

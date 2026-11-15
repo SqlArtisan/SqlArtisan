@@ -1939,6 +1939,52 @@ public class ContextRuleAnalyzerTests
                 """,
             dbms);
 
+    // --- OFFSET without an ORDER BY on SQL Server (#832) ---
+
+    [Theory]
+    [InlineData("var q = {|#0:Select(t.Id).From(t).OffsetRows(0)|};")]
+    [InlineData("var q = {|#0:Select(t.Id).From(t).Where(t.Id > 0).OffsetRows(0)|}.FetchNext(1);")]
+    [InlineData("var q = {|#0:Select(t.Dep).From(t).GroupBy(t.Dep).OffsetRows(0)|};")]
+    [InlineData("""
+        Cte c = new("c");
+        var q = {|#0:With(c.As(Select(t.Id).From(t))).Select(c.Column("id")).From(c).OffsetRows(0)|};
+        """)]
+    [InlineData("""
+        var q = Select(t.Id).From(t).Where(t.Id.In({|#0:Select(s.Id).From(s).OffsetRows(0)|}));
+        """)]
+    [InlineData("""
+        var q = {|#0:Select(t.Id).From(t).Union.Select(s.Id).From(s).OffsetRows(0)|};
+        """)]
+    // A window's ORDER BY is not the statement's.
+    [InlineData("""
+        var q = {|#0:Select(RowNumber().Over(OrderBy(t.Id))).From(t).OffsetRows(0)|};
+        """)]
+    public Task OffsetRowsWithoutOrderBy_SqlServer_ReportsSqla0102(string statements) =>
+        RunReporting(statements, "sqlserver");
+
+    // Ordered, out of sight, or beside TOP, which Build() rejects with any OFFSET.
+    [Theory]
+    [InlineData("var q = Select(t.Id).From(t).OrderBy(t.Id).OffsetRows(0).FetchNext(1);")]
+    [InlineData("""
+        var q = Select(t.Id).From(t).Union.Select(s.Id).From(s).OrderBy(1).OffsetRows(0);
+        """)]
+    [InlineData("""
+        var b = Select(t.Id).From(t);
+        var q = b.OffsetRows(0);
+        """)]
+    [InlineData("var q = Select(Top(1), t.Id).From(t).OffsetRows(0);")]
+    [InlineData("""
+        var q = Select(Top(1), t.Id).From(t).Union.Select(s.Id).From(s).OffsetRows(0);
+        """)]
+    public Task OffsetRowsWithoutOrderBy_SqlServer_StaysSilent(string statements) =>
+        RunSilent(statements, "sqlserver");
+
+    [Theory]
+    [InlineData("oracle")]
+    [InlineData("postgresql")]
+    public Task OffsetRowsWithoutOrderBy_OffSqlServer_StaysSilent(string dbms) =>
+        RunSilent("var q = Select(t.Id).From(t).OffsetRows(0);", dbms);
+
     // --- A compound's ORDER BY in a subquery on SQL Server (#822) ---
 
     [Theory]

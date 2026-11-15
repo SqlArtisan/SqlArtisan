@@ -455,6 +455,27 @@ public class ContextRuleContractTests
             [.. ContextRules.OrderedSubqueryPredicateHosts.Concat(tableSources).Order()], hosts);
     }
 
+    // The OFFSET-without-ORDER-BY rule reads a statement's ORDER BY as an OrderBy step in the
+    // chain before OffsetRows: a second declarer or an ordering stage named otherwise misleads it.
+    [Fact]
+    public void OffsetRows_IsDeclaredOnlyOnPagination_AndOrderingStagesAreOrderBy()
+    {
+        Type[] offsetDeclarers = [.. Core.GetExportedTypes()
+            .Where(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance
+                | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Any(m => m.Name == "OffsetRows"))];
+        string[] orderingSteps = [.. Core.GetExportedTypes()
+            .Where(t => t.IsInterface
+                && t.Name.StartsWith("ISelectBuilder", StringComparison.Ordinal))
+            .SelectMany(t => t.GetMethods())
+            .Where(m => m.ReturnType == typeof(ISelectBuilderOrderBy))
+            .Select(m => m.Name)
+            .Distinct()];
+
+        Assert.Equal([typeof(IPagination)], offsetDeclarers);
+        Assert.Equal(["OrderBy"], orderingSteps);
+    }
+
     // The two embedded ORDER BY rules tell a row-limited chain by these names: one the
     // set misses would read as unlimited, and the Msg 1033 rule would report a runnable query.
     [Fact]
