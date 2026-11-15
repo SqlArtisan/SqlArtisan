@@ -154,6 +154,8 @@ internal sealed class DbConnectionInfo(
             {
                 DataSource = Database,
                 Mode = SqliteOpenMode.ReadWrite,
+                // A pooled handle outlives Dispose, keeping the file locked on Windows.
+                Pooling = false,
             }.ConnectionString,
             // SQL Server takes host,port (comma); TrustServerCertificate eases dev/container TLS.
             Dbms.SqlServer => new SqlConnectionStringBuilder

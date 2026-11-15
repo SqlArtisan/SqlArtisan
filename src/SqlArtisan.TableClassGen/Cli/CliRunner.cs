@@ -2,7 +2,11 @@ namespace SqlArtisan.TableClassGen;
 
 internal static class CliRunner
 {
-    public static int Run(string[] args)
+    public static int Run(string[] args) => Run(args, Console.IsInputRedirected);
+
+    // A parameter so a test pins the redirected branch whatever its host does:
+    // Visual Studio's runner leaves stdin a terminal, `dotnet test` redirects it.
+    internal static int Run(string[] args, bool isInputRedirected)
     {
         if (CommandLine.WantsHelp(args))
         {
@@ -12,12 +16,12 @@ internal static class CliRunner
 
         // Redirected stdin is never interactive, so the exit pause below cannot fire
         // on a run that had no terminal to prompt at.
-        bool interactive = args.Length == 0 && !Console.IsInputRedirected;
+        bool interactive = args.Length == 0 && !isInputRedirected;
 
         try
         {
             RunOptions options = args.Length == 0
-                ? ReadInteractively()
+                ? ReadInteractively(isInputRedirected)
                 : CommandLine.Parse(args);
 
             IReadOnlyList<TableResult> results = new TableClassGenerator(
@@ -45,9 +49,9 @@ internal static class CliRunner
 
     // Prompting is reserved for a terminal: a redirected stdin means a script, a CI
     // job, or an agent, and a prompt there hangs with nothing to correct from.
-    private static RunOptions ReadInteractively()
+    private static RunOptions ReadInteractively(bool isInputRedirected)
     {
-        if (Console.IsInputRedirected)
+        if (isInputRedirected)
         {
             throw new CommandLineException(
                 "No options given and stdin is not a terminal; pass --dbms and the connection "
