@@ -1,0 +1,91 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 376c58f..9ed3191 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -165,7 +165,7 @@ internal abstract class SqlBuilderBase
+         ThrowIfNotBuildable();
+         // Resolves the dialect first: Validate's dialect checks would otherwise
+         // answer an Unknown target (an unregistered Build(cnn)) with their own message.
+-        using SqlBuildingBuffer buffer = new(dbms);
++        using SqlBuildingBuffer buffer = SqlBuildingBuffer.Rent(dbms);
+         ThrowIfDuplicateClauseInBlock();
+         Validate(dbms);
+         // The guard's target is unaliased, so an aliased RETURNING target shares
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index 8fd4709..d8e285c 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -13,7 +13,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+     // don't each allocate a list. SqlParameters only ever reads it.
+     private static readonly List<KeyValuePair<string, BindValue>> s_emptyParameters = new();
+ 
+-    private readonly IDbmsDialect _dialect;
++    private IDbmsDialect _dialect;
+     private char[] _buffer;
+     private int _position;
+     // Allocated lazily on the first parameter; parameterless statements keep this null.
+@@ -43,6 +43,25 @@ internal sealed class SqlBuildingBuffer : IDisposable
+     // 8 bytes a build).
+     private DbTableBase? _pseudoRowTarget;
+ 
++    [ThreadStatic]
++    private static SqlBuildingBuffer? t_cached;
++
++    internal static SqlBuildingBuffer Rent(Dbms dbms)
++    {
++        IDbmsDialect dialect = DbmsDialectFactory.Create(dbms);
++        SqlBuildingBuffer? cached = t_cached;
++        if (cached is null)
++        {
++            return new SqlBuildingBuffer(dbms);
++        }
++
++        t_cached = null;
++        cached.Dbms = dbms;
++        cached._dialect = dialect;
++        cached._disposed = false;
++        return cached;
++    }
++
+     internal SqlBuildingBuffer(Dbms dbms)
+     {
+         Dbms = dbms;
+@@ -53,7 +72,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     // For the nested Validate(Dbms) hook alone (SqlBuilderBase.FormatCore) — a
+     // SqlPart reads the dialect's own members, never this value (ADR 0002).
+-    internal Dbms Dbms { get; }
++    internal Dbms Dbms { get; private set; }
+ 
+     public void Dispose()
+     {
+@@ -62,14 +81,26 @@ internal sealed class SqlBuildingBuffer : IDisposable
+             return;
+         }
+ 
++        _parameters = null;
++        _disposed = true;
++        if (_buffer.Length <= 8192 && t_cached is null)
++        {
++            _position = 0;
++            _correlatedDmlTarget = null;
++            _qualifiesReturningByTableName = false;
++            _qualifiesUpsertTarget = false;
++            _targetGuard = 0;
++            _block = null;
++            _pseudoRowTarget = null;
++            t_cached = this;
++            return;
++        }
++
+         if (_buffer != null)
+         {
+             ArrayPool<char>.Shared.Return(_buffer);
+             _buffer = null!;
+         }
+-
+-        _parameters = null;
+-        _disposed = true;
+     }
+ 
+     internal SqlBuildingBuffer Append(SqlPart part)

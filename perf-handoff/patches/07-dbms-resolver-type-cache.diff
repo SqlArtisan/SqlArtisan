@@ -1,0 +1,33 @@
+diff --git a/src/SqlArtisan/SqlBuilder/DbmsResolver.cs b/src/SqlArtisan/SqlBuilder/DbmsResolver.cs
+index 0d55f4b..b8eb565 100644
+--- a/src/SqlArtisan/SqlBuilder/DbmsResolver.cs
++++ b/src/SqlArtisan/SqlBuilder/DbmsResolver.cs
+@@ -17,6 +17,8 @@ public static class DbmsResolver
+     private static readonly ConcurrentDictionary<string, Dbms> s_providerMap =
+         new(StringComparer.OrdinalIgnoreCase);
+ 
++    private static readonly ConcurrentDictionary<Type, Dbms> s_resolved = new();
++
+     static DbmsResolver()
+     {
+         RegisterProvider("Microsoft.Data.SqlClient.SqlConnection", Dbms.SqlServer);
+@@ -65,8 +67,17 @@ public static class DbmsResolver
+             return Dbms.Unknown;
+         }
+ 
+-        string typeFullName = connection.GetType()?.FullName ?? string.Empty;
+-        s_providerMap.TryGetValue(typeFullName, out Dbms identified);
++        Type type = connection.GetType();
++        if (s_resolved.TryGetValue(type, out Dbms cached))
++        {
++            return cached;
++        }
++
++        string typeFullName = type.FullName ?? string.Empty;
++        if (s_providerMap.TryGetValue(typeFullName, out Dbms identified))
++        {
++            s_resolved.TryAdd(type, identified);
++        }
+ 
+         return identified;
+     }

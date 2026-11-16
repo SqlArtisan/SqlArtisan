@@ -1,0 +1,125 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index d8e285c..31b03ce 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -83,6 +83,12 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+         _parameters = null;
+         _disposed = true;
++        if (_slots is not null)
++        {
++            ArrayPool<int>.Shared.Return(_slots);
++            _slots = null;
++        }
++
+         if (_buffer.Length <= 8192 && t_cached is null)
+         {
+             _position = 0;
+@@ -763,13 +769,23 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         // 16, SQL Server 2022 and Oracle XE 21.3.0 reject distinct ones there (#241's twins).
+         if (_parameters is not null)
+         {
+-            // Linear by design (ADR 0006's best effort): 37 ms at 2,100 binds, and
+-            // the driver's own parameter cap bounds the scan.
+-            foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++            if (_slots is null)
++            {
++                foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++                {
++                    if (ReferenceEquals(parameter.Value, bindValue))
++                    {
++                        Append(parameter.Key);
++                        return this;
++                    }
++                }
++            }
++            else
+             {
+-                if (ReferenceEquals(parameter.Value, bindValue))
++                int found = FindSlot(bindValue);
++                if (found >= 0)
+                 {
+-                    Append(parameter.Key);
++                    Append(_parameters[found].Key);
+                     return this;
+                 }
+             }
+@@ -779,9 +795,78 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         string name = ParameterNameCache.Get(_dialect.ParameterMarker, _parameters.Count);
+         Append(name);
+         _parameters.Add(new(name, bindValue));
++        if (_slots is not null)
++        {
++            InsertSlot(bindValue, _parameters.Count - 1);
++        }
++        else if (_parameters.Count == 32)
++        {
++            _slots = ArrayPool<int>.Shared.Rent(128);
++            _slotMask = 127;
++            Array.Clear(_slots, 0, 128);
++            for (int i = 0; i < _parameters.Count; i++)
++            {
++                PlaceSlot(_parameters[i].Value, i);
++            }
++        }
++
+         return this;
+     }
+ 
++    private int[]? _slots;
++    private int _slotMask;
++
++    private int FindSlot(BindValue bindValue)
++    {
++        int[] slots = _slots!;
++        int i = RuntimeHelpers.GetHashCode(bindValue) & _slotMask;
++        while (true)
++        {
++            int entry = slots[i];
++            if (entry == 0)
++            {
++                return -1;
++            }
++
++            if (ReferenceEquals(_parameters![entry - 1].Value, bindValue))
++            {
++                return entry - 1;
++            }
++
++            i = (i + 1) & _slotMask;
++        }
++    }
++
++    private void PlaceSlot(BindValue bindValue, int index)
++    {
++        int[] slots = _slots!;
++        int i = RuntimeHelpers.GetHashCode(bindValue) & _slotMask;
++        while (slots[i] != 0)
++        {
++            i = (i + 1) & _slotMask;
++        }
++
++        slots[i] = index + 1;
++    }
++
++    private void InsertSlot(BindValue bindValue, int index)
++    {
++        if ((index + 1) * 2 > _slotMask + 1)
++        {
++            int size = (_slotMask + 1) * 2;
++            ArrayPool<int>.Shared.Return(_slots!);
++            _slots = ArrayPool<int>.Shared.Rent(size);
++            _slotMask = size - 1;
++            Array.Clear(_slots, 0, size);
++            for (int i = 0; i < index; i++)
++            {
++                PlaceSlot(_parameters![i].Value, i);
++            }
++        }
++
++        PlaceSlot(bindValue, index);
++    }
++
+     internal SqlBuildingBuffer AddOutParameter(OutputParameter output)
+     {
+         ObjectDisposedException.ThrowIf(_disposed, this);

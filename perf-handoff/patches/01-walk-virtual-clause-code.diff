@@ -1,0 +1,949 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 60772cf..57a628b 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -360,42 +360,41 @@ internal abstract class SqlBuilderBase
+         bool insertSourceSeen = false;
+         foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
+         {
+-            if (joinConditionPending && part is not (OnClause or JoinUsingClause))
++            int code = part.WalkCode;
++            int role = code & 0xFF;
++            if (joinConditionPending && role != 1)
+             {
+                 ThrowJoinConditionMissing();
+             }
+ 
+-            if (setOperatorPending && part is not ISelectItemsClause)
++            if (setOperatorPending && role != 3)
+             {
+                 ThrowSetOperatorOperandMissing();
+             }
+ 
+-            if (part is UnionOperator or ExceptOperator or IntersectOperator or MinusOperator)
++            if (role == 2)
+             {
+                 seen = 0;
+                 setOperatorPending = true;
+-                // The feeding SELECT's next branch is its own row source.
+                 insertSourceSeen = false;
+                 continue;
+             }
+ 
+             setOperatorPending = false;
+ 
+-            if (part is WhenMatchedClause or WhenNotMatchedClause or WhenNotMatchedBySourceClause)
++            if (role == 4)
+             {
+                 seenInBranch = 0;
+                 continue;
+             }
+ 
+-            if (part is InsertIntoClause or InsertIgnoreIntoClause)
++            if (role == 5)
+             {
+                 seen &= ~(1UL << WithClauseIndex);
+                 inInsert = true;
+             }
+ 
+-            // VALUES, SET, and SELECT spell an INSERT's one row source (SET renders
+-            // as VALUES), a duplicate the kind-level checks below cannot see.
+-            if (inInsert && part is InsertValuesClause or InsertSetClause or ISelectItemsClause)
++            if (inInsert && (role == 6 || role == 3))
+             {
+                 if (insertSourceSeen)
+                 {
+@@ -407,24 +406,16 @@ internal abstract class SqlBuilderBase
+                 insertSourceSeen = true;
+             }
+ 
+-            // ON/USING legally repeat once per join, so they pair by adjacency
+-            // rather than by a once-per-block entry.
+-            if (part is InnerJoinClause or LeftJoinClause or RightJoinClause or FullJoinClause
+-                or JoinLateralClause)
++            if (role == 7)
+             {
+                 joinConditionSeen = false;
+                 joinConditionPending = true;
+             }
+-            else if (part is LeftJoinLateralClause or CrossJoinLateralClause
+-                or CrossJoinClause or NaturalJoinClause or NaturalLeftJoinClause
+-                or NaturalRightJoinClause or NaturalFullJoinClause
+-                or CrossApplyClause or OuterApplyClause)
++            else if (role == 8)
+             {
+-                // Consumes the slot: an ON after a condition-free join is a repeated
+-                // stage, not its condition (`CROSS JOIN ... ON` runs on SQLite, wrong).
+                 joinConditionSeen = true;
+             }
+-            else if (part is OnClause or JoinUsingClause)
++            else if (role == 1)
+             {
+                 if (joinConditionSeen)
+                 {
+@@ -437,8 +428,8 @@ internal abstract class SqlBuilderBase
+                 joinConditionPending = false;
+             }
+ 
+-            Type partType = part.GetType();
+-            if (OncePerBlockKindByType.TryGetValue(partType, out int kind))
++            int kind = ((code >> 8) & 0xFF) - 1;
++            if (kind >= 0)
+             {
+                 ulong bit = 1UL << kind;
+                 if ((seen & bit) != 0)
+@@ -463,7 +454,8 @@ internal abstract class SqlBuilderBase
+                 seen |= bit;
+             }
+ 
+-            if (OncePerBranchKindByType.TryGetValue(partType, out int branchKind))
++            int branchKind = ((code >> 16) & 0xFF) - 1;
++            if (branchKind >= 0)
+             {
+                 ulong bit = 1UL << branchKind;
+                 if ((seenInBranch & bit) != 0)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Delete/DeleteUsingClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Delete/DeleteUsingClause.cs
+index a99f617..3b38a40 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Delete/DeleteUsingClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Delete/DeleteUsingClause.cs
+@@ -5,6 +5,8 @@ namespace SqlArtisan.Internal;
+ // here USING takes a comma list.
+ internal sealed class DeleteUsingClause : SqlPart
+ {
++    internal override int WalkCode => 3328;
++
+     private readonly TableReference[] _tables;
+ 
+     internal const string NullTableMessage =
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/ForUpdate/ForUpdateClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/ForUpdate/ForUpdateClause.cs
+index b79cd2e..ec246db 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/ForUpdate/ForUpdateClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/ForUpdate/ForUpdateClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class ForUpdateClause : SqlPart
+ {
++    internal override int WalkCode => 2560;
++
+     private readonly OfClause? _ofClause;
+     private readonly LockBehaviorBase? _lockBehavior;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/From/FromClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/From/FromClause.cs
+index a7f6bc1..1f1de48 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/From/FromClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/From/FromClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class FromClause : SqlPart
+ {
++    internal override int WalkCode => 512;
++
+     private readonly TableReference[] _tables;
+ 
+     internal const string NullTableMessage =
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/GroupByClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/GroupByClause.cs
+index 2a206e7..de54908 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/GroupByClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/GroupByClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class GroupByClause : SqlPart
+ {
++    internal override int WalkCode => 1024;
++
+     private readonly SqlPart[] _groupByItems;
+ 
+     private GroupByClause(SqlPart[] groupByItems)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/WithRollupClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/WithRollupClause.cs
+index 5398cd5..de6964a 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/WithRollupClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/GroupBy/WithRollupClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // on ISelectBuilderGroupBy.WithRollup(); this is the clause it appends.
+ internal sealed class WithRollupClause : SqlPart
+ {
++    internal override int WalkCode => 2816;
++
+     internal override void Format(SqlBuildingBuffer buffer) =>
+         buffer.Append($"{Keywords.With} {Keywords.Rollup}");
+ }
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Having/HavingClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Having/HavingClause.cs
+index a51c6e3..8dc8944 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Having/HavingClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Having/HavingClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class HavingClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 1280;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoNothingClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoNothingClause.cs
+index 3db67e2..4d913bd 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoNothingClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoNothingClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class DoNothingClause : SqlPart
+ {
++    internal override int WalkCode => 4608;
++
+     internal override void Format(SqlBuildingBuffer buffer) =>
+         buffer.Append($"{Keywords.Do} {Keywords.Nothing}");
+ }
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoUpdateSetClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoUpdateSetClause.cs
+index f1a3424..813004a 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoUpdateSetClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/DoUpdateSetClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class DoUpdateSetClause : SqlPart
+ {
++    internal override int WalkCode => 4352;
++
+     private const string Clause = $"{Keywords.Do} {Keywords.Update} {Keywords.Set}";
+ 
+     private readonly EqualCondition[] _assignments;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIgnoreIntoClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIgnoreIntoClause.cs
+index e6d786f..33b3b67 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIgnoreIntoClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIgnoreIntoClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class InsertIgnoreIntoClause(DbTableBase table, DbColumn[] columns) : SqlPart
+ {
++    internal override int WalkCode => 5;
++
+     private readonly DbTableBase _table = table;
+     private readonly DbColumn[] _columns = columns;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIntoClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIntoClause.cs
+index 0a2d0d6..53e11ca 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIntoClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertIntoClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class InsertIntoClause(DbTableBase table, DbColumn[] columns) : SqlPart
+ {
++    internal override int WalkCode => 5;
++
+     private readonly DbTableBase _table = table;
+     private readonly DbColumn[] _columns = columns;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertSetClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertSetClause.cs
+index fb23959..585f969 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertSetClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertSetClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class InsertSetClause : SqlPart
+ {
++    internal override int WalkCode => 3078;
++
+     private readonly SqlExpression[] _columns;
+     private readonly SqlExpression[] _values;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
+index 7a45cf1..21083ae 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class InsertValuesClause : SqlPart
+ {
++    internal override int WalkCode => 327686;
++
+     private readonly List<SqlExpression[]> _rows;
+ 
+     private InsertValuesClause(SqlExpression[] firstRow)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnConflictClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnConflictClause.cs
+index 156d9d5..398ef72 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnConflictClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnConflictClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class OnConflictClause : SqlPart
+ {
++    internal override int WalkCode => 3840;
++
+     private readonly DbColumn[] _conflictTarget;
+ 
+     internal OnConflictClause(DbColumn[] conflictTarget, DbTableBase table)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnDuplicateKeyUpdateClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnDuplicateKeyUpdateClause.cs
+index 7ec709f..e0e87dc 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnDuplicateKeyUpdateClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/OnDuplicateKeyUpdateClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class OnDuplicateKeyUpdateClause : SqlPart
+ {
++    internal override int WalkCode => 4096;
++
+     private const string Clause =
+         $"{Keywords.On} {Keywords.Duplicate} {Keywords.Key} {Keywords.Update}";
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossApplyClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossApplyClause.cs
+index e78c56b..381433d 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossApplyClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossApplyClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class CrossApplyClause : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly ISubquery _subquery;
+     private readonly DerivedTableBase _alias;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinClause.cs
+index 40c251e..4d46ca0 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class CrossJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinLateralClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinLateralClause.cs
+index e40bf9c..43e7d49 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinLateralClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/CrossJoinLateralClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class CrossJoinLateralClause : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly ISubquery _subquery;
+     private readonly DerivedTableBase _alias;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/FullJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/FullJoinClause.cs
+index 0567584..f490738 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/FullJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/FullJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class FullJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 7;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/InnerJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/InnerJoinClause.cs
+index c793236..4dc4219 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/InnerJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/InnerJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class InnerJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 7;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinLateralClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinLateralClause.cs
+index 3b332ae..ec4a81f 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinLateralClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinLateralClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class JoinLateralClause : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 7;
++
+     private readonly ISubquery _subquery;
+     private readonly DerivedTableBase _alias;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinUsingClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinUsingClause.cs
+index 941d69c..f5a33d5 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinUsingClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/JoinUsingClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class JoinUsingClause : SqlPart
+ {
++    internal override int WalkCode => 1;
++
+     private readonly DbColumn[] _columns;
+ 
+     // paramName: the callers pre-check their params tail, so the only null
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinClause.cs
+index 546bcf2..5a9afd3 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class LeftJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 7;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinLateralClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinLateralClause.cs
+index 62bc191..c3448c9 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinLateralClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/LeftJoinLateralClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class LeftJoinLateralClause : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly ISubquery _subquery;
+     private readonly DerivedTableBase _alias;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalFullJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalFullJoinClause.cs
+index 1bc9c31..89b8ced 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalFullJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalFullJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class NaturalFullJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalJoinClause.cs
+index cd44aef..15094c4 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class NaturalJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalLeftJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalLeftJoinClause.cs
+index d4b7b46..2e8f2bd 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalLeftJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalLeftJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class NaturalLeftJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalRightJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalRightJoinClause.cs
+index de81d06..02e5e40 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalRightJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/NaturalRightJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class NaturalRightJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/OnClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/OnClause.cs
+index c13136d..b0d8efc 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/OnClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/OnClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal class OnClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 1;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     // A virtual rather than a message field, which would cost every join node 8 B
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/OuterApplyClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/OuterApplyClause.cs
+index 28cca49..cf4c91d 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/OuterApplyClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/OuterApplyClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class OuterApplyClause : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 8;
++
+     private readonly ISubquery _subquery;
+     private readonly DerivedTableBase _alias;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Join/RightJoinClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Join/RightJoinClause.cs
+index d7e8d42..24d64f6 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Join/RightJoinClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Join/RightJoinClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class RightJoinClause(TableReference table) : SqlPart, IJoinedRelation
+ {
++    internal override int WalkCode => 7;
++
+     private readonly TableReference _table = table;
+ 
+     TableReference IJoinedRelation.Relation => _table;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteClause.cs
+index db31398..2a727b0 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteClause.cs
+@@ -3,6 +3,8 @@ namespace SqlArtisan.Internal;
+ // The standalone `DELETE` action of a MERGE WHEN clause (PostgreSQL 15+, SQL Server).
+ internal sealed class MergeDeleteClause : SqlPart
+ {
++    internal override int WalkCode => 131072;
++
+     internal override void Format(SqlBuildingBuffer buffer) =>
+         buffer.Append(Keywords.Delete);
+ }
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteWhereClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteWhereClause.cs
+index 0a897a6..eda94c3 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteWhereClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeDeleteWhereClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // UPDATE SET action to remove the just-updated rows that satisfy the condition.
+ internal sealed class MergeDeleteWhereClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 196608;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertClause.cs
+index f66ef5e..6930e08 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // list follows as a separate part (reusing InsertValuesClause).
+ internal sealed class MergeInsertClause(DbColumn[] columns) : SqlPart
+ {
++    internal override int WalkCode => 262144;
++
+     private readonly DbColumn[] _columns = columns;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertWhereClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertWhereClause.cs
+index b5efcdc..913f66b 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertWhereClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeInsertWhereClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // unmatched source rows satisfying it are inserted.
+ internal sealed class MergeInsertWhereClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 458752;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeOnClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeOnClause.cs
+index 577d659..8831bfc 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeOnClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeOnClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // in parentheses: Oracle requires them, and SQL Server / PostgreSQL accept them.
+ internal sealed class MergeOnClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 3584;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateSetClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateSetClause.cs
+index f2907de..2180a36 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateSetClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateSetClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // standalone UPDATE statement's SET clause, MERGE leads with the UPDATE keyword.
+ internal sealed class MergeUpdateSetClause : SqlPart
+ {
++    internal override int WalkCode => 65536;
++
+     private const string Clause = $"{Keywords.Update} {Keywords.Set}";
+ 
+     private readonly EqualCondition[] _assignments;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateWhereClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateWhereClause.cs
+index 72ee480..11bc27b 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateWhereClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUpdateWhereClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // matched rows satisfying it are updated, and a DELETE WHERE sees only those.
+ internal sealed class MergeUpdateWhereClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 393216;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUsingClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUsingClause.cs
+index e7b0928..a8c7c16 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUsingClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/MergeUsingClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class MergeUsingClause(TableReference source) : SqlPart
+ {
++    internal override int WalkCode => 3328;
++
+     private readonly TableReference _source = source;
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenMatchedClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenMatchedClause.cs
+index eaf698e..ae3dd38 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenMatchedClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenMatchedClause.cs
+@@ -4,6 +4,8 @@ namespace SqlArtisan.Internal;
+ // space-separated part, the shape all three WHEN clauses share.
+ internal sealed class WhenMatchedClause(SqlCondition? extraCondition) : SqlPart
+ {
++    internal override int WalkCode => 4;
++
+     private readonly SqlCondition? _extraCondition = extraCondition;
+ 
+     internal bool IsConditioned => _extraCondition is not null;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedBySourceClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedBySourceClause.cs
+index ff241cd..531167a 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedBySourceClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedBySourceClause.cs
+@@ -3,6 +3,8 @@ namespace SqlArtisan.Internal;
+ // A SQL Server extension to MERGE's WHEN family.
+ internal sealed class WhenNotMatchedBySourceClause(SqlCondition? extraCondition) : SqlPart
+ {
++    internal override int WalkCode => 4;
++
+     private readonly SqlCondition? _extraCondition = extraCondition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedClause.cs
+index cce8efd..16c4d9e 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Merge/WhenNotMatchedClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class WhenNotMatchedClause(SqlCondition? extraCondition) : SqlPart
+ {
++    internal override int WalkCode => 4;
++
+     private readonly SqlCondition? _extraCondition = extraCondition;
+ 
+     internal bool IsConditioned => _extraCondition is not null;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputClause.cs
+index 50bab66..d98e657 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class OutputClause : SqlPart
+ {
++    internal override int WalkCode => 5120;
++
+     private readonly SqlPart[] _items;
+ 
+     internal OutputClause(SqlPart[] items)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputIntoClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputIntoClause.cs
+index 63ad202..4759340 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputIntoClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Output/OutputIntoClause.cs
+@@ -5,6 +5,8 @@ namespace SqlArtisan.Internal;
+ // `OUTPUT ... INTO table (cols)`.
+ internal sealed class OutputIntoClause : SqlPart
+ {
++    internal override int WalkCode => 5376;
++
+     private readonly DbTableBase _table;
+     private readonly DbColumn[] _columns;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/FetchClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/FetchClause.cs
+index b4a9d33..266be4d 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/FetchClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/FetchClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class FetchClause : SqlPart
+ {
++    internal override int WalkCode => 2304;
++
+     private readonly BindValue _count;
+     private readonly bool _first;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/LimitClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/LimitClause.cs
+index 4f62263..367ffa4 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/LimitClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/LimitClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class LimitClause : SqlPart
+ {
++    internal override int WalkCode => 1792;
++
+     private readonly BindValue _count;
+ 
+     internal LimitClause(int count)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetClause.cs
+index e7dbfbe..aa2e269 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class OffsetClause : SqlPart
+ {
++    internal override int WalkCode => 2048;
++
+     private readonly BindValue _start;
+ 
+     internal OffsetClause(int start)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetRowsClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetRowsClause.cs
+index 8557987..87e4b49 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetRowsClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Pagination/OffsetRowsClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class OffsetRowsClause : SqlPart
+ {
++    internal override int WalkCode => 2048;
++
+     private readonly BindValue _start;
+ 
+     internal OffsetRowsClause(int start)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningClause.cs
+index 751924f..26cabbb 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class ReturningClause : SqlPart
+ {
++    internal override int WalkCode => 4864;
++
+     private readonly SqlPart[] _expressions;
+ 
+     internal ReturningClause(SqlPart[] expressions)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningIntoClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningIntoClause.cs
+index a1d286d..5b4ddbc 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningIntoClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Returning/ReturningIntoClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class ReturningIntoClause : SqlPart
+ {
++    internal override int WalkCode => 4864;
++
+     private readonly SqlPart[] _returningItems;
+     private readonly OutputParameter[] _outputs;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClause.cs
+index ec57142..c205cef 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class SelectClause : SqlPart, ISelectItemsClause
+ {
++    internal override int WalkCode => 259;
++
+     private readonly SqlPart[] _selectItems;
+ 
+     private SelectClause(SqlPart[] selectItems)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinct.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinct.cs
+index 47871d6..d6fda79 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinct.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinct.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class SelectClauseWithDistinct : SqlPart, ISelectItemsClause
+ {
++    internal override int WalkCode => 259;
++
+     // Either DISTINCT (DistinctKeyword) or DISTINCT ON (...) (DistinctOnKeyword);
+     // both are SqlParts rendered as the select prefix.
+     private readonly SqlPart _distinct;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinctTop.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinctTop.cs
+index 28086e6..c2d0ad3 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinctTop.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithDistinctTop.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class SelectClauseWithDistinctTop : SqlPart, ISelectItemsClause, ITopSelectClause
+ {
++    internal override int WalkCode => 259;
++
+     private readonly DistinctKeyword _distinct;
+     private readonly TopClause _top;
+     private readonly SqlPart[] _selectItems;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHints.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHints.cs
+index ae9ae4b..26b3faa 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHints.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHints.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class SelectClauseWithHints : SqlPart, ISelectItemsClause
+ {
++    internal override int WalkCode => 259;
++
+     private readonly SqlHints _hints;
+     private readonly SqlPart[] _selectItems;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHintsDistinct.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHintsDistinct.cs
+index a515987..75360b6 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHintsDistinct.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithHintsDistinct.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class SelectClauseWithHintsDistinct : SqlPart, ISelectItemsClause
+ {
++    internal override int WalkCode => 259;
++
+     private readonly SqlHints _hints;
+     private readonly SqlPart _distinct;
+     private readonly SqlPart[] _selectItems;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithTop.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithTop.cs
+index 04a2d70..59f9de9 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithTop.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Select/SelectClauseWithTop.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class SelectClauseWithTop : SqlPart, ISelectItemsClause, ITopSelectClause
+ {
++    internal override int WalkCode => 259;
++
+     private readonly TopClause _top;
+     private readonly SqlPart[] _selectItems;
+ 
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Update/UpdateSetClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Update/UpdateSetClause.cs
+index 0412d95..07c55fd 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Update/UpdateSetClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Update/UpdateSetClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class UpdateSetClause : SqlPart
+ {
++    internal override int WalkCode => 3072;
++
+     private readonly EqualCondition[] _assignments;
+     private readonly DbTableBase _target;
+     private readonly DmlJoinState _state;
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Where/WhereClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Where/WhereClause.cs
+index cf30c4e..2e7c19f 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Where/WhereClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Where/WhereClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class WhereClause(SqlCondition condition) : SqlPart
+ {
++    internal override int WalkCode => 768;
++
+     private readonly SqlCondition _condition = condition;
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/With/WithClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/With/WithClause.cs
+index 206ae0f..9df0d6a 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/With/WithClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/With/WithClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class WithClause(CommonTableExpression[] ctes) : SqlPart
+ {
++    internal override int WalkCode => 5632;
++
+     private readonly CommonTableExpressions _ctes = new(ctes);
+ 
+     internal override void Format(SqlBuildingBuffer buffer) =>
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/With/WithRecursiveClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/With/WithRecursiveClause.cs
+index 825eafc..48e33a4 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/With/WithRecursiveClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/With/WithRecursiveClause.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class WithRecursiveClause(CommonTableExpression[] ctes) : SqlPart
+ {
++    internal override int WalkCode => 5632;
++
+     // No derived column list: every engine that accepts RECURSIVE names the
+     // columns from the anchor; a CTE opts in with .WithColumnList() (#567).
+     private readonly CommonTableExpressions _ctes = new(ctes);
+diff --git a/src/SqlArtisan/Internal/SqlPart/SetOperator/ExceptOperator.cs b/src/SqlArtisan/Internal/SqlPart/SetOperator/ExceptOperator.cs
+index 3660933..2314816 100644
+--- a/src/SqlArtisan/Internal/SqlPart/SetOperator/ExceptOperator.cs
++++ b/src/SqlArtisan/Internal/SqlPart/SetOperator/ExceptOperator.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class ExceptOperator(bool all) : SqlPart
+ {
++    internal override int WalkCode => 2;
++
+     private readonly bool _all = all;
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
+diff --git a/src/SqlArtisan/Internal/SqlPart/SetOperator/IntersectOperator.cs b/src/SqlArtisan/Internal/SqlPart/SetOperator/IntersectOperator.cs
+index b027cc4..54acf1c 100644
+--- a/src/SqlArtisan/Internal/SqlPart/SetOperator/IntersectOperator.cs
++++ b/src/SqlArtisan/Internal/SqlPart/SetOperator/IntersectOperator.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class IntersectOperator(bool all) : SqlPart
+ {
++    internal override int WalkCode => 2;
++
+     private readonly bool _all = all;
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
+diff --git a/src/SqlArtisan/Internal/SqlPart/SetOperator/MinusOperator.cs b/src/SqlArtisan/Internal/SqlPart/SetOperator/MinusOperator.cs
+index 0caa2f6..9793860 100644
+--- a/src/SqlArtisan/Internal/SqlPart/SetOperator/MinusOperator.cs
++++ b/src/SqlArtisan/Internal/SqlPart/SetOperator/MinusOperator.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class MinusOperator(bool all) : SqlPart
+ {
++    internal override int WalkCode => 2;
++
+     private readonly bool _all = all;
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
+diff --git a/src/SqlArtisan/Internal/SqlPart/SetOperator/UnionOperator.cs b/src/SqlArtisan/Internal/SqlPart/SetOperator/UnionOperator.cs
+index b207a21..04b7d43 100644
+--- a/src/SqlArtisan/Internal/SqlPart/SetOperator/UnionOperator.cs
++++ b/src/SqlArtisan/Internal/SqlPart/SetOperator/UnionOperator.cs
+@@ -2,6 +2,8 @@ namespace SqlArtisan.Internal;
+ 
+ internal sealed class UnionOperator(bool all) : SqlPart
+ {
++    internal override int WalkCode => 2;
++
+     private readonly bool _all = all;
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
+diff --git a/src/SqlArtisan/SqlPart/Clause/OrderBy/OrderByClause.cs b/src/SqlArtisan/SqlPart/Clause/OrderBy/OrderByClause.cs
+index 425bed7..a8feb2c 100644
+--- a/src/SqlArtisan/SqlPart/Clause/OrderBy/OrderByClause.cs
++++ b/src/SqlArtisan/SqlPart/Clause/OrderBy/OrderByClause.cs
+@@ -8,6 +8,8 @@ namespace SqlArtisan;
+ /// </summary>
+ public sealed class OrderByClause : SqlPart
+ {
++    internal override int WalkCode => 1536;
++
+     private readonly SqlPart[] _orderByItems;
+ 
+     private OrderByClause(SqlPart[] orderByItems)
+diff --git a/src/SqlArtisan/SqlPart/SqlPart.cs b/src/SqlArtisan/SqlPart/SqlPart.cs
+index 86a08db..c19c8e3 100644
+--- a/src/SqlArtisan/SqlPart/SqlPart.cs
++++ b/src/SqlArtisan/SqlPart/SqlPart.cs
+@@ -14,6 +14,8 @@ public abstract class SqlPart
+ 
+     internal abstract void Format(SqlBuildingBuffer buffer);
+ 
++    internal virtual int WalkCode => 0;
++
+     // True when a condition renders nothing — recursive over AND/OR/NOT. Lets a
+     // non-empty AND/OR skip an empty operand, and ConditionGuard reject an empty clause.
+     internal virtual bool IsEmpty => false;

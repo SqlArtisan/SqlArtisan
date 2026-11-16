@@ -1,0 +1,29 @@
+diff --git a/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs b/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
+index f200f09..f629d96 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
+@@ -390,7 +390,7 @@ internal static class ExpressionResolver
+                 ? throw new ArgumentException($"{value.GetType().Name} is a function argument, "
+                     + $"not a value; pass it to a {value.GetType().Name} parameter, or, to store "
+                     + "or compare the enum itself, bind it with Sql.Bind(...).")
+-                : new BindValue(value);
++                : new BindValue(value, (byte)0);
+ 
+     // The directly bindable check first: such a value never reaches the converter
+     // registry (ADR 0006).
+diff --git a/src/SqlArtisan/SqlPart/Expression/BindValue.cs b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+index 4948ff9..375e47e 100644
+--- a/src/SqlArtisan/SqlPart/Expression/BindValue.cs
++++ b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+@@ -59,6 +59,11 @@ public class BindValue : SqlExpression
+         Size = size;
+     }
+ 
++    internal BindValue(object value, byte trusted)
++    {
++        Value = value;
++    }
++
+     /// <summary>
+     /// Gets the bound value.
+     /// </summary>

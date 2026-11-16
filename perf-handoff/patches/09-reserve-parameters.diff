@@ -1,0 +1,46 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index 31b03ce..e25f88c 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -867,6 +867,17 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         PlaceSlot(bindValue, index);
+     }
+ 
++    internal SqlBuildingBuffer ReserveParameters(int additional)
++    {
++        if (additional > 4)
++        {
++            _parameters ??= new();
++            _parameters.EnsureCapacity(_parameters.Count + additional);
++        }
++
++        return this;
++    }
++
+     internal SqlBuildingBuffer AddOutParameter(OutputParameter output)
+     {
+         ObjectDisposedException.ThrowIf(_disposed, this);
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
+index 21083ae..0b271ca 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
+@@ -39,6 +39,7 @@ internal sealed class InsertValuesClause : SqlPart
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+     {
++        buffer.ReserveParameters(_rows.Count * _rows[0].Length);
+         buffer.Append($"{Keywords.Values} ");
+ 
+         for (int i = 0; i < _rows.Count; i++)
+diff --git a/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs b/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs
+index fdde87b..78b8085 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs
+@@ -12,6 +12,7 @@ internal sealed class InCondition : SqlCondition
+     }
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
++        .ReserveParameters(_expressions.Length)
+         .Append(_leftSide)
+         .EncloseInSpaces(Keywords.In)
+         .OpenParenthesis()

@@ -1,0 +1,13 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 9ed3191..179d3fa 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -9,7 +9,7 @@ internal abstract class SqlBuilderBase
+     // The collection-expression spread would start the list at the root-part
+     // count (usually 1) and immediately reallocate on the first appended clause.
+     // Start at the List growth step instead so that initial array is never wasted.
+-    private const int ExpectedClauseCount = 4;
++    private const int ExpectedClauseCount = 8;
+ 
+     private readonly List<SqlPart> _parts;
+ 

@@ -1,0 +1,43 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 57a628b..376c58f 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -346,6 +346,20 @@ internal abstract class SqlBuilderBase
+         return kindByType.ToFrozenDictionary();
+     }
+ 
++    private static readonly ulong[] BlockExclusiveMask = Masks(ExclusiveKinds, OncePerBlockClauses.Length);
++    private static readonly ulong[] BranchExclusiveMask = Masks(ExclusiveBranchKinds, OncePerBranchClauses.Length);
++
++    private static ulong[] Masks((int Kind, int Other)[] pairs, int count)
++    {
++        ulong[] masks = new ulong[count];
++        foreach ((int kind, int other) in pairs)
++        {
++            masks[kind] |= 1UL << other;
++        }
++
++        return masks;
++    }
++
+     // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
+     // on no dialect, and those some engine runs are rejected by decision (ADR 0011). A set
+     // operator and a conditioned join open what they must also receive (ADR 0017).
+@@ -439,7 +453,7 @@ internal abstract class SqlBuilderBase
+                         + "per query block; a stage on a held builder was called twice.");
+                 }
+ 
+-                for (int j = 0; j < ExclusiveKinds.Length; j++)
++                for (int j = 0; (seen & BlockExclusiveMask[kind]) != 0 && j < ExclusiveKinds.Length; j++)
+                 {
+                     if (ExclusiveKinds[j].Kind == kind
+                         && (seen & (1UL << ExclusiveKinds[j].Other)) != 0)
+@@ -466,7 +480,7 @@ internal abstract class SqlBuilderBase
+                         + "builder was called twice.");
+                 }
+ 
+-                for (int j = 0; j < ExclusiveBranchKinds.Length; j++)
++                for (int j = 0; (seenInBranch & BranchExclusiveMask[branchKind]) != 0 && j < ExclusiveBranchKinds.Length; j++)
+                 {
+                     if (ExclusiveBranchKinds[j].Kind == branchKind
+                         && (seenInBranch & (1UL << ExclusiveBranchKinds[j].Other)) != 0)
