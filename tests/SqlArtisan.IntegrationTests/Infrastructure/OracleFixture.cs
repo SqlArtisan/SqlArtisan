@@ -9,7 +9,7 @@ namespace SqlArtisan.IntegrationTests.Infrastructure;
 /// explicit <c>.WithImage()</c> like the other fixtures so the verified-against version never
 /// tracks the module's default; the heaviest lane in the matrix.
 /// </summary>
-public sealed class OracleFixture : IAsyncLifetime, IDatabaseFixture
+public sealed class OracleFixture : IAsyncLifetime, IContainerFixture
 {
     private readonly OracleContainer _container = new OracleBuilder()
         .WithImage("gvenzl/oracle-xe:21.3.0-slim-faststart")

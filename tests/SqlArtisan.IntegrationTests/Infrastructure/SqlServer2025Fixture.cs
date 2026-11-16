@@ -9,7 +9,7 @@ namespace SqlArtisan.IntegrationTests.Infrastructure;
 /// baseline (<c>||</c> and the <c>REGEXP_*</c> family); the ordinary
 /// <see cref="SqlServerFixture"/> lane stays on 2022 so its matrix bools hold.
 /// </summary>
-public sealed class SqlServer2025Fixture : IAsyncLifetime, IDatabaseFixture
+public sealed class SqlServer2025Fixture : IAsyncLifetime, IContainerFixture
 {
     private readonly MsSqlContainer _container = new MsSqlBuilder()
         .WithImage("mcr.microsoft.com/mssql/server:2025-latest")

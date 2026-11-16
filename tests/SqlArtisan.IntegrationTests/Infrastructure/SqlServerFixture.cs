@@ -5,7 +5,7 @@ using Testcontainers.MsSql;
 namespace SqlArtisan.IntegrationTests.Infrastructure;
 
 /// <summary>SQL Server fixture, backed by a Testcontainers <c>mssql/server</c> container.</summary>
-public sealed class SqlServerFixture : IAsyncLifetime, IDatabaseFixture
+public sealed class SqlServerFixture : IAsyncLifetime, IContainerFixture
 {
     private readonly MsSqlContainer _container = new MsSqlBuilder()
         .WithImage("mcr.microsoft.com/mssql/server:2022-latest")

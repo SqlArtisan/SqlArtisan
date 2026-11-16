@@ -97,6 +97,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   right rows. A twin failing
   names the server's release, so the avoidance can be lifted when MySQL changes.
   (#833)
+- The integration tests report the container lanes skipped, not failed, on a
+  machine with no Docker endpoint, so a local run of the whole project passes on
+  its SQLite and DB-less tests. Under CI, where `CI` is set, they still fail.
 
 ## [0.15.0-beta.1] - 2026-11-11
 ### Added

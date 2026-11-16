@@ -7,7 +7,7 @@ namespace SqlArtisan.IntegrationTests.Infrastructure;
 /// <summary>PostgreSQL fixture, backed by a Testcontainers <c>pgvector/pgvector</c>
 /// container — stock PostgreSQL 16 plus the pgvector extension the vector-operator
 /// sweep cases install via <c>CREATE EXTENSION</c>.</summary>
-public sealed class PostgreSqlFixture : IAsyncLifetime, IDatabaseFixture
+public sealed class PostgreSqlFixture : IAsyncLifetime, IContainerFixture
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
         .WithImage("pgvector/pgvector:0.8.6-pg16")
