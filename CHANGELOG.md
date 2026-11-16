@@ -49,6 +49,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Breaking:** `Sql.Else`'s parameter is named `elseExpr`, not `thenExpr`, so a
   call that names it (`Else(thenExpr: x)`) no longer compiles, and `Else(null)`
   reports `elseExpr` as the parameter.
+- `Build()` finds each clause's kind with one lookup when it checks a statement
+  for a clause written twice, instead of scanning every clause kind's types. The
+  benchmark query builds about 15% faster on .NET 10, allocating the same bytes,
+  and the check runs for every statement and every nested query block.
 
 ### Fixed
 - `SqlArtisan.Dapper`'s `SqlMapper.AddTypeHandler` decides whether to register
@@ -89,9 +93,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   that such a converter would start to throw. (#814)
 - The README's performance table is re-measured on .NET 10, the runtime the
   benchmark suite targets; it named .NET 8 figures no one could reproduce.
-  SqlArtisan still allocates the least among the builders, but no longer builds
-  the fastest: Sqlify and Dapper.SqlBuilder build the query in less time. The
-  README and `docs/comparison.md` claimed it was also the fastest builder. (#374)
+  SqlArtisan still allocates the least among the builders, but is not the
+  fastest: across four runs Sqlify built the query in less time each time, and
+  Dapper.SqlBuilder in three. The README and `docs/comparison.md` claimed it
+  was also the fastest builder. (#374)
 
 ### Tests
 - MySQL twins pin two wrong results of MySQL 8.0.46 that the combinatorial

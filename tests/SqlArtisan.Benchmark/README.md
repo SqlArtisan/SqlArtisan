@@ -98,10 +98,11 @@ and caching assemblies) move in lockstep with the direct pin above them.
 The runtime is part of this list too: the project targets `net10.0`, and the
 root README's figures were taken on .NET 10.0.15 with SDK 10.0.109. The
 lightweight entrants allocate the same bytes on every run, so on the same
-runtime a fresh run reproduces the *Allocated* column. Times do not travel: two
-runs on the measuring machine moved every entrant by about a third while their
-order held. Compare a fresh run's times against another fresh run on the same
-machine, not against the published table.
+runtime a fresh run reproduces the *Allocated* column. Times do not travel:
+across four runs on the measuring machine an entrant's time varied by up to
+about 40%, enough to reorder entrants whose times are close. Compare a fresh
+run's times against another fresh run on the same machine, not against the
+published table.
 
 ## Reading the results
 
