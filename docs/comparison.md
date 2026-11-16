@@ -155,9 +155,11 @@ See the
 SqlArtisan minimizes heap allocations — string buffers are recycled from a
 pooled `ArrayPool<T>`. In the project's
 [like-for-like BenchmarkDotNet workload](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.Benchmark),
-it allocated the least among the query builders tested — a firm lead — and
-ran the fastest, an order to treat as directional; only a hand-written
-`StringBuilder` (no compile-checked names, no dialect handling) was lighter.
+it allocated the least among the query builders tested — a firm lead; only a
+hand-written `StringBuilder` (no compile-checked names, no dialect handling)
+was lighter. Its build time was in the range of the other lightweight
+builders, two of which were faster, and an order of magnitude below linq2db's
+and SqlKata's.
 See the
 [benchmark table in the README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#performance)
 for the numbers, the machine and runtime they were measured on, and re-run
