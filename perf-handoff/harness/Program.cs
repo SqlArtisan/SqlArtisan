@@ -322,6 +322,88 @@ internal static class Program
         return sql.Text.Length;
     }
 
+    static readonly int[][] s_idsN = new[] { 8, 16, 24, 31, 33, 40, 48, 64, 100, 200 }.Select(n => Enumerable.Range(1, n).ToArray()).ToArray();
+    static readonly object[] s_cols20 = Enumerable.Range(0, 20).Select(i => (object)new DbColumn(s_u, "k" + i)).ToArray();
+
+    static Func<object> InN(int n)
+    {
+        int[] ids = s_idsN.Single(a => a.Length == n);
+        return () =>
+        {
+            Users u = s_u;
+            return Select(u.Id).From(u).Where(u.Id.In(ids)).Build().Text;
+        };
+    }
+
+    static object In20Cols()
+    {
+        Users u = s_u;
+        SqlStatement sql = Select(u.Id).From(u).Where(u.Id.In(s_cols20)).Build();
+        return sql.Text;
+    }
+
+    static object InsertNull10()
+    {
+        Users u = s_u;
+        SqlStatement sql = InsertInto(u, s_cols).Values(Null, Null, Null, Null, Null, Null, Null, Null, Null, Null).Build();
+        return sql.Text;
+    }
+
+    static Func<object> FullOn(Dbms dbms) => () =>
+    {
+        Users u = new("u");
+        Orders o = new("o");
+        SqlStatement sql =
+            Select(
+                u.Id.As("user_id"),
+                u.Name.As("user_name"),
+                Count(o.Id).As("order_count"))
+            .From(u)
+            .InnerJoin(o)
+            .On(u.Id == o.UserId)
+            .Where(
+                o.OrderDate >= new DateTime(2024, 1, 1)
+                & o.OrderDate < new DateTime(2025, 1, 1))
+            .GroupBy(u.Id, u.Name)
+            .OrderBy(Count(o.Id).As("order_count").Desc)
+            .Build(dbms);
+        return sql.Text;
+    };
+
+    static void Stress()
+    {
+        // Many threads, statements of different sizes and dialects: every output must equal the
+        // one the same thread-free build gives.
+        Func<int, string> make = i =>
+        {
+            Users u = new("u" + (i % 7));
+            Orders o = new("o");
+            int n = 1 + (i * 37 % 150);
+            BindValue shared = Bind(i);
+            object[] items = Enumerable.Range(0, n).Select(k => k % 5 == 0 ? (object)shared : k + i).ToArray();
+            Dbms d = (Dbms)(1 + i % 5);
+            SqlStatement s = Select(u.Id, shared).From(u).InnerJoin(o).On(u.Id == o.UserId)
+                .Where(u.Id.In(items) & o.UserId == shared & Exists(Select(o.Id).From(o).Where(o.Id == i)))
+                .OrderBy(u.Id).Build(d);
+            long sum = 0; int k2 = 0;
+            s.Parameters.ForEach((name, v) => sum += (int)v.Value * ++k2 + name.Length);
+            return s.Text + "|" + s.Parameters.Count + "|" + sum;
+        };
+        const int N = 20000;
+        string[] expected = new string[N];
+        for (int i = 0; i < N; i++) expected[i] = make(i);
+        int bad = 0;
+        for (int round = 0; round < 3; round++)
+        {
+            Parallel.For(0, N, new ParallelOptions { MaxDegreeOfParallelism = 16 }, i =>
+            {
+                if (make(i) != expected[i]) Interlocked.Increment(ref bad);
+            });
+        }
+        string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Concat(expected))));
+        Console.WriteLine($"stress: {N} statements x 3 parallel rounds, mismatches {bad}, digest {digest}");
+    }
+
     static (double ns, long bytes) Measure(Func<object> f, int n, int rounds, int warm = 200_000)
     {
         for (int i = 0; i < warm; i++) GC.KeepAlive(f());
@@ -359,7 +441,32 @@ internal static class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "stress")
+        {
+            Stress();
+            return;
+        }
+
         int rounds = args.Length > 0 ? int.Parse(args[0]) : 15;
+        if (args.Length > 1 && args[1].StartsWith("only="))
+        {
+            var all = new List<(string, Func<object>)>
+            {
+                ("in20cols", In20Cols), ("insertnull10", InsertNull10), ("simple", Simple), ("in20", In20), ("insert10", Insert10),
+                ("full", Full), ("fullOracle", FullOn(Dbms.Oracle)), ("fullMySql", FullOn(Dbms.MySql)),
+                ("fullSqlite", FullOn(Dbms.Sqlite)), ("fullSqlServer", FullOn(Dbms.SqlServer)), ("fullPg", FullOn(Dbms.PostgreSql)),
+            };
+            foreach (int[] a in s_idsN) all.Add(("in" + a.Length, InN(a.Length)));
+            string[] want = args[1][5..].Split(',');
+            foreach (string w in want)
+            {
+                var (name, f) = all.Single(c => c.Item1 == w);
+                var (ns, bytes) = Measure(f, 200_000, rounds, 100_000);
+                Console.WriteLine($"{name,-13} {ns,8:F1} ns  {bytes,6} B");
+            }
+            return;
+        }
+
         Console.WriteLine(((ValueTuple<string,int>)Full()).Item1);
         DbmsResolver.RegisterProvider(typeof(FakeConnection).FullName!, Dbms.PostgreSql);
         var cases = new (string, Func<object>)[] { ("wide30", Wide30), ("wide30lazy", Wide30Lazy), ("wide30static", Wide30Static), ("resolve", Resolve), ("simple", Simple), ("simplecnn", SimpleCnn), ("in20", In20), ("insert10", Insert10), ("and10", And10), ("subquery", Subquery), ("tables", Tables), ("chain", Chain), ("full", Full) };

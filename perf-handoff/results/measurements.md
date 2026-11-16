@@ -232,5 +232,116 @@ p7     bulk100x10   108718.1 ns    160848 B
 - `H.dll probe`: 同じ `BindValue` インスタンスを繰り返し含む 300 要素の `IN`(パラメータ 240 個)
   を組み、SQL 文・パラメータ数・マーカー名の並び・値のチェックサムを出力する。
   `base` と `p10` の出力はバイト単位で一致した。
-- `SqlArtisan.Analyzers.Tests`、`SqlArtisan.TableClassGen.Tests`、結合テスト、
-  `dotnet format --verify-no-changes` は試作に対して実行していない。
+- `SqlArtisan.TableClassGen.Tests`、コンテナを使う結合テスト、
+  `dotnet format --verify-no-changes` は試作に対して実行していない
+  (アナライザと SQLite は下の 6 で実行した)。
+
+以下はレビュー時の追加計測。`only=` で選んだシナリオは 20 万回 × N ラウンドの最小値で、
+回すシナリオの組が違うので、上の表と絶対値を比べないこと。追加した変種:
+
+| 名前 | 中身 |
+|---|---|
+| `alt1` | パッチ 01〜02 + `alt-01-single-dictionary-after-02.diff` |
+| `p7t` | パッチ 01〜06 のしきい値を環境変数 `SA_T` で変えられるようにしたもの(初期の表は `SA_T` × 4) |
+
+## 6. 試作(パッチ 01〜09)に対するテストと突き合わせ
+
+```
+SqlArtisan.Analyzers.Tests                         Passed!  Failed: 0, Passed: 2166, Total: 2166
+結合テスト、DB なしの CI スライス                  Passed!  Failed: 0, Passed:   69, Total:   69
+  (MatrixSweepCatalogTests|DialectGuardTwinTests|DateTimePartNumberingTests|PictModelTests|CombinatorialBuildTests)
+結合テスト、--filter "Engine=Sqlite"               Passed!  Failed: 0, Passed:  501, Total:  501
+```
+
+`walkcheck/`(パッチ 01〜09 のツリー):
+
+```
+both tables:
+non-sealed table types:
+concrete SqlPart types checked: 316, with a non-zero code: 65, problems: 0
+```
+
+`H.dll stress`(`base`、`p10`、`alt1` とも同じ出力):
+
+```
+stress: 20000 statements x 3 parallel rounds, mismatches 0, digest B43F960FA9FBC7C535657E471E38344B765FB825323F8CCAB0F5BFCF034B3485
+```
+
+## 7. パッチ 06 のしきい値
+
+`p5`(線形走査)と `p7`(しきい値 32)、各 2 プロセス:
+
+```
+          p5        p5        p7        p7
+in16      980.8     965.3    1023.1     997.5
+in24     1401.5    1384.8    1480.4    1411.6
+in31     1704.8    1661.1    1728.0    1778.2
+in33     1995.0    1940.0    2804.4    3025.1
+in40     2419.5    2242.5    3297.8    3408.5
+in48     2888.2    2675.9    3825.1    4110.9
+in64     3985.2    3774.7    4858.1    5093.5
+in100    8437.5    8016.6    8836.6    9124.6
+in200   24949.1   23727.2   18723.1   19402.2
+```
+
+確保バイト数は全て同じ(in33: 5,632 B、in64: 8,424 B、in100: 14,888 B、in200: 31,408 B)。
+
+しきい値を変えた `p7t`、1 プロセスずつ:
+
+```
+          p5       SA_T=32   SA_T=128   SA_T=256
+in33     1837.3    2738.7     2018.7     2135.7
+in64     3831.7    4772.4     4032.6     4099.8
+in100    7918.7    8545.6     8654.9     8217.2
+in200   25023.8   18229.3    22641.1    24744.0
+
+in1000      386904.0      -       93185.1   110084.0
+bulk100x10  394415.7      -       98485.0   115103.7
+```
+
+`p5` と `SA_T=128` をさらに 3 プロセスずつ:
+
+```
+          p5       T=128     p5       T=128     p5       T=128
+in16      994.7    979.5     989.3    992.4     956.1    997.1
+in33     1995.1   1947.9    2109.9   2087.2    1984.5   2035.7
+in64     3925.9   3948.1    4040.5   4112.6    4008.8   4010.9
+in100    8119.2   8374.7    8382.3   8052.4    8313.9   8230.1
+```
+
+## 8. パッチ 03 の方言別
+
+`p2` と `p3`、ベンチマーククエリを各方言で `Build(dbms)`、3 プロセスずつ(ns、確保は全て 2,320 B):
+
+```
+                 p2      p3      p2      p3      p2      p3
+fullPg         1038.6  1070.6  1064.6  1055.5  1074.5  1074.7
+fullOracle     1089.8  1141.8  1122.4  1115.8  1110.2  1146.3
+fullMySql      1169.9  1137.4  1168.5  1137.0  1150.4  1146.4
+fullSqlite     1155.6  1147.7  1156.2  1154.1  1160.8  1117.0
+fullSqlServer  1135.6  1132.6  1138.3  1143.0  1172.6  1136.9
+```
+
+## 9. パッチ 09 とバインドのない文
+
+`p9` と `p10`、2 プロセスずつ:
+
+```
+                p9                 p10                p9                 p10
+in20cols       571.4 ns  1080 B   615.6 ns  1456 B   568.9 ns  1080 B   614.5 ns  1456 B
+insertnull10   585.8 ns  1120 B   633.1 ns  1336 B   598.0 ns  1120 B   627.2 ns  1336 B
+simple         370.4 ns   784 B   361.0 ns   784 B   367.3 ns   784 B   359.7 ns   784 B
+```
+
+`in20cols` はカラム 20 個の `IN`、`insertnull10` は `Values(Null × 10)`。
+
+## 10. パッチ 01 + 02 と辞書 1 つの代案
+
+`only=full,simple,insert10`、9 ラウンド、3 プロセスずつ(ns。確保は 3 変種とも同じ):
+
+```
+            base     p2     alt1     base     p2     alt1     base     p2     alt1
+full      1249.4  1113.7  1152.6   1232.6  1092.3  1125.1   1275.4  1124.3  1147.2
+simple     518.8   443.0   463.5    518.1   468.5   473.5    520.3   449.7   464.2
+insert10  1638.4  1517.1  1519.9   1581.4  1451.5  1487.8   1571.2  1496.5  1524.8
+```

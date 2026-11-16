@@ -1,0 +1,60 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 376c58f..eb5ff18 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -360,6 +360,46 @@ internal abstract class SqlBuilderBase
+         return masks;
+     }
+ 
++    private static readonly FrozenDictionary<Type, int> CodeByType = BuildCodes();
++
++    private static FrozenDictionary<Type, int> BuildCodes()
++    {
++        Dictionary<Type, int> codes = [];
++        void Add(int role, params Type[] types)
++        {
++            foreach (Type t in types)
++            {
++                codes[t] = codes.GetValueOrDefault(t) | role;
++            }
++        }
++
++        for (int i = 0; i < OncePerBlockClauses.Length; i++)
++        {
++            foreach (Type t in OncePerBlockClauses[i].Types)
++            {
++                codes[t] = codes.GetValueOrDefault(t) | ((i + 1) << 8);
++            }
++        }
++
++        for (int i = 0; i < OncePerBranchClauses.Length; i++)
++        {
++            foreach (Type t in OncePerBranchClauses[i].Types)
++            {
++                codes[t] = codes.GetValueOrDefault(t) | ((i + 1) << 16);
++            }
++        }
++
++        Add(1, typeof(OnClause), typeof(RequirementOnlyOnClause), typeof(JoinUsingClause));
++        Add(2, typeof(UnionOperator), typeof(ExceptOperator), typeof(IntersectOperator), typeof(MinusOperator));
++        Add(3, typeof(SelectClause), typeof(SelectClauseWithDistinct), typeof(SelectClauseWithHints), typeof(SelectClauseWithHintsDistinct), typeof(SelectClauseWithTop), typeof(SelectClauseWithDistinctTop));
++        Add(4, typeof(WhenMatchedClause), typeof(WhenNotMatchedClause), typeof(WhenNotMatchedBySourceClause));
++        Add(5, typeof(InsertIntoClause), typeof(InsertIgnoreIntoClause));
++        Add(6, typeof(InsertValuesClause), typeof(InsertSetClause));
++        Add(7, typeof(InnerJoinClause), typeof(LeftJoinClause), typeof(RightJoinClause), typeof(FullJoinClause), typeof(JoinLateralClause));
++        Add(8, typeof(LeftJoinLateralClause), typeof(CrossJoinLateralClause), typeof(CrossJoinClause), typeof(NaturalJoinClause), typeof(NaturalLeftJoinClause), typeof(NaturalRightJoinClause), typeof(NaturalFullJoinClause), typeof(CrossApplyClause), typeof(OuterApplyClause));
++        return codes.ToFrozenDictionary();
++    }
++
+     // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
+     // on no dialect, and those some engine runs are rejected by decision (ADR 0011). A set
+     // operator and a conditioned join open what they must also receive (ADR 0017).
+@@ -374,7 +414,7 @@ internal abstract class SqlBuilderBase
+         bool insertSourceSeen = false;
+         foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
+         {
+-            int code = part.WalkCode;
++            CodeByType.TryGetValue(part.GetType(), out int code);
+             int role = code & 0xFF;
+             if (joinConditionPending && role != 1)
+             {
