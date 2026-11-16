@@ -9,7 +9,7 @@ namespace SqlArtisan.IntegrationTests.Infrastructure;
 /// above the pinned 16 baseline; the ordinary <see cref="PostgreSqlFixture"/> lane stays on
 /// 16 (<see cref="DialectMatrix.VerifiedAgainstVersion"/>) so its matrix bools hold.
 /// </summary>
-public sealed class PostgreSql17Fixture : IAsyncLifetime, IDatabaseFixture
+public sealed class PostgreSql17Fixture : IAsyncLifetime, IContainerFixture
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
         .WithImage("postgres:17")

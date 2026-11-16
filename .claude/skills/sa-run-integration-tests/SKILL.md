@@ -25,7 +25,12 @@ do not derive from `IntegrationTestBase`.
 ## Prerequisites
 
 - **A running Docker daemon** for the seven container lanes (Testcontainers
-  pulls and starts a container per lane). SQLite needs nothing.
+  pulls and starts a container per lane). SQLite needs nothing. With no Docker
+  endpoint, `ContainerLaneTestFramework` reports every class whose fixture is an
+  `IContainerFixture` as skipped, so an unfiltered run (or Visual Studio's "Run
+  All") stays green on the SQLite and DB-less tests. A skip there is the missing
+  daemon, never a pass. When `CI` is set it never skips, so a lane with no
+  daemon still fails in CI.
 - First run pulls images; **Oracle (`gvenzl/oracle-xe:21.3.0-slim-faststart`,
   XE 21c — pinned in `OracleFixture`, same version the docs cite) is large and
   slow to start** (a minute or two), so it dominates wall-clock.

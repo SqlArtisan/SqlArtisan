@@ -6,7 +6,7 @@ namespace SqlArtisan.IntegrationTests.Infrastructure;
 
 /// <summary>MySQL fixture, backed by a Testcontainers <c>mysql</c> container (8.0 for window
 /// functions).</summary>
-public sealed class MySqlFixture : IAsyncLifetime, IDatabaseFixture
+public sealed class MySqlFixture : IAsyncLifetime, IContainerFixture
 {
     private readonly MySqlContainer _container = new MySqlBuilder()
         .WithImage("mysql:8.0")

@@ -15,7 +15,7 @@ namespace SqlArtisan.IntegrationTests.Infrastructure;
 /// hardcodes the <c>XEPDB1</c> service name, and <c>gvenzl/oracle-free</c>'s pluggable
 /// database is <c>FREEPDB1</c> (ORA-12514 live in CI otherwise).
 /// </remarks>
-public sealed class Oracle23aiFixture : IAsyncLifetime, IDatabaseFixture
+public sealed class Oracle23aiFixture : IAsyncLifetime, IContainerFixture
 {
     private const string Username = "oracle";
     private const string Password = "oracle";
