@@ -95,16 +95,13 @@ and caching assemblies) move in lockstep with the direct pin above them.
 | Dapper | 2.1.66 | transitive; `DynamicParameters` is measured by the baseline, Dapper.SqlBuilder and `SqlArtisan+Dapper` |
 | Npgsql | 8.0.6 | transitive; under the EF Core reference |
 
-The runtime is part of this list too, and it has moved: the project targets
-`net10.0`, while the root README's figures were taken on .NET 8. A fresh run
-reproduces the *allocation* ordering, but **not** the timing ordering — the mid-
-and heavy-weight entrants change places (a full run put Dapper.SqlBuilder ahead
-of InterpolatedSql and SqlKata ahead of linq2db). Most rows land within a few
-percent of the published bytes; SqlKata and Dapper.SqlBuilder do not, because
-their entrants were rebuilt after that table was measured (#382, and the root
-README's footnote ⁴): SqlKata now allocates about a third again as much,
-Dapper.SqlBuilder about 0.8 KB less. Compare a fresh run against another fresh
-run, not against the published table.
+The runtime is part of this list too: the project targets `net10.0`, and the
+root README's figures were taken on .NET 10.0.15 with SDK 10.0.109. The
+lightweight entrants allocate the same bytes on every run, so on the same
+runtime a fresh run reproduces the *Allocated* column. Times do not travel: two
+runs on the measuring machine moved every entrant by about a third while their
+order held. Compare a fresh run's times against another fresh run on the same
+machine, not against the published table.
 
 ## Reading the results
 

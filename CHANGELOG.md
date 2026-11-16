@@ -87,6 +87,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   converting it, `Sql.BindArray` keeps rejecting an array of it while one is
   registered, and a list reading such as `In(...)`'s of an array stays. It said
   that such a converter would start to throw. (#814)
+- The README's performance table is re-measured on .NET 10, the runtime the
+  benchmark suite targets; it named .NET 8 figures no one could reproduce.
+  SqlArtisan still allocates the least among the builders, but no longer builds
+  the fastest: Sqlify and Dapper.SqlBuilder build the query in less time. The
+  README and `docs/comparison.md` claimed it was also the fastest builder. (#374)
 
 ### Tests
 - MySQL twins pin two wrong results of MySQL 8.0.46 that the combinatorial

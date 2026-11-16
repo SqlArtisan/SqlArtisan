@@ -74,25 +74,25 @@ All the convenience, minimal overhead: an **allocation-light, fast** builder [be
 
 ## Performance
 
-SqlArtisan minimizes heap allocations — string buffers are recycled from a pooled `ArrayPool<T>` — so it adds little GC pressure on hot paths. On a **fair, like-for-like** [BenchmarkDotNet](https://benchmarkdotnet.org/) workload, where every entrant builds the *same* query's SQL string **and** its bind parameters, it is the **lowest-allocation and fastest** builder; only a hand-written `StringBuilder` (no type safety, no dialect handling) is lighter.
+SqlArtisan minimizes heap allocations — string buffers are recycled from a pooled `ArrayPool<T>` — so it adds little GC pressure on hot paths. On a **fair, like-for-like** [BenchmarkDotNet](https://benchmarkdotnet.org/) workload, where every entrant builds the *same* query's SQL string **and** its bind parameters, it is the **lowest-allocation** builder; only a hand-written `StringBuilder` (no type safety, no dialect handling) is lighter. Its build time sits among the other lightweight builders — Sqlify and Dapper.SqlBuilder are faster — and an order of magnitude ahead of linq2db and SqlKata.
 
 | Method | Category | Mean | Allocated |
 | :--- | :--- | ---: | ---: |
-| StringBuilder_DapperDynamicParams | Baseline¹ | 630.9 ns | 1.92 KB |
-| **SqlArtisan_SpecificParams** | Builders | **1,451.6 ns** | **2.16 KB** |
-| Sqlify_SpecificParams | Builders | 1,871.0 ns | 3.13 KB |
-| **SqlArtisan_DapperDynamicParams** | Builders | 1,892.5 ns | 2.84 KB |
-| InterpolatedSql_SpecificParams | Builders | 2,749.7 ns | 5.11 KB |
-| DapperSqlBuilder_DapperDynamicParams⁴ | Builders | 2,762.2 ns | 5.70 KB |
-| Linq2db_TypedParams | Builders | 44,173.3 ns | 19.13 KB |
-| SqlKata_SpecificParams³ | Builders | 50,577.6 ns | 40.54 KB |
-| EfCore_Reference | ORM reference² | 49,728.5 ns | 12.86 KB |
+| StringBuilder_DapperDynamicParams | Baseline¹ | 243.9 ns | 1.87 KB |
+| **SqlArtisan_SpecificParams** | Builders | 1,211.0 ns | **2.27 KB** |
+| **SqlArtisan_DapperDynamicParams** | Builders | 1,353.9 ns | 2.88 KB |
+| Sqlify_SpecificParams | Builders | 869.4 ns | 3.13 KB |
+| DapperSqlBuilder_DapperDynamicParams | Builders | 957.6 ns | 4.71 KB |
+| InterpolatedSql_SpecificParams | Builders | 1,391.3 ns | 5.01 KB |
+| Linq2db_TypedParams | Builders | 19,448.6 ns | 19.31 KB |
+| SqlKata_SpecificParams | Builders | 32,029.3 ns | 54.01 KB |
+| EfCore_Reference | ORM reference² | 25,068.4 ns | 12.43 KB |
 
-The **allocation lead is firm** (lightweight builders allocate the same bytes every run); treat the timing order as directional, since run-to-run variance grows for the heavier entrants.
+Builders are sorted by allocation. The **allocation lead is firm** (lightweight builders allocate the same bytes every run); treat the times as directional — between two runs on this machine they moved by about a third while the order held.
 
-¹ Raw `StringBuilder` + Dapper `DynamicParameters` — the floor, with no type safety or dialect handling. ² EF Core is a full-ORM **reference** (different work, caches compiled queries), shown only for scale. ³ Understated: this row predates a fix to the SqlKata entrant, which had been building a lighter query than the others; it now allocates about a third again as much. Every other row is unaffected, and SqlKata was already the heaviest builder. ⁴ Overstated: this row predates a fix to the Dapper.SqlBuilder entrant, which had been assembling its template per call; it now allocates about 0.8 KB less, so its order against InterpolatedSql may change on a re-run.
+¹ Raw `StringBuilder` + Dapper `DynamicParameters` — the floor, with no type safety or dialect handling. ² EF Core is a full-ORM **reference** (different work, caches compiled queries), shown only for scale.
 
-*Measured on .NET 8.0.28, i5-1135G7 / 16 GB / Windows 11, PostgreSQL dialect. Query shape, library versions, and re-run instructions are in the [benchmark project's README](https://github.com/h-tacayama/SqlArtisan/blob/main/tests/SqlArtisan.Benchmark/README.md).*
+*Measured on .NET 10.0.15 (SDK 10.0.109) with BenchmarkDotNet 0.15.8, i5-1135G7 / 16 GB / Windows 11 25H2, PostgreSQL dialect. Query shape, library versions, and re-run instructions are in the [benchmark project's README](https://github.com/h-tacayama/SqlArtisan/blob/main/tests/SqlArtisan.Benchmark/README.md).*
 
 ---
 
