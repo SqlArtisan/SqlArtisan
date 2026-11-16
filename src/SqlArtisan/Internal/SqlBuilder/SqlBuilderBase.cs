@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -321,6 +322,30 @@ internal abstract class SqlBuilderBase
         ["INSERT ... WHERE", "DELETE WHERE"],
         ["INSERT ... WHERE", "UPDATE SET ... WHERE"]);
 
+    // Each part's kind in one probe: an Array.IndexOf over every kind's types cost the
+    // benchmark query about 15% of its time (ADR 0006). Built once: a lookup allocates nothing.
+    private static readonly FrozenDictionary<Type, int> OncePerBlockKindByType =
+        IndexKindsByType(OncePerBlockClauses);
+
+    private static readonly FrozenDictionary<Type, int> OncePerBranchKindByType =
+        IndexKindsByType(OncePerBranchClauses);
+
+    // Add throws on a type listed under two kinds, which the scan would have read as the first.
+    private static FrozenDictionary<Type, int> IndexKindsByType(
+        (string Name, Type[] Types)[] kinds)
+    {
+        Dictionary<Type, int> kindByType = [];
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            foreach (Type type in kinds[i].Types)
+            {
+                kindByType.Add(type, i);
+            }
+        }
+
+        return kindByType.ToFrozenDictionary();
+    }
+
     // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
     // on no dialect, and those some engine runs are rejected by decision (ADR 0011). A set
     // operator and a conditioned join open what they must also receive (ADR 0017).
@@ -413,67 +438,57 @@ internal abstract class SqlBuilderBase
             }
 
             Type partType = part.GetType();
-            for (int i = 0; i < OncePerBlockClauses.Length; i++)
+            if (OncePerBlockKindByType.TryGetValue(partType, out int kind))
             {
-                if (System.Array.IndexOf(OncePerBlockClauses[i].Types, partType) < 0)
-                {
-                    continue;
-                }
-
-                ulong bit = 1UL << i;
+                ulong bit = 1UL << kind;
                 if ((seen & bit) != 0)
                 {
                     throw new ArgumentException(
-                        $"A statement takes at most one {OncePerBlockClauses[i].Name} clause "
+                        $"A statement takes at most one {OncePerBlockClauses[kind].Name} clause "
                         + "per query block; a stage on a held builder was called twice.");
                 }
 
                 for (int j = 0; j < ExclusiveKinds.Length; j++)
                 {
-                    if (ExclusiveKinds[j].Kind == i
+                    if (ExclusiveKinds[j].Kind == kind
                         && (seen & (1UL << ExclusiveKinds[j].Other)) != 0)
                     {
                         throw new ArgumentException(
-                            $"{OncePerBlockClauses[i].Name} cannot be combined with "
+                            $"{OncePerBlockClauses[kind].Name} cannot be combined with "
                             + $"{OncePerBlockClauses[ExclusiveKinds[j].Other].Name} in one query "
                             + "block; a stage on a held builder supplied both.");
                     }
                 }
 
                 seen |= bit;
-                break;
             }
 
-            for (int i = 0; i < OncePerBranchClauses.Length; i++)
+            if (OncePerBranchKindByType.TryGetValue(partType, out int branchKind))
             {
-                if (System.Array.IndexOf(OncePerBranchClauses[i].Types, partType) < 0)
-                {
-                    continue;
-                }
-
-                ulong bit = 1UL << i;
+                ulong bit = 1UL << branchKind;
                 if ((seenInBranch & bit) != 0)
                 {
                     throw new ArgumentException(
-                        $"A MERGE WHEN branch takes at most one {OncePerBranchClauses[i].Name} "
-                        + "clause; a stage on a held builder was called twice.");
+                        "A MERGE WHEN branch takes at most one "
+                        + $"{OncePerBranchClauses[branchKind].Name} clause; a stage on a held "
+                        + "builder was called twice.");
                 }
 
                 for (int j = 0; j < ExclusiveBranchKinds.Length; j++)
                 {
-                    if (ExclusiveBranchKinds[j].Kind == i
+                    if (ExclusiveBranchKinds[j].Kind == branchKind
                         && (seenInBranch & (1UL << ExclusiveBranchKinds[j].Other)) != 0)
                     {
+                        string action = OncePerBranchClauses[branchKind].Name;
                         string other = OncePerBranchClauses[ExclusiveBranchKinds[j].Other].Name;
                         throw new ArgumentException(
-                            $"A MERGE WHEN branch takes one action; {OncePerBranchClauses[i].Name} "
+                            $"A MERGE WHEN branch takes one action; {action} "
                             + $"cannot be combined with {other}, "
                             + "and a stage on a held builder supplied both.");
                     }
                 }
 
                 seenInBranch |= bit;
-                break;
             }
         }
 
