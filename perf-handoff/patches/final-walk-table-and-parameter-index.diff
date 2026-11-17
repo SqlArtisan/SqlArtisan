@@ -1,0 +1,1339 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 56bfbfe..e855329 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
+   for a clause written twice, instead of scanning every clause kind's types. The
+   benchmark query builds about 15% faster on .NET 10, allocating the same bytes,
+   and the check runs for every statement and every nested query block.
++- `Build()` finds a `BindValue` instance it has already bound through a hash
++  index once a statement holds 128 parameters, instead of scanning every earlier
++  one, so a statement that binds many values builds in less time. It also sizes
++  its parameter list once for the values passed directly to an `IN` / `NOT IN`
++  list or a `VALUES` clause, which then allocate less. The SQL and the
++  parameters are unchanged.
+ 
+ ### Fixed
+ - `SqlArtisan.Dapper`'s `SqlMapper.AddTypeHandler` decides whether to register
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 60772cf..77d81ce 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -1,4 +1,5 @@
+ using System.Collections.Frozen;
++using System.Diagnostics;
+ using System.Diagnostics.CodeAnalysis;
+ using System.Runtime.InteropServices;
+ 
+@@ -322,17 +323,79 @@ internal abstract class SqlBuilderBase
+         ["INSERT ... WHERE", "DELETE WHERE"],
+         ["INSERT ... WHERE", "UPDATE SET ... WHERE"]);
+ 
+-    // Each part's kind in one probe: an Array.IndexOf over every kind's types cost the
+-    // benchmark query about 15% of its time (ADR 0006). Built once: a lookup allocates nothing.
+-    private static readonly FrozenDictionary<Type, int> OncePerBlockKindByType =
+-        IndexKindsByType(OncePerBlockClauses);
++    // What the walk reads off a part besides its kinds. One entry per type: the lookup is by
++    // exact type, so a derived clause is listed beside its base (DuplicateClauseWalkTests).
++    private static readonly (PartRole Role, Type[] Types)[] PartRoles =
++    [
++        (PartRole.JoinCondition, [
++            typeof(OnClause), typeof(RequirementOnlyOnClause), typeof(JoinUsingClause),
++        ]),
++        (PartRole.SetOperator, [
++            typeof(UnionOperator), typeof(ExceptOperator), typeof(IntersectOperator),
++            typeof(MinusOperator),
++        ]),
++        (PartRole.SelectItems, [
++            typeof(SelectClause), typeof(SelectClauseWithDistinct), typeof(SelectClauseWithHints),
++            typeof(SelectClauseWithHintsDistinct), typeof(SelectClauseWithTop),
++            typeof(SelectClauseWithDistinctTop),
++        ]),
++        (PartRole.MergeWhen, [
++            typeof(WhenMatchedClause), typeof(WhenNotMatchedClause),
++            typeof(WhenNotMatchedBySourceClause),
++        ]),
++        (PartRole.InsertTarget, [typeof(InsertIntoClause), typeof(InsertIgnoreIntoClause)]),
++        (PartRole.InsertRowSource, [typeof(InsertValuesClause), typeof(InsertSetClause)]),
++        (PartRole.ConditionedJoin, [
++            typeof(InnerJoinClause), typeof(LeftJoinClause), typeof(RightJoinClause),
++            typeof(FullJoinClause), typeof(JoinLateralClause),
++        ]),
++        (PartRole.ConditionFreeJoin, [
++            typeof(LeftJoinLateralClause), typeof(CrossJoinLateralClause), typeof(CrossJoinClause),
++            typeof(NaturalJoinClause), typeof(NaturalLeftJoinClause),
++            typeof(NaturalRightJoinClause), typeof(NaturalFullJoinClause),
++            typeof(CrossApplyClause), typeof(OuterApplyClause),
++        ]),
++    ];
++
++    // Every fact the walk needs about a part in one probe: per-kind scans cost the benchmark
++    // query about 15% of its time, and two probes plus the type tests about 10% more (ADR 0006).
++    private static readonly FrozenDictionary<Type, PartTraits> TraitsByType = IndexTraitsByType();
++
++    private static readonly ulong[] BlockExclusions =
++        BuildExclusionMasks(OncePerBlockClauses.Length, ExclusiveKinds);
++
++    private static readonly ulong[] BranchExclusions =
++        BuildExclusionMasks(OncePerBranchClauses.Length, ExclusiveBranchKinds);
++
++    private static FrozenDictionary<Type, PartTraits> IndexTraitsByType()
++    {
++        Dictionary<Type, PartRole> roleByType = [];
++        foreach ((PartRole role, Type[] types) in PartRoles)
++        {
++            foreach (Type type in types)
++            {
++                roleByType.Add(type, role);
++            }
++        }
++
++        Dictionary<Type, int> blockKindByType = IndexKindsByType(OncePerBlockClauses);
++        Dictionary<Type, int> branchKindByType = IndexKindsByType(OncePerBranchClauses);
++
++        Dictionary<Type, PartTraits> traitsByType = [];
++        foreach (Type type in (Type[])[
++            .. roleByType.Keys, .. blockKindByType.Keys, .. branchKindByType.Keys])
++        {
++            traitsByType[type] = new PartTraits(
++                roleByType.GetValueOrDefault(type),
++                blockKindByType.GetValueOrDefault(type, -1),
++                branchKindByType.GetValueOrDefault(type, -1));
++        }
+ 
+-    private static readonly FrozenDictionary<Type, int> OncePerBranchKindByType =
+-        IndexKindsByType(OncePerBranchClauses);
++        return traitsByType.ToFrozenDictionary();
++    }
+ 
+-    // Add throws on a type listed under two kinds, which the scan would have read as the first.
+-    private static FrozenDictionary<Type, int> IndexKindsByType(
+-        (string Name, Type[] Types)[] kinds)
++    // Add throws on a type listed under two kinds, which a scan would have read as the first.
++    private static Dictionary<Type, int> IndexKindsByType((string Name, Type[] Types)[] kinds)
+     {
+         Dictionary<Type, int> kindByType = [];
+         for (int i = 0; i < kinds.Length; i++)
+@@ -343,7 +406,46 @@ internal abstract class SqlBuilderBase
+             }
+         }
+ 
+-        return kindByType.ToFrozenDictionary();
++        return kindByType;
++    }
++
++    // Per kind, the kinds it cannot share a block with: the walk reads the pair table
++    // only once a part meets one of them.
++    private static ulong[] BuildExclusionMasks(int kindCount, (int Kind, int Other)[] pairs)
++    {
++        ulong[] masks = new ulong[kindCount];
++        foreach ((int kind, int other) in pairs)
++        {
++            masks[kind] |= 1UL << other;
++        }
++
++        return masks;
++    }
++
++    private enum PartRole : byte
++    {
++        None,
++        JoinCondition,
++        SetOperator,
++        SelectItems,
++        MergeWhen,
++        InsertTarget,
++        InsertRowSource,
++        ConditionedJoin,
++        ConditionFreeJoin,
++    }
++
++    // A kind is held one past its index, so the default a failed lookup leaves reads as no kind.
++    private readonly struct PartTraits(PartRole role, int blockKind, int branchKind)
++    {
++        private readonly byte _blockKindOrdinal = (byte)(blockKind + 1);
++        private readonly byte _branchKindOrdinal = (byte)(branchKind + 1);
++
++        internal PartRole Role { get; } = role;
++
++        internal int BlockKind => _blockKindOrdinal - 1;
++
++        internal int BranchKind => _branchKindOrdinal - 1;
+     }
+ 
+     // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
+@@ -360,17 +462,20 @@ internal abstract class SqlBuilderBase
+         bool insertSourceSeen = false;
+         foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
+         {
+-            if (joinConditionPending && part is not (OnClause or JoinUsingClause))
++            TraitsByType.TryGetValue(part.GetType(), out PartTraits traits);
++            PartRole role = traits.Role;
++
++            if (joinConditionPending && role != PartRole.JoinCondition)
+             {
+                 ThrowJoinConditionMissing();
+             }
+ 
+-            if (setOperatorPending && part is not ISelectItemsClause)
++            if (setOperatorPending && role != PartRole.SelectItems)
+             {
+                 ThrowSetOperatorOperandMissing();
+             }
+ 
+-            if (part is UnionOperator or ExceptOperator or IntersectOperator or MinusOperator)
++            if (role == PartRole.SetOperator)
+             {
+                 seen = 0;
+                 setOperatorPending = true;
+@@ -381,13 +486,13 @@ internal abstract class SqlBuilderBase
+ 
+             setOperatorPending = false;
+ 
+-            if (part is WhenMatchedClause or WhenNotMatchedClause or WhenNotMatchedBySourceClause)
++            if (role == PartRole.MergeWhen)
+             {
+                 seenInBranch = 0;
+                 continue;
+             }
+ 
+-            if (part is InsertIntoClause or InsertIgnoreIntoClause)
++            if (role == PartRole.InsertTarget)
+             {
+                 seen &= ~(1UL << WithClauseIndex);
+                 inInsert = true;
+@@ -395,7 +500,7 @@ internal abstract class SqlBuilderBase
+ 
+             // VALUES, SET, and SELECT spell an INSERT's one row source (SET renders
+             // as VALUES), a duplicate the kind-level checks below cannot see.
+-            if (inInsert && part is InsertValuesClause or InsertSetClause or ISelectItemsClause)
++            if (inInsert && role is PartRole.InsertRowSource or PartRole.SelectItems)
+             {
+                 if (insertSourceSeen)
+                 {
+@@ -409,22 +514,18 @@ internal abstract class SqlBuilderBase
+ 
+             // ON/USING legally repeat once per join, so they pair by adjacency
+             // rather than by a once-per-block entry.
+-            if (part is InnerJoinClause or LeftJoinClause or RightJoinClause or FullJoinClause
+-                or JoinLateralClause)
++            if (role == PartRole.ConditionedJoin)
+             {
+                 joinConditionSeen = false;
+                 joinConditionPending = true;
+             }
+-            else if (part is LeftJoinLateralClause or CrossJoinLateralClause
+-                or CrossJoinClause or NaturalJoinClause or NaturalLeftJoinClause
+-                or NaturalRightJoinClause or NaturalFullJoinClause
+-                or CrossApplyClause or OuterApplyClause)
++            else if (role == PartRole.ConditionFreeJoin)
+             {
+                 // Consumes the slot: an ON after a condition-free join is a repeated
+                 // stage, not its condition (`CROSS JOIN ... ON` runs on SQLite, wrong).
+                 joinConditionSeen = true;
+             }
+-            else if (part is OnClause or JoinUsingClause)
++            else if (role == PartRole.JoinCondition)
+             {
+                 if (joinConditionSeen)
+                 {
+@@ -437,8 +538,8 @@ internal abstract class SqlBuilderBase
+                 joinConditionPending = false;
+             }
+ 
+-            Type partType = part.GetType();
+-            if (OncePerBlockKindByType.TryGetValue(partType, out int kind))
++            int kind = traits.BlockKind;
++            if (kind >= 0)
+             {
+                 ulong bit = 1UL << kind;
+                 if ((seen & bit) != 0)
+@@ -448,22 +549,16 @@ internal abstract class SqlBuilderBase
+                         + "per query block; a stage on a held builder was called twice.");
+                 }
+ 
+-                for (int j = 0; j < ExclusiveKinds.Length; j++)
++                if ((seen & BlockExclusions[kind]) != 0)
+                 {
+-                    if (ExclusiveKinds[j].Kind == kind
+-                        && (seen & (1UL << ExclusiveKinds[j].Other)) != 0)
+-                    {
+-                        throw new ArgumentException(
+-                            $"{OncePerBlockClauses[kind].Name} cannot be combined with "
+-                            + $"{OncePerBlockClauses[ExclusiveKinds[j].Other].Name} in one query "
+-                            + "block; a stage on a held builder supplied both.");
+-                    }
++                    ThrowExclusiveKind(kind, seen);
+                 }
+ 
+                 seen |= bit;
+             }
+ 
+-            if (OncePerBranchKindByType.TryGetValue(partType, out int branchKind))
++            int branchKind = traits.BranchKind;
++            if (branchKind >= 0)
+             {
+                 ulong bit = 1UL << branchKind;
+                 if ((seenInBranch & bit) != 0)
+@@ -474,18 +569,9 @@ internal abstract class SqlBuilderBase
+                         + "builder was called twice.");
+                 }
+ 
+-                for (int j = 0; j < ExclusiveBranchKinds.Length; j++)
++                if ((seenInBranch & BranchExclusions[branchKind]) != 0)
+                 {
+-                    if (ExclusiveBranchKinds[j].Kind == branchKind
+-                        && (seenInBranch & (1UL << ExclusiveBranchKinds[j].Other)) != 0)
+-                    {
+-                        string action = OncePerBranchClauses[branchKind].Name;
+-                        string other = OncePerBranchClauses[ExclusiveBranchKinds[j].Other].Name;
+-                        throw new ArgumentException(
+-                            $"A MERGE WHEN branch takes one action; {action} "
+-                            + $"cannot be combined with {other}, "
+-                            + "and a stage on a held builder supplied both.");
+-                    }
++                    ThrowExclusiveBranchKind(branchKind, seenInBranch);
+                 }
+ 
+                 seenInBranch |= bit;
+@@ -514,6 +600,42 @@ internal abstract class SqlBuilderBase
+ 
+     private bool HoldsReturningInto() => FindPart<ReturningIntoClause>() is not null;
+ 
++    // Names the first pair in table order, the pair the walk met before the masks.
++    [DoesNotReturn]
++    private static void ThrowExclusiveKind(int kind, ulong seen)
++    {
++        foreach ((int pairKind, int other) in ExclusiveKinds)
++        {
++            if (pairKind == kind && (seen & (1UL << other)) != 0)
++            {
++                throw new ArgumentException(
++                    $"{OncePerBlockClauses[kind].Name} cannot be combined with "
++                    + $"{OncePerBlockClauses[other].Name} in one query "
++                    + "block; a stage on a held builder supplied both.");
++            }
++        }
++
++        throw new UnreachableException();
++    }
++
++    [DoesNotReturn]
++    private static void ThrowExclusiveBranchKind(int branchKind, ulong seenInBranch)
++    {
++        foreach ((int pairKind, int other) in ExclusiveBranchKinds)
++        {
++            if (pairKind == branchKind && (seenInBranch & (1UL << other)) != 0)
++            {
++                throw new ArgumentException(
++                    "A MERGE WHEN branch takes one action; "
++                    + $"{OncePerBranchClauses[branchKind].Name} cannot be combined with "
++                    + $"{OncePerBranchClauses[other].Name}, "
++                    + "and a stage on a held builder supplied both.");
++            }
++        }
++
++        throw new UnreachableException();
++    }
++
+     [DoesNotReturn]
+     private static void ThrowJoinConditionMissing() =>
+         throw new ArgumentException(
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index 8fd4709..4bc9a83 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -1,6 +1,8 @@
+ using System.Buffers;
+ using System.Data;
++using System.Numerics;
+ using System.Runtime.CompilerServices;
++using System.Runtime.InteropServices;
+ using System.Text;
+ 
+ namespace SqlArtisan.Internal;
+@@ -9,6 +11,9 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ {
+     private const int InitialCapacity = 2048;
+ 
++    // What List<T> grows an empty list to on its first Add.
++    private const int DefaultListCapacity = 4;
++
+     // Shared, never-mutated instance handed to parameterless statements so they
+     // don't each allocate a list. SqlParameters only ever reads it.
+     private static readonly List<KeyValuePair<string, BindValue>> s_emptyParameters = new();
+@@ -17,8 +22,8 @@ internal sealed class SqlBuildingBuffer : IDisposable
+     private char[] _buffer;
+     private int _position;
+     // Allocated lazily on the first parameter; parameterless statements keep this null.
+-    // A list (insertion-ordered) is used over a dictionary: parameter counts are
+-    // small, so linear lookup is cheap and it allocates less than a hash table.
++    // A list (insertion-ordered), scanned while it is short, where that is cheaper than
++    // a hash table and allocates less; from 128 entries it is an IndexedParameterList.
+     private List<KeyValuePair<string, BindValue>>? _parameters;
+     private bool _disposed;
+     // Correlated-DML guard state (#253): a bare target column rendered inside a
+@@ -68,6 +73,8 @@ internal sealed class SqlBuildingBuffer : IDisposable
+             _buffer = null!;
+         }
+ 
++        // A build that threw never reached ToSqlStatement, which hands the index back.
++        (_parameters as IndexedParameterList)?.ReleaseIndex();
+         _parameters = null;
+         _disposed = true;
+     }
+@@ -730,27 +737,128 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+         // The same instance formatted twice (SELECT and GROUP BY) reuses its marker: PostgreSQL
+         // 16, SQL Server 2022 and Oracle XE 21.3.0 reject distinct ones there (#241's twins).
+-        if (_parameters is not null)
++        if (_parameters is not null && FindMarker(_parameters, bindValue) is { } marker)
+         {
+-            // Linear by design (ADR 0006's best effort): 37 ms at 2,100 binds, and
+-            // the driver's own parameter cap bounds the scan.
+-            foreach (KeyValuePair<string, BindValue> parameter in _parameters)
+-            {
+-                if (ReferenceEquals(parameter.Value, bindValue))
+-                {
+-                    Append(parameter.Key);
+-                    return this;
+-                }
+-            }
++            Append(marker);
++            return this;
+         }
+ 
+         _parameters ??= new();
+         string name = ParameterNameCache.Get(_dialect.ParameterMarker, _parameters.Count);
+         Append(name);
+-        _parameters.Add(new(name, bindValue));
++        AddToParameters(name, bindValue);
++        return this;
++    }
++
++    // A scan while the list is short, where it beats a hash probe; the driver's parameter
++    // cap no longer bounds the cost once the list is indexed (ADR 0006).
++    private static string? FindMarker(
++        List<KeyValuePair<string, BindValue>> parameters,
++        BindValue bindValue)
++    {
++        if (parameters is IndexedParameterList indexed)
++        {
++            return indexed.FindMarker(bindValue);
++        }
++
++        foreach (KeyValuePair<string, BindValue> parameter in CollectionsMarshal.AsSpan(parameters))
++        {
++            if (ReferenceEquals(parameter.Value, bindValue))
++            {
++                return parameter.Key;
++            }
++        }
++
++        return null;
++    }
++
++    // Every append goes through here, so the switch to an indexed list is decided in one
++    // place. A parameter nothing looks up again joins unindexed.
++    private void AddToParameters(string name, BindValue bindValue, bool indexed = true)
++    {
++        List<KeyValuePair<string, BindValue>> parameters = _parameters!;
++        if (parameters is not IndexedParameterList)
++        {
++            // The switch waits for a full list, so the larger array it allocates is the one
++            // the list was about to; the list object itself is 48 bytes that growth is not.
++            if (parameters.Count < IndexedParameterList.MinCount
++                || parameters.Count < parameters.Capacity)
++            {
++                parameters.Add(new(name, bindValue));
++                return;
++            }
++
++            parameters = new IndexedParameterList(parameters, parameters.Count * 2);
++            _parameters = parameters;
++        }
++
++        if (indexed)
++        {
++            ((IndexedParameterList)parameters).AddIndexed(name, bindValue);
++        }
++        else
++        {
++            parameters.Add(new(name, bindValue));
++        }
++    }
++
++    // Sizes the list for the implicit binds of a list about to be formatted, at a capacity
++    // the list's own doubling would reach for them: it skips the smaller arrays and adds none.
++    // Each is a new parameter unless its list was formatted before, which its first one tells.
++    internal SqlBuildingBuffer ReserveParameters(ImplicitBindValue? first, int binds)
++    {
++        if (first is null
++            || (_parameters is not null && FindMarker(_parameters, first) is not null))
++        {
++            return this;
++        }
++
++        int count = _parameters?.Count ?? 0;
++        int capacity = (int)BitOperations.RoundUpToPowerOf2((uint)(count + binds));
++        if (capacity <= Math.Max(_parameters?.Capacity ?? 0, DefaultListCapacity))
++        {
++            return this;
++        }
++
++        if (_parameters is not IndexedParameterList
++            && count + binds >= IndexedParameterList.MinCount)
++        {
++            _parameters = new IndexedParameterList(_parameters, capacity);
++        }
++        else
++        {
++            _parameters ??= new();
++            _parameters.EnsureCapacity(capacity);
++        }
++
+         return this;
+     }
+ 
++    internal SqlBuildingBuffer ReserveParametersFor(SqlExpression[] items)
++    {
++        ImplicitBindValue? first = null;
++        int binds = CountImplicitBinds(items, ref first);
++        return ReserveParameters(first, binds);
++    }
++
++    // A BindValue the caller holds is left out: it may repeat one already bound, and
++    // reserving for it would allocate what the list never fills. An implicit one read back
++    // from SqlParameters and passed again is counted, the one repeat this cannot tell.
++    internal static int CountImplicitBinds(SqlExpression[] items, ref ImplicitBindValue? first)
++    {
++        int binds = 0;
++        foreach (SqlExpression item in items)
++        {
++            if (item is ImplicitBindValue bind)
++            {
++                first ??= bind;
++                binds++;
++            }
++        }
++
++        return binds;
++    }
++
+     internal SqlBuildingBuffer AddOutParameter(OutputParameter output)
+     {
+         ObjectDisposedException.ThrowIf(_disposed, this);
+@@ -773,11 +881,14 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         }
+ 
+         Append(name);
+-        _parameters.Add(new(name, new BindValue(
+-            DBNull.Value,
+-            dbType: output.DbType,
+-            direction: ParameterDirection.Output,
+-            size: output.Size)));
++        AddToParameters(
++            name,
++            new BindValue(
++                DBNull.Value,
++                dbType: output.DbType,
++                direction: ParameterDirection.Output,
++                size: output.Size),
++            indexed: false);
+         return this;
+     }
+ 
+@@ -789,6 +900,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         // never mutated after this point (Dispose only returns the char buffer).
+         string sql = new(_buffer, 0, _position);
+         List<KeyValuePair<string, BindValue>> parameters = _parameters ?? s_emptyParameters;
++        (parameters as IndexedParameterList)?.ReleaseIndex();
+         _parameters = null;
+         return new(sql, parameters);
+     }
+@@ -877,4 +989,124 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         ArrayPool<char>.Shared.Return(_buffer);
+         _buffer = newBuffer;
+     }
++
++    // The parameter list once a scan for an instance costs more than a hash probe. A subclass,
++    // so the buffer needs no field for the index: one would cost every build 8 bytes (ADR 0006).
++    private sealed class IndexedParameterList : List<KeyValuePair<string, BindValue>>
++    {
++        // Measured on .NET 10: the scan and the probe meet near 100 parameters.
++        internal const int MinCount = 128;
++
++        // Hashing an instance for the first time is the index's cost. Two earlier entries per
++        // append spread it, so a statement that ends just past the switch never pays for all.
++        private const int PlacedPerAppend = 2;
++
++        // Open addressing by instance: a slot holds an entry's position plus one, 0 while
++        // empty. Rented, and at most half full, so a probe always meets an empty slot: an
++        // unindexed entry takes no slot, and Rebuild sizes the table for every entry.
++        private int[]? _slots;
++        private int _mask;
++        // The entries before this position have no slot yet and are found by scanning.
++        private int _awaitingSlot;
++
++        internal IndexedParameterList(
++            List<KeyValuePair<string, BindValue>>? source,
++            int capacity)
++            : base(capacity)
++        {
++            if (source is not null)
++            {
++                AddRange(source);
++            }
++
++            _awaitingSlot = Count;
++            RentSlots();
++        }
++
++        internal string? FindMarker(BindValue bindValue)
++        {
++            int[] slots = _slots!;
++            ReadOnlySpan<KeyValuePair<string, BindValue>> entries = CollectionsMarshal.AsSpan(this);
++            foreach (KeyValuePair<string, BindValue> entry in entries[.._awaitingSlot])
++            {
++                if (ReferenceEquals(entry.Value, bindValue))
++                {
++                    return entry.Key;
++                }
++            }
++
++            for (int i = RuntimeHelpers.GetHashCode(bindValue) & _mask; ; i = (i + 1) & _mask)
++            {
++                int ordinal = slots[i];
++                if (ordinal == 0)
++                {
++                    return null;
++                }
++
++                if (ReferenceEquals(entries[ordinal - 1].Value, bindValue))
++                {
++                    return entries[ordinal - 1].Key;
++                }
++            }
++        }
++
++        internal void AddIndexed(string name, BindValue bindValue)
++        {
++            Add(new(name, bindValue));
++            if (Count * 2 > _mask + 1)
++            {
++                Rebuild();
++            }
++            else
++            {
++                Place(Count - 1);
++                for (int n = Math.Min(PlacedPerAppend, _awaitingSlot); n > 0; n--)
++                {
++                    Place(--_awaitingSlot);
++                }
++            }
++        }
++
++        // The list outlives the build inside its SqlStatement; the rented index must not.
++        internal void ReleaseIndex()
++        {
++            if (_slots is not null)
++            {
++                ArrayPool<int>.Shared.Return(_slots);
++                _slots = null;
++            }
++        }
++
++        private void Rebuild()
++        {
++            ReleaseIndex();
++            RentSlots();
++            _awaitingSlot = 0;
++            for (int i = 0; i < Count; i++)
++            {
++                Place(i);
++            }
++        }
++
++        private void RentSlots()
++        {
++            int size = (int)BitOperations.RoundUpToPowerOf2((uint)Math.Max(Count, MinCount) * 4);
++            _slots = ArrayPool<int>.Shared.Rent(size);
++            // A rented array holds its last user's values and can be longer than asked.
++            Array.Clear(_slots, 0, size);
++            _mask = size - 1;
++        }
++
++        private void Place(int position)
++        {
++            int[] slots = _slots!;
++            int i = RuntimeHelpers.GetHashCode(this[position].Value) & _mask;
++            while (slots[i] != 0)
++            {
++                i = (i + 1) & _mask;
++            }
++
++            slots[i] = position + 1;
++        }
++    }
+ }
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
+index 7a45cf1..006f619 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValuesClause.cs
+@@ -37,7 +37,14 @@ internal sealed class InsertValuesClause : SqlPart
+ 
+     internal override void Format(SqlBuildingBuffer buffer)
+     {
+-        buffer.Append($"{Keywords.Values} ");
++        ImplicitBindValue? first = null;
++        int binds = 0;
++        foreach (SqlExpression[] row in _rows)
++        {
++            binds += SqlBuildingBuffer.CountImplicitBinds(row, ref first);
++        }
++
++        buffer.ReserveParameters(first, binds).Append($"{Keywords.Values} ");
+ 
+         for (int i = 0; i < _rows.Count; i++)
+         {
+diff --git a/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs b/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs
+index fdde87b..8dc1bca 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/InCondition.cs
+@@ -12,6 +12,7 @@ internal sealed class InCondition : SqlCondition
+     }
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
++        .ReserveParametersFor(_expressions)
+         .Append(_leftSide)
+         .EncloseInSpaces(Keywords.In)
+         .OpenParenthesis()
+diff --git a/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/NotInCondition.cs b/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/NotInCondition.cs
+index 2319a54..6903bca 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/NotInCondition.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Condition/InCondition/NotInCondition.cs
+@@ -12,6 +12,7 @@ internal sealed class NotInCondition : SqlCondition
+     }
+ 
+     internal override void Format(SqlBuildingBuffer buffer) => buffer
++        .ReserveParametersFor(_expressions)
+         .Append(_leftSide)
+         .EncloseInSpaces($"{Keywords.Not} {Keywords.In}")
+         .OpenParenthesis()
+diff --git a/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs b/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
+index f200f09..2287b3d 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
+@@ -390,7 +390,7 @@ internal static class ExpressionResolver
+                 ? throw new ArgumentException($"{value.GetType().Name} is a function argument, "
+                     + $"not a value; pass it to a {value.GetType().Name} parameter, or, to store "
+                     + "or compare the enum itself, bind it with Sql.Bind(...).")
+-                : new BindValue(value);
++                : new ImplicitBindValue(value);
+ 
+     // The directly bindable check first: such a value never reaches the converter
+     // registry (ADR 0006).
+diff --git a/src/SqlArtisan/Internal/SqlPart/Expression/ImplicitBindValue.cs b/src/SqlArtisan/Internal/SqlPart/Expression/ImplicitBindValue.cs
+new file mode 100644
+index 0000000..f4e1365
+--- /dev/null
++++ b/src/SqlArtisan/Internal/SqlPart/Expression/ImplicitBindValue.cs
+@@ -0,0 +1,9 @@
++namespace SqlArtisan.Internal;
++
++// The bind a resolver makes for a value passed where an expression goes: one instance per
++// occurrence, so each is a new parameter, which a BindValue the caller holds need not be.
++// SqlParameters.ForEach hands one to a caller, who can then repeat it.
++internal sealed class ImplicitBindValue(object directlyBindable)
++    : BindValue(directlyBindable, Checked.DirectlyBindable)
++{
++}
+diff --git a/src/SqlArtisan/SqlPart/Expression/BindValue.cs b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+index 4948ff9..9410210 100644
+--- a/src/SqlArtisan/SqlPart/Expression/BindValue.cs
++++ b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+@@ -59,6 +59,18 @@ public class BindValue : SqlExpression
+         Size = size;
+     }
+ 
++    // For a value the caller has shown directly bindable, which no SqlArtisan object is:
++    // the public constructor's check would cost reflection to say so again (ADR 0006).
++    private protected BindValue(object value, Checked _)
++    {
++        Value = value;
++    }
++
++    private protected enum Checked
++    {
++        DirectlyBindable,
++    }
++
+     /// <summary>
+     /// Gets the bound value.
+     /// </summary>
+diff --git a/tests/SqlArtisan.Tests/BuilderReuseTests.cs b/tests/SqlArtisan.Tests/BuilderReuseTests.cs
+index fca61d8..1f9fe99 100644
+--- a/tests/SqlArtisan.Tests/BuilderReuseTests.cs
++++ b/tests/SqlArtisan.Tests/BuilderReuseTests.cs
+@@ -621,6 +621,23 @@ public class BuilderReuseTests
+             ex.Message);
+     }
+ 
++    [Fact]
++    public void Values_ThenSelect_OnHeldInsertIgnoreStage_ThrowsArgumentException()
++    {
++        TestTable target = new();
++        TestTable s = new("s");
++        IInsertIgnoreBuilderColumns held = InsertIgnoreInto(target, target.Code);
++        var values = held.Values(1);
++        held.Select(s.Code).From(s);
++
++        ArgumentException ex = Assert.Throws<ArgumentException>(() => values.Build(Dbms.MySql));
++
++        Assert.Equal(
++            "An INSERT takes one row source — VALUES, SET, or SELECT; "
++                + "a stage on a held builder supplied a second.",
++            ex.Message);
++    }
++
+     [Fact]
+     public void Set_ThenValues_OnHeldInsertStage_ThrowsArgumentException()
+     {
+diff --git a/tests/SqlArtisan.Tests/DuplicateClauseWalkTests.cs b/tests/SqlArtisan.Tests/DuplicateClauseWalkTests.cs
+new file mode 100644
+index 0000000..cebfef0
+--- /dev/null
++++ b/tests/SqlArtisan.Tests/DuplicateClauseWalkTests.cs
+@@ -0,0 +1,70 @@
++using System.Collections;
++using System.Reflection;
++
++namespace SqlArtisan.Tests;
++
++// The duplicate-clause walk reads each part's role and kinds from a table keyed by exact
++// type, where it used to test `is`; a clause missing from the table passes the walk unread.
++public class DuplicateClauseWalkTests
++{
++    private static readonly Assembly Core = typeof(SqlPart).Assembly;
++
++    private static readonly Dictionary<Type, string> RoleByType = ReadRoles();
++
++    [Fact]
++    public void TraitsByType_DerivedClause_IsListedWithItsBaseRole()
++    {
++        string[] missing = [.. RoleByType
++            .SelectMany(listed => ConcreteParts()
++                .Where(t => t != listed.Key && listed.Key.IsAssignableFrom(t))
++                .Where(t => RoleByType.GetValueOrDefault(t) != listed.Value)
++                .Select(t => $"{t.Name} (derives {listed.Key.Name})"))];
++
++        Assert.True(missing.Length == 0, string.Join(", ", missing));
++    }
++
++    [Theory]
++    [InlineData("ISelectItemsClause", "SelectItems", "SelectItems")]
++    [InlineData("IJoinedRelation", "ConditionedJoin", "ConditionFreeJoin")]
++    public void TraitsByType_ClauseBehindARoleInterface_IsListed(
++        string interfaceName,
++        string role,
++        string otherRole)
++    {
++        Type marker = Core.GetTypes().Single(t => t.IsInterface && t.Name == interfaceName);
++        Type[] implementers = [.. ConcreteParts().Where(marker.IsAssignableFrom)];
++
++        Assert.NotEmpty(implementers);
++
++        string[] unlisted = [.. implementers
++            .Where(t => RoleByType.GetValueOrDefault(t) is not { } listed
++                || (listed != role && listed != otherRole))
++            .Select(t => t.Name)];
++
++        Assert.True(unlisted.Length == 0, string.Join(", ", unlisted));
++    }
++
++    private static IEnumerable<Type> ConcreteParts() =>
++        Core.GetTypes().Where(t => typeof(SqlPart).IsAssignableFrom(t) && !t.IsAbstract);
++
++    private static Dictionary<Type, string> ReadRoles()
++    {
++        const BindingFlags NonPublic =
++            BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
++
++        object table = Core.GetType("SqlArtisan.Internal.SqlBuilderBase", throwOnError: true)!
++            .GetField("TraitsByType", NonPublic)!
++            .GetValue(null)!;
++
++        Dictionary<Type, string> roles = [];
++        foreach (object entry in (IEnumerable)table)
++        {
++            Type type = (Type)entry.GetType().GetProperty("Key")!.GetValue(entry)!;
++            object traits = entry.GetType().GetProperty("Value")!.GetValue(entry)!;
++            roles[type] = traits.GetType().GetProperty("Role", NonPublic)!.GetValue(traits)!
++                .ToString()!;
++        }
++
++        return roles;
++    }
++}
+diff --git a/tests/SqlArtisan.Tests/ParameterListTests.cs b/tests/SqlArtisan.Tests/ParameterListTests.cs
+new file mode 100644
+index 0000000..ccc7c21
+--- /dev/null
++++ b/tests/SqlArtisan.Tests/ParameterListTests.cs
+@@ -0,0 +1,456 @@
++using System.Data;
++using System.Numerics;
++using System.Reflection;
++using System.Text;
++using static SqlArtisan.Sql;
++
++namespace SqlArtisan.Tests;
++
++// From 128 parameters the buffer finds an instance it has already bound through a hash
++// index, which takes the earlier entries in two per append and grows at 257 and 1,025, and a
++// list of values reserves the parameter list; these statements cross those counts.
++public class ParameterListTests
++{
++    private readonly TestTable _t = new("t");
++
++    [Fact]
++    public void In_SharedBindPastTheIndexedCount_ReusesMarker()
++    {
++        BindValue shared = Bind(-1);
++        object[] values =
++            [.. Enumerable.Range(0, 300).Select(i => i % 50 == 0 ? shared : (object)i)];
++
++        SqlStatement sql =
++            Select(_t.Name)
++            .From(_t)
++            .Where(_t.Code.In(values))
++            .Build();
++
++        StringBuilder expected = new(
++            "SELECT \"t\".name FROM test_table \"t\" WHERE \"t\".code IN (:0");
++        for (int i = 1, next = 1; i < 300; i++)
++        {
++            expected.Append(i % 50 == 0 ? ", :0" : $", :{next++}");
++        }
++
++        expected.Append(')');
++
++        Assert.Equal(expected.ToString(), sql.Text);
++        Assert.Equal(295, sql.Parameters.Count);
++        Assert.Equal(-1, sql.Parameters.Get<int>(":0"));
++        Assert.Equal(299, sql.Parameters.Get<int>(":294"));
++    }
++
++    [Fact]
++    public void In_SharedBindFromBeforeTheList_ReusesMarker()
++    {
++        BindValue shared = Bind(-1);
++        object[] values =
++            [.. Enumerable.Range(0, 1100).Select(i => i == 1099 ? shared : (object)i)];
++
++        SqlStatement sql =
++            Select(_t.Name)
++            .From(_t)
++            .Where(_t.Code == shared | _t.Code.In(values))
++            .Build();
++
++        StringBuilder expected = new(
++            "SELECT \"t\".name FROM test_table \"t\" WHERE (\"t\".code = :0) OR (\"t\".code IN (");
++        for (int i = 1; i < 1100; i++)
++        {
++            expected.Append($":{i}, ");
++        }
++
++        expected.Append(":0))");
++
++        Assert.Equal(expected.ToString(), sql.Text);
++        Assert.Equal(1100, sql.Parameters.Count);
++        Assert.Equal(-1, sql.Parameters.Get<int>(":0"));
++        Assert.Equal(1098, sql.Parameters.Get<int>(":1099"));
++    }
++
++    [Fact]
++    public void Where_SharedBindAcrossAListGrownOneAtATime_ReusesMarker()
++    {
++        BindValue shared = Bind(-1);
++        SqlCondition condition = _t.Code == shared;
++        for (int i = 1; i <= 300; i++)
++        {
++            condition &= _t.Code != i;
++        }
++
++        condition &= _t.Code == shared;
++
++        SqlStatement sql =
++            Select(_t.Name)
++            .From(_t)
++            .Where(condition)
++            .Build();
++
++        StringBuilder expected = new(
++            "SELECT \"t\".name FROM test_table \"t\" WHERE (\"t\".code = :0)");
++        for (int i = 1; i <= 300; i++)
++        {
++            expected.Append($" AND (\"t\".code <> :{i})");
++        }
++
++        expected.Append(" AND (\"t\".code = :0)");
++
++        Assert.Equal(expected.ToString(), sql.Text);
++        Assert.Equal(301, sql.Parameters.Count);
++        Assert.Equal(300, sql.Parameters.Get<int>(":300"));
++    }
++
++    [Fact]
++    public void Values_SharedBindAcrossManyRows_ReusesMarker()
++    {
++        BindValue shared = Bind("same");
++        object?[][] rows = [.. Enumerable.Range(0, 100).Select(i => new object?[] { i, shared })];
++
++        SqlStatement sql =
++            InsertInto(_t, _t.Code, _t.Name)
++            .Values(rows)
++            .Build();
++
++        StringBuilder expected = new(
++            "INSERT INTO test_table AS \"t\" (code, name) VALUES (:0, :1)");
++        for (int i = 1; i < 100; i++)
++        {
++            expected.Append($", (:{i + 1}, :1)");
++        }
++
++        Assert.Equal(expected.ToString(), sql.Text);
++        Assert.Equal(101, sql.Parameters.Count);
++        Assert.Equal("same", sql.Parameters.Get<string>(":1"));
++        Assert.Equal(99, sql.Parameters.Get<int>(":100"));
++    }
++
++    // The index takes the 128 entries from before it two per append, last first, so a bind
++    // is found by the scan until its turn and by the probe after: both sides of each turn.
++    [Theory]
++    [InlineData(127, 129)]
++    [InlineData(127, 130)]
++    [InlineData(126, 129)]
++    [InlineData(126, 130)]
++    [InlineData(64, 160)]
++    [InlineData(64, 161)]
++    [InlineData(0, 129)]
++    [InlineData(0, 191)]
++    [InlineData(0, 192)]
++    [InlineData(0, 193)]
++    [InlineData(0, 256)]
++    [InlineData(0, 257)]
++    [InlineData(200, 256)]
++    [InlineData(200, 257)]
++    public void Where_SharedBindReusedWhileTheIndexFills_ReusesMarker(int position, int reuse)
++    {
++        BindValue shared = Bind(-1);
++        SqlCondition condition = position == 0 ? _t.Code == shared : _t.Code != 0;
++        for (int i = 1; i < reuse; i++)
++        {
++            condition &= i == position ? _t.Code == shared : _t.Code != i;
++        }
++
++        condition &= _t.Code == shared;
++
++        SqlStatement sql =
++            Select(_t.Name)
++            .From(_t)
++            .Where(condition)
++            .Build();
++
++        StringBuilder expected = new("SELECT \"t\".name FROM test_table \"t\" WHERE ");
++        expected.AppendJoin(
++            " AND ",
++            Enumerable.Range(0, reuse).Select(
++                i => $"(\"t\".code {(i == position ? "=" : "<>")} :{i})"));
++        expected.Append($" AND (\"t\".code = :{position})");
++
++        Assert.Equal(expected.ToString(), sql.Text);
++        Assert.Equal(reuse, sql.Parameters.Count);
++        Assert.Equal(-1, sql.Parameters.Get<int>($":{position}"));
++    }
++
++    // Neither the SQL nor the parameters show whether a list was indexed, so the list a
++    // statement keeps is read: indexed from the 129th parameter added one at a time, from the
++    // 128th where a list of values reserved it, and with its rented index handed back.
++    [Theory]
++    [InlineData("one at a time", 128, false)]
++    [InlineData("one at a time", 129, true)]
++    [InlineData("IN", 127, false)]
++    [InlineData("IN", 128, true)]
++    [InlineData("NOT IN", 127, false)]
++    [InlineData("NOT IN", 128, true)]
++    [InlineData("VALUES", 126, false)]
++    [InlineData("VALUES", 128, true)]
++    public void Build_ParametersReachingTheIndexedCount_KeepsAnIndexedListWithoutItsIndex(
++        string shape,
++        int count,
++        bool indexed)
++    {
++        SqlCondition chain = _t.Code != 0;
++        for (int i = 1; i < count; i++)
++        {
++            chain &= _t.Code != i;
++        }
++
++        int[] values = [.. Enumerable.Range(0, count)];
++        ISelectBuilderFrom select = Select(_t.Name).From(_t);
++        ISqlBuilder builder = shape switch
++        {
++            "one at a time" => select.Where(chain),
++            "IN" => select.Where(_t.Code.In(values)),
++            "NOT IN" => select.Where(_t.Code.NotIn(values)),
++            "VALUES" => InsertInto(_t, _t.Code, _t.Name).Values(
++                [.. Enumerable.Range(0, count / 2).Select(i => new object?[] { i, $"n{i}" })]),
++            _ => throw new ArgumentOutOfRangeException(nameof(shape)),
++        };
++
++        List<KeyValuePair<string, BindValue>> kept = KeptList(builder.Build());
++
++        Assert.Equal(count, kept.Count);
++        Assert.Equal(indexed, kept.GetType() != typeof(List<KeyValuePair<string, BindValue>>));
++        if (indexed)
++        {
++            Assert.Null(RentedIndex(kept));
++        }
++    }
++
++    // Two per append, so the 128 entries from before the index all have a slot 64 appends
++    // later; until then each lookup still scans the ones that wait.
++    [Theory]
++    [InlineData(129, 126)]
++    [InlineData(191, 2)]
++    [InlineData(192, 0)]
++    [InlineData(200, 0)]
++    public void Build_ParametersPastTheIndexedCount_LeavesTwoFewerUnindexedPerAppend(
++        int count,
++        int expectedAwaiting)
++    {
++        SqlCondition chain = _t.Code != 0;
++        for (int i = 1; i < count; i++)
++        {
++            chain &= _t.Code != i;
++        }
++
++        List<KeyValuePair<string, BindValue>> kept =
++            KeptList(Select(_t.Name).From(_t).Where(chain).Build());
++
++        Assert.Equal(expectedAwaiting, AwaitingSlot(kept));
++    }
++
++    // An output parameter is never looked up again, so it takes no slot and no turn: after
++    // 130 binds and 10 outputs the index is as far along as after the binds alone.
++    [Fact]
++    public void Returning_Oracle_OutputParametersPastTheIndexedCount_TakeNoSlot()
++    {
++        DbColumn[] columns = [.. Enumerable.Range(0, 130).Select(i => new DbColumn(_t, $"c{i}"))];
++        OutputParameter[] outputs =
++            [.. Enumerable.Range(0, 10).Select(i => new OutputParameter($"v{i}", DbType.Int32))];
++
++        SqlStatement sql =
++            Update(_t)
++            .Set([.. columns.Select((c, i) => c == i)])
++            .Returning([.. columns.AsSpan(0, 10)])
++            .Into(outputs)
++            .Build(Dbms.Oracle);
++
++        Assert.Equal(140, sql.Parameters.Count);
++        Assert.Equal(124, AwaitingSlot(KeptList(sql)));
++    }
++
++    // A build that throws never reaches the statement, so the buffer's Dispose hands the
++    // index back; the buffer is internal and gone by then, so it is driven directly.
++    [Fact]
++    public void Dispose_IndexedList_HandsBackItsIndex()
++    {
++        Type type = typeof(SqlPart).Assembly.GetType("SqlArtisan.Internal.SqlBuildingBuffer")!;
++        IDisposable buffer = (IDisposable)Activator.CreateInstance(
++            type,
++            BindingFlags.NonPublic | BindingFlags.Instance,
++            binder: null,
++            [Dbms.PostgreSql],
++            culture: null)!;
++        MethodInfo addParameter = type.GetMethod(
++            "AddParameter",
++            BindingFlags.NonPublic | BindingFlags.Instance)!;
++        for (int i = 0; i < 129; i++)
++        {
++            addParameter.Invoke(buffer, [Bind(i)]);
++        }
++
++        object list = type
++            .GetField("_parameters", BindingFlags.NonPublic | BindingFlags.Instance)!
++            .GetValue(buffer)!;
++
++        Assert.NotNull(RentedIndex(list));
++
++        buffer.Dispose();
++
++        Assert.Null(RentedIndex(list));
++    }
++
++    // Output parameters take no slot in the index, so the table is sized for every entry
++    // when the binds a held stage appends after them make it grow.
++    [Fact]
++    public void Returning_Oracle_HeldStageBindsAfterManyOutputParameters_CorrectSql()
++    {
++        DbColumn[] columns = [.. Enumerable.Range(0, 130).Select(i => new DbColumn(_t, $"c{i}"))];
++        BindValue shared = Bind(0);
++        EqualityCondition[] assignments =
++            [.. columns.Select((c, i) => i == 0 ? c == shared : c == i)];
++        OutputParameter[] outputs =
++            [.. Enumerable.Range(0, 600).Select(i => new OutputParameter($"v{i}", DbType.Int32))];
++        object[] returned = [.. Enumerable.Range(0, 600).Select(i => (object)columns[i % 130])];
++
++        IUpdateBuilderSet held = Update(_t).Set(assignments);
++        held.Returning(returned).Into(outputs);
++
++        SqlStatement sql = held.Where(_t.Code == shared & _t.Name == "n").Build(Dbms.Oracle);
++
++        StringBuilder expected = new("UPDATE test_table \"t\" SET ");
++        expected.AppendJoin(", ", Enumerable.Range(0, 130).Select(i => $"c{i} = :{i}"));
++        expected.Append(" RETURNING ");
++        expected.AppendJoin(", ", Enumerable.Range(0, 600).Select(i => $"\"t\".c{i % 130}"));
++        expected.Append(" INTO ");
++        expected.AppendJoin(", ", Enumerable.Range(0, 600).Select(i => $":v{i}"));
++        expected.Append(" WHERE (\"t\".code = :0) AND (\"t\".name = :730)");
++
++        Assert.Equal(expected.ToString(), sql.Text);
++        Assert.Equal(731, sql.Parameters.Count);
++        Assert.Equal(0, sql.Parameters.Get<int>(":0"));
++        Assert.Equal("n", sql.Parameters.Get<string>(":730"));
++        Assert.Equal(0, AwaitingSlot(KeptList(sql)));
++    }
++
++    // A reservation is for parameters that will arrive: a held bind that repeats, a list
++    // formatted a second time and a bind bound earlier add none, so the list a statement
++    // keeps is as large as its own doubling would have made it, as is one grown unreserved.
++    [Theory]
++    [InlineData("distinct values", 300)]
++    [InlineData("binds added one at a time", 200)]
++    [InlineData("one held bind repeated", 1)]
++    [InlineData("a list formatted twice", 100)]
++    [InlineData("binds bound before the list", 300)]
++    [InlineData("held binds in every row", 1004)]
++    public void Build_ListOfValues_KeepsNoMoreCapacityThanDoublingWould(
++        string shape,
++        int expectedCount)
++    {
++        List<KeyValuePair<string, BindValue>> kept = KeptList(ReservedShape(shape).Build());
++
++        Assert.Equal(expectedCount, kept.Count);
++        Assert.Equal(
++            Math.Max(4, (int)BitOperations.RoundUpToPowerOf2((uint)kept.Count)),
++            kept.Capacity);
++    }
++
++    // The one repeat a reservation cannot tell: an implicit bind is new wherever a value is
++    // passed, but SqlParameters.ForEach hands the instance out, and a caller who repeats it
++    // in one list has every occurrence reserved for. The SQL and the parameter are the same.
++    [Fact]
++    public void In_ImplicitBindReadBackAndRepeated_ReservesForEveryOccurrence()
++    {
++        BindValue readBack = null!;
++        Select(_t.Name).From(_t).Where(_t.Code == 1).Build().Parameters.ForEach(
++            (_, bind) => readBack = bind);
++
++        SqlStatement sql =
++            Select(_t.Name)
++            .From(_t)
++            .Where(_t.Code.In([.. Enumerable.Repeat((object)readBack, 5)]))
++            .Build();
++
++        Assert.Equal(
++            "SELECT \"t\".name FROM test_table \"t\" WHERE \"t\".code IN (:0, :0, :0, :0, :0)",
++            sql.Text);
++        Assert.Equal(1, sql.Parameters.Count);
++        Assert.Equal(8, KeptList(sql).Capacity);
++    }
++
++    // The reservation changes no capacity a statement keeps, only the arrays it drops on the
++    // way there, so it shows in bytes alone: held binds are not reserved for, and the same
++    // values passed directly are.
++    [Fact]
++    public void In_ValuesPassedDirectly_AllocatesLessThanTheSameValuesAsHeldBinds()
++    {
++        const int Builds = 16;
++        ISqlBuilder[] direct = new ISqlBuilder[Builds + 1];
++        ISqlBuilder[] held = new ISqlBuilder[Builds + 1];
++        for (int i = 0; i <= Builds; i++)
++        {
++            direct[i] = Select(_t.Name).From(_t).Where(
++                _t.Code.In(Enumerable.Range(0, 20).ToArray()));
++            held[i] = Select(_t.Name).From(_t).Where(
++                _t.Code.In([.. Enumerable.Range(0, 20).Select(v => (object)Bind(v))]));
++        }
++
++        // The first build of each pays for what the runtime allocates once.
++        Assert.Equal(direct[Builds].Build().Text, held[Builds].Build().Text);
++
++        long directBytes = AllocatedBy(direct.AsSpan(0, Builds));
++        long heldBytes = AllocatedBy(held.AsSpan(0, Builds));
++
++        // The 4-, 8- and 16-entry arrays a list of 20 doubles through: 88 + 152 + 280 bytes.
++        Assert.Equal(520 * Builds, heldBytes - directBytes);
++    }
++
++    private static List<KeyValuePair<string, BindValue>> KeptList(SqlStatement sql) =>
++        (List<KeyValuePair<string, BindValue>>)typeof(SqlParameters)
++            .GetField("_parameters", BindingFlags.NonPublic | BindingFlags.Instance)!
++            .GetValue(sql.Parameters)!;
++
++    private static object? RentedIndex(object indexedList) =>
++        indexedList.GetType()
++            .GetField("_slots", BindingFlags.NonPublic | BindingFlags.Instance)!
++            .GetValue(indexedList);
++
++    private static object? AwaitingSlot(object indexedList) =>
++        indexedList.GetType()
++            .GetField("_awaitingSlot", BindingFlags.NonPublic | BindingFlags.Instance)!
++            .GetValue(indexedList);
++
++    private static long AllocatedBy(ReadOnlySpan<ISqlBuilder> builders)
++    {
++        long before = GC.GetAllocatedBytesForCurrentThread();
++        foreach (ISqlBuilder builder in builders)
++        {
++            builder.Build();
++        }
++
++        return GC.GetAllocatedBytesForCurrentThread() - before;
++    }
++
++    // Built per case rather than passed in: xUnit reads a theory argument's properties to
++    // name the case, and a builder's set-operator properties continue it.
++    private ISqlBuilder ReservedShape(string shape)
++    {
++        BindValue held = Bind(-1);
++        BindValue[] tenant = [.. Enumerable.Range(0, 4).Select(i => Bind($"tenant{i}"))];
++        SqlCondition twice = _t.Code.In(Enumerable.Range(0, 100).ToArray());
++        BindValue[] earlier = [.. Enumerable.Range(0, 300).Select(i => Bind(i))];
++        SqlCondition bound = _t.Code == earlier[0];
++        foreach (BindValue bind in earlier.AsSpan(1))
++        {
++            bound |= _t.Code == bind;
++        }
++
++        ISelectBuilderFrom select = Select(_t.Name).From(_t);
++        return shape switch
++        {
++            "distinct values" => select.Where(_t.Code.In(Enumerable.Range(0, 300).ToArray())),
++            "binds added one at a time" => select.Where(
++                Enumerable.Range(1, 199).Aggregate(
++                    (SqlCondition)(_t.Code != 0),
++                    (all, i) => all & _t.Code != i)),
++            "one held bind repeated" => select.Where(
++                _t.Code.In([.. Enumerable.Repeat((object)held, 500)])),
++            "a list formatted twice" => select.Where(twice | twice),
++            "binds bound before the list" => select.Where(bound & _t.Code.NotIn(earlier)),
++            "held binds in every row" => InsertInto(_t, _t.Code, _t.Name, _t.CreatedAt).Values(
++                [.. Enumerable.Range(0, 1000)
++                    .Select(i => new object?[] { i, tenant[i % 4], tenant[0] })]),
++            _ => throw new ArgumentOutOfRangeException(nameof(shape)),
++        };
++    }
++}

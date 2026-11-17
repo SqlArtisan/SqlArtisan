@@ -236,9 +236,7 @@ internal static class Program
 
     sealed class FakeConnection : System.Data.IDbConnection
     {
-#pragma warning disable CS8767
         public string ConnectionString { get; set; } = "";
-#pragma warning restore CS8767
         public int ConnectionTimeout => 0;
         public string Database => "";
         public System.Data.ConnectionState State => System.Data.ConnectionState.Closed;
@@ -335,6 +333,63 @@ internal static class Program
         };
     }
 
+    static readonly BindValue s_same = Bind(7);
+    static readonly object[] s_same300 = Enumerable.Repeat((object)s_same, 300).ToArray();
+    static readonly object[] s_same5 = Enumerable.Repeat((object)s_same, 5).ToArray();
+    static readonly BindValue[] s_tenant = Enumerable.Range(0, 4).Select(k => Bind("tenant" + k)).ToArray();
+    static readonly object?[][] s_sharedRows = Enumerable.Range(0, 1000).Select(i =>
+        Enumerable.Range(0, 5).Select(k => k < 4 ? s_tenant[k] : (object?)(i * 10 + k)).ToArray()).ToArray();
+    static readonly DbColumn[] s_cols5 = Enumerable.Range(0, 5).Select(i => new DbColumn(s_u, "k" + i)).ToArray();
+    static readonly SqlCondition s_reused = s_u.Id.In(Enumerable.Range(0, 100).ToArray());
+    static readonly OutputParameter[] s_outs = Enumerable.Range(0, 300).Select(i => new OutputParameter("v" + i, System.Data.DbType.Int32)).ToArray();
+    static readonly object[] s_outItems = Enumerable.Range(0, 300).Select(i => (object)s_cols[i % 10]).ToArray();
+    static readonly byte[] s_bytes = new byte[4];
+
+    static object InSame300() => Select(s_u.Id).From(s_u).Where(s_u.Id.In(s_same300)).Build().Text;
+
+    static object InSame5() => Select(s_u.Id).From(s_u).Where(s_u.Id.In(s_same5)).Build().Text;
+
+    static object ValuesShared() => InsertInto(s_u, s_cols5).Values(s_sharedRows).Build().Text.Length;
+
+    static object CondTwice() => Select(s_u.Id).From(s_u).Where(s_reused | s_reused).Build().Text;
+
+    static object And129()
+    {
+        SqlCondition c = s_u.Id == 0;
+        for (int i = 1; i < 129; i++) c &= s_u.Id != i;
+        return Select(s_u.Id).From(s_u).Where(c).Build().Text;
+    }
+
+    static Func<object> AndN(int n) => () =>
+    {
+        SqlCondition c = s_u.Id == 0;
+        for (int i = 1; i < n; i++) c &= s_u.Id != i;
+        return Select(s_u.Id).From(s_u).Where(c).Build().Text;
+    };
+
+    static Func<object> HeldN(int n) => () =>
+    {
+        object[] v = new object[n];
+        for (int i = 0; i < n; i++) v[i] = Bind(i);
+        return Select(s_u.Id).From(s_u).Where(s_u.Id.In(v)).Build().Text;
+    };
+
+    static Func<object> HeldThenDirect(int held, int direct) => () =>
+    {
+        SqlCondition c = s_u.Id == Bind(-1);
+        for (int i = 1; i < held; i++) c |= s_u.Id == Bind(i);
+        return Select(s_u.Id).From(s_u).Where(c & s_u.Id.In(Enumerable.Range(0, direct).ToArray())).Build().Text;
+    };
+
+    static object RetInto300() =>
+        Update(s_u).Set(s_cols[0] == 1).Returning(s_outItems).Into(s_outs).Build(Dbms.Oracle).Text.Length;
+
+    static object BindBytes() => new BindValue(s_bytes);
+
+    static object BindInt() => new BindValue(5);
+
+    static object BindNullValue() => BindNull();
+
     static object In20Cols()
     {
         Users u = s_u;
@@ -404,6 +459,85 @@ internal static class Program
         Console.WriteLine($"stress: {N} statements x 3 parallel rounds, mismatches {bad}, digest {digest}");
     }
 
+    // Drives the internal buffer directly: random runs of new binds, repeats of earlier binds,
+    // output parameters and (where the build has it) reservations that over- or under-count.
+    static void Fuzz(int sequences, int maxOps)
+    {
+        const System.Reflection.BindingFlags F = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
+        var asm = typeof(SqlStatement).Assembly;
+        Type bufT = asm.GetType("SqlArtisan.Internal.SqlBuildingBuffer")!;
+        var add = bufT.GetMethod("AddParameter", F)!;
+        var addOut = bufT.GetMethod("AddOutParameter", F)!;
+        var toStmt = bufT.GetMethod("ToSqlStatement", F)!;
+        var reserve = bufT.GetMethod("ReserveParameters", F);
+        Type? implT = asm.GetType("SqlArtisan.Internal.ImplicitBindValue");
+        Func<object, BindValue> make = implT is null
+            ? v => new BindValue(v)
+            : v => (BindValue)Activator.CreateInstance(implT, F, null, new object[] { v }, null)!;
+        using var sha = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        long ops = 0, maxParams = 0;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        for (int seq = 0; seq < sequences; seq++)
+        {
+            var rnd = new Random(seq);
+            Dbms dbms = new[] { Dbms.MySql, Dbms.Oracle, Dbms.PostgreSql, Dbms.Sqlite, Dbms.SqlServer }[seq % 5];
+            object buf = Activator.CreateInstance(bufT, F, null, new object[] { dbms }, null)!;
+            var bound = new List<BindValue>();
+            int n = rnd.Next(1, maxOps), outs = 0;
+            // Bias the run toward one kind of step so long runs of each occur.
+            int pNew = rnd.Next(1, 10), pRep = rnd.Next(0, 6), pOut = rnd.Next(0, 6), pRes = rnd.Next(0, 3);
+            int total = pNew + pRep + pOut + pRes;
+            int k = 0, run = 0;
+            for (int i = 0; i < n; i++)
+            {
+                // Steps come in runs of one kind, some of them long: hundreds of output
+                // parameters between two binds is the shape that filled the prototype's table.
+                if (run-- <= 0)
+                {
+                    k = rnd.Next(total);
+                    run = rnd.Next(4) == 0 ? rnd.Next(1, 700) : rnd.Next(1, 8);
+                }
+                ops++;
+                if (k < pNew)
+                {
+                    BindValue b = rnd.Next(2) == 0 ? make(i) : new BindValue(i);
+                    bound.Add(b);
+                    add.Invoke(buf, new object[] { b });
+                }
+                else if (k < pNew + pRep)
+                {
+                    if (bound.Count > 0) add.Invoke(buf, new object[] { bound[rnd.Next(bound.Count)] });
+                }
+                else if (k < pNew + pRep + pOut)
+                {
+                    addOut.Invoke(buf, new object[] { new OutputParameter("o" + outs++, System.Data.DbType.Int32) });
+                }
+                else
+                {
+                    // A reservation for binds that may or may not follow, first bound or not.
+                    int claimed = rnd.Next(0, 300);
+                    bool reuse = rnd.Next(4) == 0 && bound.Count > 0;
+                    BindValue first = reuse ? bound[rnd.Next(bound.Count)] : make(-i);
+                    if (reserve is not null && implT is not null && implT.IsInstanceOfType(first))
+                        reserve.Invoke(buf, new object?[] { first, claimed });
+                    int arrive = rnd.Next(4) == 0 ? 0 : rnd.Next(0, claimed + 1);
+                    for (int j = 0; j < arrive; j++)
+                    {
+                        BindValue b = j == 0 ? first : make(j);
+                        if (j > 0 || !reuse) bound.Add(b);
+                        add.Invoke(buf, new object[] { b });
+                    }
+                }
+            }
+            var st = (SqlStatement)toStmt.Invoke(buf, null)!;
+            ((IDisposable)buf).Dispose();
+            maxParams = Math.Max(maxParams, st.Parameters.Count);
+            sha.AppendData(System.Text.Encoding.UTF8.GetBytes(st.Text));
+            st.Parameters.ForEach((name, v) => sha.AppendData(System.Text.Encoding.UTF8.GetBytes(name + "=" + v.Value + ";")));
+        }
+        Console.WriteLine($"fuzz: {sequences} sequences, {ops} steps, largest statement {maxParams} parameters, {watch.Elapsed.TotalSeconds:F1} s, digest {Convert.ToHexString(sha.GetHashAndReset())}");
+    }
+
     static (double ns, long bytes) Measure(Func<object> f, int n, int rounds, int warm = 200_000)
     {
         for (int i = 0; i < warm; i++) GC.KeepAlive(f());
@@ -441,6 +575,35 @@ internal static class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "outloop")
+        {
+            // A held UPDATE stage: SET binds, then RETURNING ... INTO, then a WHERE appended after it.
+            int binds = int.Parse(args[1]);
+            int outs = int.Parse(args[2]);
+            Users t = new("u");
+            EqualityCondition[] sets = Enumerable.Range(0, binds).Select(i => new DbColumn(t, "x" + i) == i).ToArray();
+            var held = Update(t).Set(sets);
+            object[] items = Enumerable.Range(0, outs).Select(i => (object)new DbColumn(t, "x" + (i % binds))).ToArray();
+            OutputParameter[] vars = Enumerable.Range(0, outs).Select(i => new OutputParameter("v" + i, System.Data.DbType.Int32)).ToArray();
+            held.Returning(items).Into(vars);
+            try
+            {
+                SqlStatement st = held.Where(t.Id == 1 & t.Name == "a").Build(Dbms.Oracle);
+                Console.WriteLine($"built: {st.Text.Length} chars, {st.Parameters.Count} parameters, tail: {st.Text[^40..]}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"threw {ex.GetType().Name}: {ex.Message}");
+            }
+            return;
+        }
+
+        if (args.Length > 0 && args[0] == "fuzz")
+        {
+            Fuzz(int.Parse(args[1]), int.Parse(args[2]));
+            return;
+        }
+
         if (args.Length > 0 && args[0] == "stress")
         {
             Stress();
@@ -452,16 +615,28 @@ internal static class Program
         {
             var all = new List<(string, Func<object>)>
             {
+                ("inSame300", InSame300), ("inSame5", InSame5), ("valuesShared", ValuesShared), ("condTwice", CondTwice),
+                ("and129", And129), ("retInto300", RetInto300), ("bindBytes", BindBytes), ("bindInt", BindInt), ("bindNull", BindNullValue),
                 ("in20cols", In20Cols), ("insertnull10", InsertNull10), ("simple", Simple), ("in20", In20), ("insert10", Insert10),
                 ("full", Full), ("fullOracle", FullOn(Dbms.Oracle)), ("fullMySql", FullOn(Dbms.MySql)),
                 ("fullSqlite", FullOn(Dbms.Sqlite)), ("fullSqlServer", FullOn(Dbms.SqlServer)), ("fullPg", FullOn(Dbms.PostgreSql)),
             };
             foreach (int[] a in s_idsN) all.Add(("in" + a.Length, InN(a.Length)));
+            foreach (int n in new[] { 100, 120, 127, 128, 129, 132, 136, 140, 145, 150, 160, 180, 200, 256, 257, 300 })
+            {
+                all.Add(("andN" + n, AndN(n)));
+                all.Add(("heldN" + n, HeldN(n)));
+            }
+            all.Add(("htd120_10", HeldThenDirect(120, 10)));
+            all.Add(("htd127_3", HeldThenDirect(127, 3)));
+            all.Add(("htd60_70", HeldThenDirect(60, 70)));
+            all.Add(("htd100_100", HeldThenDirect(100, 100)));
             string[] want = args[1][5..].Split(',');
             foreach (string w in want)
             {
                 var (name, f) = all.Single(c => c.Item1 == w);
-                var (ns, bytes) = Measure(f, 200_000, rounds, 100_000);
+                bool heavy = w.StartsWith("htd") || w.StartsWith("andN") || w.StartsWith("heldN") || w is "valuesShared" or "retInto300" or "and129" or "inSame300" or "condTwice";
+                var (ns, bytes) = heavy ? Measure(f, 2000, rounds, 3000) : Measure(f, 200_000, rounds, 100_000);
                 Console.WriteLine($"{name,-13} {ns,8:F1} ns  {bytes,6} B");
             }
             return;
