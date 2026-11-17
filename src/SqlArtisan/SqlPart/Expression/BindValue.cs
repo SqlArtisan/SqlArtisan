@@ -1,4 +1,5 @@
 using System.Data;
+using System.Reflection;
 using SqlArtisan.Internal;
 
 namespace SqlArtisan;
@@ -16,6 +17,8 @@ public class BindValue : SqlExpression
     // Sql.Bind shares it: the remedy for a null bind is BindNull, not Sql.Null.
     internal const string NullValueMessage =
         "A C# null cannot be bound; use Sql.BindNull to bind SQL NULL.";
+
+    private static readonly Assembly s_assembly = typeof(BindValue).Assembly;
 
     /// <summary>
     /// Creates an explicit bind-parameter handle for <paramref name="value"/>.
@@ -45,7 +48,7 @@ public class BindValue : SqlExpression
 
         // The driver would get the object itself (`new BindValue(u.Id + 1)` bound an
         // AdditionOperator); any enum binds, the explicit spelling #667's resolvers name.
-        if (value is SqlPart or ISqlBuilder or ISubquery || IsSqlArtisanObject(value.GetType()))
+        if (IsSqlArtisanObject(value))
         {
             throw new ArgumentException(
                 "A SqlArtisan object cannot be bound; pass a .NET value, "
@@ -79,12 +82,25 @@ public class BindValue : SqlExpression
     /// </summary>
     public int? Size { get; }
 
-    // An array reports its element type's assembly, so BindArray's element is what
-    // is tested: an array of a SqlArtisan enum binds like the enum itself.
-    private static bool IsSqlArtisanObject(Type type)
+    private static bool IsSqlArtisanObject(object value)
     {
+        // No directly bindable type is one, and the tests below cost an int or a string
+        // most of its bind: each implements dozens of interfaces to miss (ADR 0006).
+        if (ExpressionResolver.IsDirectlyBindable(value))
+        {
+            return false;
+        }
+
+        if (value is SqlPart or ISqlBuilder or ISubquery)
+        {
+            return true;
+        }
+
+        // An array reports its element type's assembly, so BindArray's element is what
+        // is tested: an array of a SqlArtisan enum binds like the enum itself.
+        Type type = value.GetType();
         Type tested = type.GetElementType() ?? type;
-        return !tested.IsEnum && tested.Assembly == typeof(BindValue).Assembly;
+        return !tested.IsEnum && tested.Assembly == s_assembly;
     }
 
     internal override void Format(SqlBuildingBuffer buffer) =>

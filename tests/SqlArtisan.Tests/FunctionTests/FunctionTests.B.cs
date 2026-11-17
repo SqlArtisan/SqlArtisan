@@ -1,3 +1,5 @@
+using System.Numerics;
+using System.Reflection;
 using System.Text;
 using static SqlArtisan.Sql;
 
@@ -164,6 +166,41 @@ public partial class FunctionTests
                 "A SqlArtisan object cannot be bound; pass a .NET value, "
                     + "or write an expression in place of the bind. (Parameter 'value')",
                 ex.Message);
+        }
+    }
+
+    // The constructor passes a directly bindable value without its SqlArtisan-object
+    // test, so a type of this assembly on that list would bind as the object itself.
+    [Fact]
+    public void BindValue_NoSqlArtisanTypeButAnEnum_IsDirectlyBindable()
+    {
+        Assembly assembly = typeof(BindValue).Assembly;
+        MethodInfo isDirectlyBindableType = assembly
+            .GetType("SqlArtisan.Internal.ExpressionResolver", throwOnError: true)!
+            .GetMethod("IsDirectlyBindableType", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        Type[] bindable = [.. assembly.GetTypes()
+            .Where(type => !type.IsEnum && !type.ContainsGenericParameters)
+            .Where(type => (bool)isDirectlyBindableType.Invoke(null, [type])!)];
+
+        Assert.Empty(bindable);
+    }
+
+    [Fact]
+    public void BindValue_DirectlyBindableValue_KeepsTheValue()
+    {
+        object[] values =
+        [
+            true, 'c', "s", new DateTime(2024, 1, 2), DateTimeOffset.UnixEpoch,
+            new DateOnly(2024, 1, 2), new TimeOnly(1, 2), TimeSpan.FromSeconds(3),
+            (sbyte)1, (byte)2, (short)3, (ushort)4, 5, 6u, (nint)7, (nuint)8, 9L, 10UL,
+            1.5f, 2.5d, 3.5m, new Complex(1, 2), DayOfWeek.Monday, Dbms.Oracle,
+            DateTimePart.Day, Guid.Empty,
+        ];
+
+        foreach (object value in values)
+        {
+            Assert.Same(value, new BindValue(value).Value);
         }
     }
 
