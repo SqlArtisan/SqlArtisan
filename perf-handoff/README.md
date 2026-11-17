@@ -5,23 +5,43 @@
 
 - 基準コミット: `f428588`(#845 マージ直後の `main`)。
 - `src/` と `tests/` は変更していない。実装は `patches/` の差分としてだけ存在する。
-- **採用候補は `patches/final-walk-table-and-parameter-index.diff` の 1 本**。`patches/01`〜`09` は
-  そこに至るまでの試作で、そのまま積むとデグレと無限ループがある(下の「最終版」と「レビュー」)。
+- **採用するのは `patches/adopted-walk-table-and-reservation.diff` の 1 本**(索引なし)。
+  `patches/final-…` はハッシュ索引つきの版で不採用。`patches/01`〜`09` はそこに至るまでの試作で、
+  そのまま積むとデグレと無限ループがある(下の「索引あり版」と「レビュー」)。
 - このフォルダは引き継ぎ用で、`main` に入れるものではない。実装が済んだら消す。
 
 | パス | 中身 |
 |---|---|
 | `README.md` | この文書。結論、施策ごとの中身と実装時の注意 |
 | `results/measurements.md` | 生の計測値と、変種の名前(`base` / `e1` / `p1` …)の対応 |
-| `patches/final-walk-table-and-parameter-index.diff` | 最終版。`f428588` に `git apply` で当たる 1 コミット分(ソース 8 ファイル、テスト 3 ファイル、CHANGELOG) |
-| `patches/final-commit-message.txt` | 最終版のコミットメッセージ |
-| `results/panel-audit.md` | 最終版に対する 3 モデルのパネルレビューの記録、判定、最終版の計測、残るコスト |
+| `patches/adopted-walk-table-and-reservation.diff` | 採用版(索引なし)。`f428588` に `git apply` で当たる 1 コミット分 |
+| `patches/adopted-commit-message.txt` | 採用版のコミットメッセージ |
+| `results/adopted-no-index.md` | 採用版のゲート、変異テスト、計測、確かめていないこと |
+| `patches/final-walk-table-and-parameter-index.diff` | 索引あり版(不採用)。`f428588` に `git apply` で当たる 1 コミット分(ソース 8 ファイル、テスト 3 ファイル、CHANGELOG) |
+| `patches/final-commit-message.txt` | 索引あり版のコミットメッセージ |
+| `results/panel-audit.md` | 索引あり版に対する 3 モデルのパネルレビューの記録、判定、最終版の計測、残るコスト |
 | `patches/01`〜`09` | 試作のステップ別差分。番号順に積む前提(下記)。採用しない |
 | `patches/alt-01-…` | 01 の代案(辞書 1 つ)。01 と 02 のあとに当てる |
 | `harness/` | 時間とアロケーションを測るコンソール。`SqlArtisan.sln` には入っていない |
 | `walkcheck/` | 01 の種別コードを全 `SqlPart` クラスについて元の表と突き合わせるコンソール |
 
-## 最終版(パネルレビュー後)
+## 採用版: 索引なし(ユーザー判断)
+
+128 個以上のパラメータを持つ文は稀なので、ハッシュ索引は採用しない。採用するのは
+`patches/adopted-walk-table-and-reservation.diff`(コミット文は `patches/adopted-commit-message.txt`)で、
+下の最終版から索引だけを外したもの。ゲート、変異テスト、現行との出力比較、計測は
+`results/adopted-no-index.md` にある。
+
+- 現行より遅い形も、確保が増える形も、測った範囲にない。
+- 頻用ケースは索引あり版と同じ(ベンチマークのクエリ 1,054〜1,071 → 922〜948 ns、20 値の `IN`
+  約 1,500〜1,650 → 約 1,010〜1,090 ns)。
+- 索引を外した影響は 128 個以上だけ: 300 個までは 0〜4 µs、1,000 個で約 0.12〜0.16 ms 遅い
+  (それでも現行より約 30〜40% 速い)。
+
+`patches/final-walk-table-and-parameter-index.diff` と `results/panel-audit.md` は、索引あり版の
+記録として残してある。
+
+## 索引あり版(パネルレビュー後。不採用)
 
 試作 01 + 02、04、06、09 にあたる 4 つの施策を、レビューで見つかった問題を直して書き直したもの。
 05、07、08 は入れていない(判断は下の表のとおり)。03 は不採用。
@@ -52,7 +72,7 @@ dotnet test tests/SqlArtisan.Tests -c Release      # 2,310 件
 基準機での公式ベンチマーク、.NET 8 ランタイムでの時間。README のベンチマーク表と CHANGELOG の
 「約 15%」を測り直すかは未決(基準機で公式ベンチマークを回す必要がある)。
 
-## 試作段階の結論(経緯の記録。採用するのは上の最終版)
+## 試作段階の結論(経緯の記録)
 
 公式ベンチマークのクエリは、パッチ 01〜06 で 1.56 → 1.24 µs(約 −20%)、2.27 → 2.19 KB になった
 (BenchmarkDotNet `--inProcess`、基準と試作を交互に 2 回ずつ。同じ回の Sqlify は 1.52〜1.61 µs)。

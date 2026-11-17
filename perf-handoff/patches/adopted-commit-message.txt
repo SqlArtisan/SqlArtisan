@@ -1,0 +1,32 @@
+perf: Read each part once in the duplicate-clause walk and reserve the parameter list
+
+The duplicate-clause walk still cost the benchmark query about a seventh of its
+build: two FrozenDictionary probes and some thirty type tests per part. One
+table keyed by exact type now gives a part's role and both its kinds in one
+probe, and the exclusive pairs are read through a per-kind mask. The tables the
+walk is built from are unchanged, so are its decisions and every message;
+RequirementOnlyOnClause, which the type tests matched through its base, is
+listed beside it, and DuplicateClauseWalkTests fails for a derived clause or an
+ISelectItemsClause / IJoinedRelation implementer the table lacks.
+
+A value passed where an expression goes now binds as ImplicitBindValue, an
+internal subclass of BindValue made without the public constructor's reflection
+check, which a directly bindable value always passes. One exists per occurrence,
+so an IN / NOT IN list and a VALUES clause reserve the parameter list for the
+ones they hold, unless their first is already bound (the list was formatted
+before), at a capacity the list's own doubling would reach. The smaller arrays
+are skipped, and the list a statement keeps is the size it was before. The first
+is looked for only when the list lacks the room, so a statement of many short
+lists does not scan its parameters twice for each. A BindValue the caller holds
+can repeat one already bound, so it is not reserved for and grows the list as
+before. The one repeat the count cannot tell is an implicit bind read back
+through SqlParameters.ForEach and passed again several times in one list: each
+occurrence is reserved for, so that statement keeps a larger array than it
+fills.
+
+Finding an instance already bound stays a scan of the list, as ADR 0006 leaves
+it: a hash index pays only from about 128 parameters, which is rare, and costs
+more code than that case earns.
+
+The emitted SQL, the parameter names, order and values are unchanged for every
+statement.
