@@ -29,7 +29,7 @@
 ```bash
 git checkout -b perf/walk-table-and-parameter-index f428588
 git apply perf-handoff/patches/final-walk-table-and-parameter-index.diff
-dotnet test tests/SqlArtisan.Tests -c Release      # 2,307 件
+dotnet test tests/SqlArtisan.Tests -c Release      # 2,310 件
 ```
 
 | 施策 | 試作との違い |
@@ -44,8 +44,8 @@ dotnet test tests/SqlArtisan.Tests -c Release      # 2,307 件
 - ベンチマークのクエリ: 997〜1,039 → 917〜947 ns、2,352 B のまま。
 - 20 値の `IN`: 約 1,500 → 約 1,090 ns、3,496 → 2,976 B。10 列 INSERT: 約 1,310 → 約 930 ns、2,064 → 1,824 B。
 - 1,000 値の `IN`: 328〜341 → 69〜76 µs、153,736 → 137,240 B。
-- 測った形で現行より遅いものはない。確保が増えるのは、129 個目のパラメータに達する文での
-  1 回 48 B だけ(索引つきリストのオブジェクト)。
+- 測った形で現行より遅いものはない。確保が増えるのは、129 個目のパラメータに達する文
+  (容量確保で伸びた場合は 128 個ちょうどの文も)での 1 回 48 B だけ(索引つきリストのオブジェクト)。
 - SQL、パラメータ名・順序・値、例外とメッセージは変わらない(差分テストと乱数テストで確認)。
 
 確かめていないこと: コンテナを使う結合テスト(MySQL、Oracle、PostgreSQL、SQL Server)、
@@ -129,6 +129,8 @@ dotnet out/base/H.dll probe      # 同一 BindValue の再利用を含む文の�
 dotnet out/base/H.dll stress     # 20,000 文を並列に組み立てて逐次の結果と突き合わせる
 dotnet out/base/H.dll 7 only=in33,in64,fullOracle   # 追加シナリオを名前で選ぶ
 dotnet out/base/H.dll 25 only=heldN129,andN136,htd120_10   # 切り替え付近: 保持バインド N 個の IN、AND 条件 N 個、保持 120 個 + 10 値
+dotnet out/base/H.dll 7 only=manyIn1b_100,manyIn2b_60,eqIn64,inAfter64   # 単一値 / 2 値の IN を N 個、x = i AND y IN (i) を N 組、64 個のあとに 64 値の IN
+dotnet out/base/H.dll mergemsg   # 保持した MERGE 分岐に UPDATE SET ... WHERE と DELETE。名指しされる排他ペアを表示
 dotnet out/base/H.dll outloop 32 223   # 保持ステージにバインド 32 個 → 出力 223 個 → バインド。試作 06 はここで戻らない
 dotnet out/base/H.dll fuzz 3000 1500   # 内部バッファへの乱数列。ダイジェストを基準と比べる。試作 06 はハングする
 

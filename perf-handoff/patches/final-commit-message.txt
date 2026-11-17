@@ -15,8 +15,9 @@ list is a subclass that finds an instance through a rented open-addressing
 index; below that the scan stays, since it is the faster of the two there. The
 buffer gains no field. The switch happens where the list was about to grow, so
 the array it allocates is the one growth would have; the list object is 48
-bytes more, once, for a statement that reaches 129 parameters, and a thread's
-first large build allocates the index it later rents back.
+bytes more, once, for a statement that reaches 129 parameters, or 128 where a
+reservation is what grew the list to hold them, and a thread's first large
+build allocates the index it later rents back.
 
 Hashing an instance for the first time is what the index costs, and a
 statement ending just past the switch would never earn back the cost of
@@ -28,17 +29,19 @@ whenever it grows, so a held stage that appends binds after hundreds of output
 parameters still finds an empty slot.
 
 A value passed where an expression goes now binds as ImplicitBindValue, an
-internal subclass of BindValue made without the public constructor's
-reflection check, which a directly bindable value always passes. One exists per
-occurrence, so an IN / NOT IN list and a VALUES clause reserve the parameter
-list for the ones they hold, unless their first is already bound (the list was
-formatted before), at a capacity the list's own doubling would reach. The
-smaller arrays are skipped, and the list a statement keeps is the size it was
-before. A BindValue the caller holds can repeat one already bound, so it is not
-reserved for and grows the list as before. The one repeat the count cannot
-tell is an implicit bind read back through SqlParameters.ForEach and passed
-again several times in one list: each occurrence is reserved for, so that
-statement keeps a larger array than it fills.
+internal subclass of BindValue made without the public constructor's reflection
+check, which a directly bindable value always passes. One exists per occurrence,
+so an IN / NOT IN list and a VALUES clause reserve the parameter list for the
+ones they hold, unless their first is already bound (the list was formatted
+before), at a capacity the list's own doubling would reach. The smaller arrays
+are skipped, and the list a statement keeps is the size it was before. The first
+is looked for only when the list lacks the room, so a statement of many short
+lists does not scan its parameters twice for each. A BindValue the caller holds
+can repeat one already bound, so it is not reserved for and grows the list as
+before. The one repeat the count cannot tell is an implicit bind read back
+through SqlParameters.ForEach and passed again several times in one list: each
+occurrence is reserved for, so that statement keeps a larger array than it
+fills.
 
 The emitted SQL, the parameter names, order and values are unchanged for every
 statement.

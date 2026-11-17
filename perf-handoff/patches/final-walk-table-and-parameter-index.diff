@@ -340,7 +340,7 @@ index 60772cf..77d81ce 100644
      private static void ThrowJoinConditionMissing() =>
          throw new ArgumentException(
 diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
-index 8fd4709..4bc9a83 100644
+index 8fd4709..37fb612 100644
 --- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
 +++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
 @@ -1,6 +1,8 @@
@@ -382,7 +382,7 @@ index 8fd4709..4bc9a83 100644
          _parameters = null;
          _disposed = true;
      }
-@@ -730,27 +737,128 @@ internal sealed class SqlBuildingBuffer : IDisposable
+@@ -730,27 +737,131 @@ internal sealed class SqlBuildingBuffer : IDisposable
  
          // The same instance formatted twice (SELECT and GROUP BY) reuses its marker: PostgreSQL
          // 16, SQL Server 2022 and Oracle XE 21.3.0 reject distinct ones there (#241's twins).
@@ -468,15 +468,18 @@ index 8fd4709..4bc9a83 100644
 +    // Each is a new parameter unless its list was formatted before, which its first one tells.
 +    internal SqlBuildingBuffer ReserveParameters(ImplicitBindValue? first, int binds)
 +    {
-+        if (first is null
-+            || (_parameters is not null && FindMarker(_parameters, first) is not null))
++        if (first is null)
 +        {
 +            return this;
 +        }
 +
 +        int count = _parameters?.Count ?? 0;
 +        int capacity = (int)BitOperations.RoundUpToPowerOf2((uint)(count + binds));
-+        if (capacity <= Math.Max(_parameters?.Capacity ?? 0, DefaultListCapacity))
++
++        // The room is checked before the first one is looked for: most lists already fit,
++        // and the lookup would scan the parameters once more for each of them.
++        if (capacity <= Math.Max(_parameters?.Capacity ?? 0, DefaultListCapacity)
++            || (_parameters is not null && FindMarker(_parameters, first) is not null))
 +        {
 +            return this;
 +        }
@@ -523,7 +526,7 @@ index 8fd4709..4bc9a83 100644
      internal SqlBuildingBuffer AddOutParameter(OutputParameter output)
      {
          ObjectDisposedException.ThrowIf(_disposed, this);
-@@ -773,11 +881,14 @@ internal sealed class SqlBuildingBuffer : IDisposable
+@@ -773,11 +884,14 @@ internal sealed class SqlBuildingBuffer : IDisposable
          }
  
          Append(name);
@@ -543,7 +546,7 @@ index 8fd4709..4bc9a83 100644
          return this;
      }
  
-@@ -789,6 +900,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+@@ -789,6 +903,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
          // never mutated after this point (Dispose only returns the char buffer).
          string sql = new(_buffer, 0, _position);
          List<KeyValuePair<string, BindValue>> parameters = _parameters ?? s_emptyParameters;
@@ -551,7 +554,7 @@ index 8fd4709..4bc9a83 100644
          _parameters = null;
          return new(sql, parameters);
      }
-@@ -877,4 +989,124 @@ internal sealed class SqlBuildingBuffer : IDisposable
+@@ -877,4 +992,124 @@ internal sealed class SqlBuildingBuffer : IDisposable
          ArrayPool<char>.Shared.Return(_buffer);
          _buffer = newBuffer;
      }
@@ -772,7 +775,7 @@ index 4948ff9..9410210 100644
      /// Gets the bound value.
      /// </summary>
 diff --git a/tests/SqlArtisan.Tests/BuilderReuseTests.cs b/tests/SqlArtisan.Tests/BuilderReuseTests.cs
-index fca61d8..1f9fe99 100644
+index fca61d8..bbbfaaf 100644
 --- a/tests/SqlArtisan.Tests/BuilderReuseTests.cs
 +++ b/tests/SqlArtisan.Tests/BuilderReuseTests.cs
 @@ -621,6 +621,23 @@ public class BuilderReuseTests
@@ -798,6 +801,31 @@ index fca61d8..1f9fe99 100644
 +
      [Fact]
      public void Set_ThenValues_OnHeldInsertStage_ThrowsArgumentException()
+     {
+@@ -815,6 +832,24 @@ public class BuilderReuseTests
+             ex.Message);
+     }
+ 
++    [Fact]
++    public void ThenUpdateSetWhere_ThenThenDelete_OnHeldBranch_ThrowsArgumentException()
++    {
++        // DELETE excludes UPDATE SET and its WHERE alike; the message names the pair listed first.
++        TestTable t = new("t");
++        TestTable s = new("s");
++        IMergeBuilderWhenMatched held = MergeInto(t).Using(s).On(t.Code == s.Code).WhenMatched();
++        held.ThenUpdateSet(t.Name == s.Name).Where(t.Code == 1);
++        ISqlBuilder second = held.ThenDelete();
++
++        ArgumentException ex = Assert.Throws<ArgumentException>(() => second.Build(Dbms.Oracle));
++
++        Assert.Equal(
++            "A MERGE WHEN branch takes one action; DELETE cannot be combined with UPDATE SET, "
++                + "and a stage on a held builder supplied both.",
++            ex.Message);
++    }
++
+     [Fact]
+     public void ThenDelete_ThenThenUpdateSet_OnHeldBranch_ThrowsArgumentException()
      {
 diff --git a/tests/SqlArtisan.Tests/DuplicateClauseWalkTests.cs b/tests/SqlArtisan.Tests/DuplicateClauseWalkTests.cs
 new file mode 100644
@@ -877,10 +905,10 @@ index 0000000..cebfef0
 +}
 diff --git a/tests/SqlArtisan.Tests/ParameterListTests.cs b/tests/SqlArtisan.Tests/ParameterListTests.cs
 new file mode 100644
-index 0000000..ccc7c21
+index 0000000..8c9872b
 --- /dev/null
 +++ b/tests/SqlArtisan.Tests/ParameterListTests.cs
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,466 @@
 +using System.Data;
 +using System.Numerics;
 +using System.Reflection;
@@ -1056,7 +1084,7 @@ index 0000000..ccc7c21
 +
 +    // Neither the SQL nor the parameters show whether a list was indexed, so the list a
 +    // statement keeps is read: indexed from the 129th parameter added one at a time, from the
-+    // 128th where a list of values reserved it, and with its rented index handed back.
++    // 128th where a list of values had to reserve it, and with its rented index handed back.
 +    [Theory]
 +    [InlineData("one at a time", 128, false)]
 +    [InlineData("one at a time", 129, true)]
@@ -1066,13 +1094,16 @@ index 0000000..ccc7c21
 +    [InlineData("NOT IN", 128, true)]
 +    [InlineData("VALUES", 126, false)]
 +    [InlineData("VALUES", 128, true)]
++    [InlineData("IN after 100 binds", 128, false)]
++    [InlineData("IN after 100 binds", 129, true)]
 +    public void Build_ParametersReachingTheIndexedCount_KeepsAnIndexedListWithoutItsIndex(
 +        string shape,
 +        int count,
 +        bool indexed)
 +    {
++        int chained = shape == "IN after 100 binds" ? 100 : count;
 +        SqlCondition chain = _t.Code != 0;
-+        for (int i = 1; i < count; i++)
++        for (int i = 1; i < chained; i++)
 +        {
 +            chain &= _t.Code != i;
 +        }
@@ -1082,6 +1113,7 @@ index 0000000..ccc7c21
 +        ISqlBuilder builder = shape switch
 +        {
 +            "one at a time" => select.Where(chain),
++            "IN after 100 binds" => select.Where(chain & _t.Code.In(values[100..])),
 +            "IN" => select.Where(_t.Code.In(values)),
 +            "NOT IN" => select.Where(_t.Code.NotIn(values)),
 +            "VALUES" => InsertInto(_t, _t.Code, _t.Name).Values(
@@ -1204,6 +1236,7 @@ index 0000000..ccc7c21
 +        Assert.Equal(0, sql.Parameters.Get<int>(":0"));
 +        Assert.Equal("n", sql.Parameters.Get<string>(":730"));
 +        Assert.Equal(0, AwaitingSlot(KeptList(sql)));
++        Assert.Equal(4096, SlotCount(KeptList(sql)));
 +    }
 +
 +    // A reservation is for parameters that will arrive: a held bind that repeats, a list
@@ -1292,6 +1325,11 @@ index 0000000..ccc7c21
 +        indexedList.GetType()
 +            .GetField("_awaitingSlot", BindingFlags.NonPublic | BindingFlags.Instance)!
 +            .GetValue(indexedList);
++
++    private static int SlotCount(object indexedList) =>
++        (int)indexedList.GetType()
++            .GetField("_mask", BindingFlags.NonPublic | BindingFlags.Instance)!
++            .GetValue(indexedList)! + 1;
 +
 +    private static long AllocatedBy(ReadOnlySpan<ISqlBuilder> builders)
 +    {

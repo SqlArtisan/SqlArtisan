@@ -367,6 +367,60 @@ internal static class Program
         return Select(s_u.Id).From(s_u).Where(c).Build().Text;
     };
 
+    // n IN lists of k values each: every list asks for a reservation the list already has room for.
+    static Func<object> ManyIn(int n, int k) => () =>
+    {
+        int next = 0;
+        SqlCondition? c = null;
+        for (int i = 0; i < n; i++)
+        {
+            object[] v = new object[k];
+            for (int j = 0; j < k; j++) v[j] = next++;
+            SqlCondition one = s_u.Id.In(v);
+            c = c is null ? one : c & one;
+        }
+        return Select(s_u.Id).From(s_u).Where(c!).Build().Text;
+    };
+
+    // The same shape over one condition tree made beforehand, so the chain and Build() are timed.
+    static Func<object> ManyInBuild(int n, int k)
+    {
+        int next = 0;
+        SqlCondition? c = null;
+        for (int i = 0; i < n; i++)
+        {
+            object[] v = new object[k];
+            for (int j = 0; j < k; j++) v[j] = next++;
+            SqlCondition one = s_u.Id.In(v);
+            c = c is null ? one : c & one;
+        }
+        SqlCondition all = c!;
+        return () => Select(s_u.Id).From(s_u).Where(all).Build().Text;
+    }
+
+    // n pairs of "x = i AND y IN (i)": a bind added alone between every two short lists.
+    static Func<object> EqIn(int n)
+    {
+        SqlCondition? c = null;
+        for (int i = 0; i < n; i++)
+        {
+            SqlCondition one = s_u.Id == i & s_u.Id.In(new object[] { i + 100_000 });
+            c = c is null ? one : c & one;
+        }
+        SqlCondition all = c!;
+        return () => Select(s_u.Id).From(s_u).Where(all).Build().Text;
+    }
+
+    // 64 binds added one at a time, then a list of 64: the reservation takes the list to 128.
+    static object InAfter64()
+    {
+        SqlCondition c = s_u.Id != -1;
+        for (int i = 1; i < 64; i++) c &= s_u.Id != -1 - i;
+        object[] v = new object[64];
+        for (int i = 0; i < 64; i++) v[i] = i;
+        return Select(s_u.Id).From(s_u).Where(c & s_u.Id.In(v)).Build().Text;
+    }
+
     static Func<object> HeldN(int n) => () =>
     {
         object[] v = new object[n];
@@ -598,6 +652,25 @@ internal static class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "mergemsg")
+        {
+            // A held MERGE branch given UPDATE SET ... WHERE and then DELETE: DELETE has two partners there.
+            Users t = new("t");
+            Users s = new("s");
+            var held = MergeInto(t).Using(s).On(t.Id == s.Id).WhenMatched();
+            held.ThenUpdateSet(t.Name == s.Name).Where(t.Id == 1);
+            try
+            {
+                held.ThenDelete().Build(Dbms.Oracle);
+                Console.WriteLine("built");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name}: {ex.Message}");
+            }
+            return;
+        }
+
         if (args.Length > 0 && args[0] == "fuzz")
         {
             Fuzz(int.Parse(args[1]), int.Parse(args[2]));
@@ -627,6 +700,17 @@ internal static class Program
                 all.Add(("andN" + n, AndN(n)));
                 all.Add(("heldN" + n, HeldN(n)));
             }
+            foreach (int n in new[] { 10, 20, 30, 40, 60, 100, 128, 140, 192, 257 })
+            {
+                all.Add(("manyIn1_" + n, ManyIn(n, 1)));
+                all.Add(("manyIn1b_" + n, ManyInBuild(n, 1)));
+                all.Add(("manyIn2b_" + n, ManyInBuild(n, 2)));
+                all.Add(("manyIn5b_" + n, ManyInBuild(n, 5)));
+                all.Add(("manyIn2_" + n, ManyIn(n, 2)));
+                all.Add(("manyIn5_" + n, ManyIn(n, 5)));
+            }
+            foreach (int n in new[] { 20, 40, 64, 80, 100, 128 }) all.Add(("eqIn" + n, EqIn(n)));
+            all.Add(("inAfter64", InAfter64));
             all.Add(("htd120_10", HeldThenDirect(120, 10)));
             all.Add(("htd127_3", HeldThenDirect(127, 3)));
             all.Add(("htd60_70", HeldThenDirect(60, 70)));
@@ -635,7 +719,7 @@ internal static class Program
             foreach (string w in want)
             {
                 var (name, f) = all.Single(c => c.Item1 == w);
-                bool heavy = w.StartsWith("htd") || w.StartsWith("andN") || w.StartsWith("heldN") || w is "valuesShared" or "retInto300" or "and129" or "inSame300" or "condTwice";
+                bool heavy = w.StartsWith("htd") || w.StartsWith("eqIn") || w == "inAfter64" || w.StartsWith("manyIn") || w.StartsWith("andN") || w.StartsWith("heldN") || w is "valuesShared" or "retInto300" or "and129" or "inSame300" or "condTwice";
                 var (ns, bytes) = heavy ? Measure(f, 2000, rounds, 3000) : Measure(f, 200_000, rounds, 100_000);
                 Console.WriteLine($"{name,-13} {ns,8:F1} ns  {bytes,6} B");
             }
