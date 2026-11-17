@@ -3,8 +3,9 @@ namespace SqlArtisan.Internal;
 internal sealed class UpdateBuilder(
     DbTableBase table,
     DmlJoinState state,
-    params SqlPart[] rootParts) :
-    SqlBuilderBase(rootParts),
+    SqlPart rootPart,
+    SqlPart? secondRootPart = null) :
+    SqlBuilderBase(rootPart, secondRootPart),
     IUpdateBuilderFrom,
     IUpdateBuilderFromJoinOn,
     IUpdateBuilderJoinOn,

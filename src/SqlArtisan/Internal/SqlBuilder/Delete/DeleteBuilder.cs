@@ -3,8 +3,9 @@ namespace SqlArtisan.Internal;
 internal sealed class DeleteBuilder(
     DbTableBase table,
     DmlJoinState state,
-    params SqlPart[] rootParts) :
-    SqlBuilderBase(rootParts),
+    SqlPart rootPart,
+    SqlPart? secondRootPart = null) :
+    SqlBuilderBase(rootPart, secondRootPart),
     IDeleteBuilderDelete,
     IDeleteBuilderDeleteOutput,
     IDeleteBuilderFrom,

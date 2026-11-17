@@ -1,7 +1,10 @@
 namespace SqlArtisan.Internal;
 
-internal sealed class MergeBuilder(DbTableBase target, params SqlPart[] rootParts) :
-    SqlBuilderBase(rootParts),
+internal sealed class MergeBuilder(
+    DbTableBase target,
+    SqlPart rootPart,
+    SqlPart? secondRootPart = null) :
+    SqlBuilderBase(rootPart, secondRootPart),
     IMergeBuilderOn,
     IMergeBuilderTarget,
     IMergeBuilderThenInsert,

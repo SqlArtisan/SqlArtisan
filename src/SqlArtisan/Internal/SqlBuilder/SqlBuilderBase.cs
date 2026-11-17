@@ -26,10 +26,14 @@ internal abstract class SqlBuilderBase
     // so any use of this one would extend or render the whole compound.
     private bool _continued;
 
-    protected SqlBuilderBase(SqlPart[] rootParts)
+    protected SqlBuilderBase(SqlPart rootPart, SqlPart? secondRootPart)
     {
-        _parts = new List<SqlPart>(Math.Max(rootParts.Length, ExpectedClauseCount));
-        _parts.AddRange(rootParts);
+        _parts = new List<SqlPart>(ExpectedClauseCount);
+        _parts.Add(rootPart);
+        if (secondRootPart is not null)
+        {
+            _parts.Add(secondRootPart);
+        }
     }
 
     // A set operator's continuation takes the frozen left branch's list over rather
