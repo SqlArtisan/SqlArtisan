@@ -1,0 +1,33 @@
+diff --git a/src/SqlArtisan/SqlPart/Expression/BindValue.cs b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+index 4948ff9..2521385 100644
+--- a/src/SqlArtisan/SqlPart/Expression/BindValue.cs
++++ b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+@@ -14,6 +14,8 @@ namespace SqlArtisan;
+ public class BindValue : SqlExpression
+ {
+     // Sql.Bind shares it: the remedy for a null bind is BindNull, not Sql.Null.
++    private static readonly System.Reflection.Assembly s_assembly = typeof(BindValue).Assembly;
++
+     internal const string NullValueMessage =
+         "A C# null cannot be bound; use Sql.BindNull to bind SQL NULL.";
+ 
+@@ -45,7 +47,9 @@ public class BindValue : SqlExpression
+ 
+         // The driver would get the object itself (`new BindValue(u.Id + 1)` bound an
+         // AdditionOperator); any enum binds, the explicit spelling #667's resolvers name.
+-        if (value is SqlPart or ISqlBuilder or ISubquery || IsSqlArtisanObject(value.GetType()))
++        if (!ExpressionResolver.IsDirectlyBindable(value)
++            && (value is SqlPart or ISqlBuilder or ISubquery
++                || IsSqlArtisanObject(value.GetType())))
+         {
+             throw new ArgumentException(
+                 "A SqlArtisan object cannot be bound; pass a .NET value, "
+@@ -84,7 +88,7 @@ public class BindValue : SqlExpression
+     private static bool IsSqlArtisanObject(Type type)
+     {
+         Type tested = type.GetElementType() ?? type;
+-        return !tested.IsEnum && tested.Assembly == typeof(BindValue).Assembly;
++        return !tested.IsEnum && tested.Assembly == s_assembly;
+     }
+ 
+     internal override void Format(SqlBuildingBuffer buffer) =>

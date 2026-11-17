@@ -1,0 +1,70 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index 8fd4709..c21e08a 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -293,9 +293,30 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     internal SqlBuildingBuffer EncloseInAliasQuotes(string value)
+     {
+-        Append(_dialect.AliasQuote);
+-        Append(value);
+-        Append(_dialect.AliasQuote);
++        int length = value?.Length ?? 0;
++        char quote = _dialect.AliasQuote;
++        EnsureCapacity(length + 2);
++        char[] buffer = _buffer;
++        int position = _position;
++        buffer[position] = quote;
++        value.AsSpan().CopyTo(buffer.AsSpan(position + 1));
++        buffer[position + 1 + length] = quote;
++        _position = position + length + 2;
++        return this;
++    }
++
++    internal SqlBuildingBuffer AppendAliasQualifier(string value)
++    {
++        int length = value.Length;
++        char quote = _dialect.AliasQuote;
++        EnsureCapacity(length + 3);
++        char[] buffer = _buffer;
++        int position = _position;
++        buffer[position] = quote;
++        value.AsSpan().CopyTo(buffer.AsSpan(position + 1));
++        buffer[position + 1 + length] = quote;
++        buffer[position + 2 + length] = '.';
++        _position = position + length + 3;
+         return this;
+     }
+ 
+@@ -646,9 +667,14 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     internal SqlBuildingBuffer EncloseInSpaces(string value)
+     {
+-        Append(' ');
+-        Append(value);
+-        Append(' ');
++        int length = value?.Length ?? 0;
++        EnsureCapacity(length + 2);
++        char[] buffer = _buffer;
++        int position = _position;
++        buffer[position] = ' ';
++        value.AsSpan().CopyTo(buffer.AsSpan(position + 1));
++        buffer[position + 1 + length] = ' ';
++        _position = position + length + 2;
+         return this;
+     }
+ 
+diff --git a/src/SqlArtisan/SqlPart/Expression/DbColumn.cs b/src/SqlArtisan/SqlPart/Expression/DbColumn.cs
+index 0a79a6b..caf28ee 100644
+--- a/src/SqlArtisan/SqlPart/Expression/DbColumn.cs
++++ b/src/SqlArtisan/SqlPart/Expression/DbColumn.cs
+@@ -54,8 +54,7 @@ public sealed class DbColumn : SqlExpression
+         }
+         else if (!string.IsNullOrEmpty(correlationName))
+         {
+-            buffer.EncloseInAliasQuotes(correlationName);
+-            buffer.Append('.');
++            buffer.AppendAliasQualifier(correlationName);
+         }
+         else
+         {

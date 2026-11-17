@@ -438,6 +438,36 @@ internal static class Program
     static object RetInto300() =>
         Update(s_u).Set(s_cols[0] == 1).Returning(s_outItems).Into(s_outs).Build(Dbms.Oracle).Text.Length;
 
+    sealed class Money { public decimal Amount; }
+    enum Shade { Light, Dark }
+    static readonly Money s_money = new() { Amount = 5m };
+    static readonly Orders s_o = new("o");
+    static readonly int[] s_arr3 = { 1, 2, 3 };
+    static readonly Guid s_guid = Guid.NewGuid();
+    static object EqSubquery() => (object)(s_u.Id == Select(s_o.UserId).From(s_o));
+    static object EqSubqueryBuild() => Select(s_u.Id).From(s_u).Where(s_u.Id == Select(Max(s_o.UserId)).From(s_o)).Build().Text;
+    static object ConvBind() => (object)(s_u.Id == s_money);
+    static object ConvBuild() => Select(s_u.Id).From(s_u).Where(s_u.Id == s_money).Build().Text;
+    static object BindArr() => BindArray(s_arr3);
+    static object EqEnum() => (object)(s_u.Id == Shade.Dark);
+    static object EqGuid() => (object)(s_u.Id == s_guid);
+    static object EqString() => (object)(s_u.Name == "abc");
+    static object EqInt() => (object)(s_u.Id == 5);
+    static object EqLong() => (object)(s_u.Id == 5L);
+    static object EqDecimal() => (object)(s_u.Id == 5.5m);
+    static object EqDate() => (object)(s_u.CreatedAt == s_date);
+    static object EqCol() => (object)(s_u.Id == s_o.UserId);
+    static readonly DateTime s_date = new(2024, 1, 1);
+    static object InsertSub() => InsertInto(s_u, s_cols[0], s_cols[1]).Values(Select(Max(s_o.UserId)).From(s_o), 1).Build().Text;
+    static object UpdateSet3() { Users u = s_u; return Update(u).Set(u.Name == "x", u.CreatedAt == s_date).Where(u.Id == 7).Build().Text; }
+    static object DeleteWhere() { Users u = s_u; return DeleteFrom(u).Where(u.Id == 7).Build().Text; }
+    static object LimitOffset() { Users u = s_u; return Select(u.Id).From(u).OrderBy(u.Id).Limit(10).Offset(20).Build().Text; }
+
+    static readonly SqlStatement s_built5 = Select(s_u.Id).From(s_u).Where(s_u.Id.In(1, 2, 3, 4, 5)).Build();
+    static object ParamNames() { int n = 0; foreach (string name in s_built5.Parameters.ParameterNames) n += name.Length; return n; }
+    static object ParamForEach() { int n = 0; s_built5.Parameters.ForEach((name, v) => n += name.Length); return n; }
+    static object ParamGet() => s_built5.Parameters.Get<int>(":4");
+
     static object BindBytes() => new BindValue(s_bytes);
 
     static object BindInt() => new BindValue(5);
@@ -677,12 +707,50 @@ internal static class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "bindguard")
+        {
+            // Every value kind through the three doors a value takes: new BindValue(x), col == x, Values(x).
+            SqlArtisanConfig.AddValueConverter<Money>(m => m.Amount);
+            Users gu = s_u;
+            object[] values =
+            {
+                true, 'c', "s", "", new DateTime(2024, 1, 1), DateTimeOffset.UnixEpoch, new DateOnly(2024, 1, 1), new TimeOnly(1, 2),
+                TimeSpan.FromSeconds(1), (sbyte)1, (byte)1, (short)1, (ushort)1, 1, 1u, (nint)1, (nuint)1, 1L, 1UL, 1f, 1d, 1m,
+                new System.Numerics.Complex(1, 2), Shade.Dark, DayOfWeek.Monday, Dbms.Oracle, DateTimePart.Year, System.Data.DbType.Int32,
+                Guid.Empty, new byte[] { 1 }, new int[] { 1 }, new string[] { "a" }, new object[] { 1 }, new Shade[] { Shade.Dark },
+                new Dbms[] { Dbms.Oracle }, new DbColumn[] { gu.Id }, DBNull.Value, s_money, new Money[] { s_money }, new object(),
+                gu, gu.Id, gu.Id == 1, gu.Id.As("x"), gu.Id.Asc, Bind(1), BindNull(), Null, Select(gu.Id), Select(gu.Id).From(gu),
+                new List<int> { 1 }, (1, 2), new KeyValuePair<int, int>(1, 2), new Version(1, 2), new Uri("http://x/"), typeof(int),
+                (Func<int>)(() => 1), new OutputParameter("v", System.Data.DbType.Int32), System.Text.Encoding.UTF8,
+            };
+            foreach (object v in values)
+            {
+                string Try(Func<object> f)
+                {
+                    try { object r = f(); return r.GetType().Name; }
+                    catch (Exception ex) { return ex.GetType().Name + ": " + ex.Message; }
+                }
+                Console.WriteLine($"{v.GetType()} | ctor: {Try(() => new BindValue(v))}");
+                Console.WriteLine($"{v.GetType()} | ==: {Try(() => Select(gu.Id).From(gu).Where(gu.Id == v).Build().Text + "/" + Select(gu.Id).From(gu).Where(gu.Id == v).Build().Parameters.Count)}"
+                    + " | " + Try(() => (Select(gu.Id).From(gu).Where(gu.Id == v).Build().Text)));
+                Console.WriteLine($"{v.GetType()} | in: {Try(() => Select(gu.Id).From(gu).Where(gu.Id.In(v, v)).Build().Text)}");
+                Console.WriteLine($"{v.GetType()} | +: {Try(() => Select(gu.Id + v).From(gu).Build().Text)}");
+                Console.WriteLine($"{v.GetType()} | values: {Try(() => InsertInto(gu, gu.Id).Values(v).Build().Text)}");
+                Console.WriteLine($"{v.GetType()} | set: {Try(() => Update(gu).Set(gu.Id == v).Build().Text)}");
+                Console.WriteLine($"{v.GetType()} | select: {Try(() => Select(v).From(gu).Build().Text)}");
+                Console.WriteLine($"{v.GetType()} | coalesce: {Try(() => Select(Coalesce(gu.Id, v)).From(gu).Build().Text)}");
+                Console.WriteLine($"{v.GetType()} | bind: {Try(() => Select(Bind(v)).From(gu).Build().Text)}");
+            }
+            return;
+        }
+
         if (args.Length > 0 && args[0] == "stress")
         {
             Stress();
             return;
         }
 
+        SqlArtisanConfig.AddValueConverter<Money>(m => m.Amount);
         int rounds = args.Length > 0 ? int.Parse(args[0]) : 15;
         if (args.Length > 1 && args[1].StartsWith("only="))
         {
@@ -690,6 +758,11 @@ internal static class Program
             {
                 ("inSame300", InSame300), ("inSame5", InSame5), ("valuesShared", ValuesShared), ("condTwice", CondTwice),
                 ("and129", And129), ("retInto300", RetInto300), ("bindBytes", BindBytes), ("bindInt", BindInt), ("bindNull", BindNullValue),
+                ("eqSubquery", EqSubquery), ("eqSubqueryBuild", EqSubqueryBuild), ("convBind", ConvBind), ("convBuild", ConvBuild),
+                ("bindArr", BindArr), ("eqEnum", EqEnum), ("eqGuid", EqGuid), ("eqString", EqString), ("eqInt", EqInt), ("eqLong", EqLong),
+                ("eqDecimal", EqDecimal), ("eqDate", EqDate), ("eqCol", EqCol), ("insertSub", InsertSub), ("updateSet3", UpdateSet3),
+                ("deleteWhere", DeleteWhere), ("limitOffset", LimitOffset), ("subquery", Subquery), ("and10", And10),
+                ("paramNames", ParamNames), ("paramForEach", ParamForEach), ("paramGet", ParamGet),
                 ("in20cols", In20Cols), ("insertnull10", InsertNull10), ("simple", Simple), ("in20", In20), ("insert10", Insert10),
                 ("full", Full), ("fullOracle", FullOn(Dbms.Oracle)), ("fullMySql", FullOn(Dbms.MySql)),
                 ("fullSqlite", FullOn(Dbms.Sqlite)), ("fullSqlServer", FullOn(Dbms.SqlServer)), ("fullPg", FullOn(Dbms.PostgreSql)),

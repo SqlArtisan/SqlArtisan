@@ -1,0 +1,70 @@
+diff --git a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValueResolver.cs b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValueResolver.cs
+index f84f634..f13ae4a 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValueResolver.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Clause/Insert/InsertValueResolver.cs
+@@ -58,13 +58,17 @@ internal static class InsertValueResolver
+         {
+             return expr;
+         }
++        else if (IsDirectlyBindable(value))
++        {
++            return BindDirectly(value);
++        }
+         else if (value is ISubquery subquery)
+         {
+             return new ScalarSubquery(subquery);
+         }
+-        else if (IsBindable(value))
++        else if (ValueConverters.Has(value.GetType()))
+         {
+-            return BindImplicitly(value);
++            return ValueConverters.Convert(value);
+         }
+         else
+         {
+diff --git a/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs b/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
+index f200f09..8c1e92a 100644
+--- a/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
++++ b/src/SqlArtisan/Internal/SqlPart/Expression/ExpressionResolver.cs
+@@ -124,13 +124,17 @@ internal static class ExpressionResolver
+         {
+             return expr;
+         }
++        else if (IsDirectlyBindable(item))
++        {
++            return BindDirectly(item);
++        }
+         else if (item is ISubquery subquery)
+         {
+             return new ScalarSubquery(subquery);
+         }
+-        else if (IsBindable(item))
++        else if (ValueConverters.Has(item.GetType()))
+         {
+-            return BindImplicitly(item);
++            return ValueConverters.Convert(item);
+         }
+         else
+         {
+@@ -384,13 +388,14 @@ internal static class ExpressionResolver
+     // its type and would bind as the value (#667). Sql.Bind and new BindValue(...) skip
+     // this, so binding one stays writable; no factory takes Dbms or DbTypeCategory.
+     internal static BindValue BindImplicitly(object value) =>
+-        !IsDirectlyBindable(value)
+-            ? ValueConverters.Convert(value)
+-            : value is DateTimePart or RegexpOptions or SearchModifier
+-                ? throw new ArgumentException($"{value.GetType().Name} is a function argument, "
+-                    + $"not a value; pass it to a {value.GetType().Name} parameter, or, to store "
+-                    + "or compare the enum itself, bind it with Sql.Bind(...).")
+-                : new BindValue(value);
++        !IsDirectlyBindable(value) ? ValueConverters.Convert(value) : BindDirectly(value);
++
++    internal static BindValue BindDirectly(object value) =>
++        value is DateTimePart or RegexpOptions or SearchModifier
++            ? throw new ArgumentException($"{value.GetType().Name} is a function argument, "
++                + $"not a value; pass it to a {value.GetType().Name} parameter, or, to store "
++                + "or compare the enum itself, bind it with Sql.Bind(...).")
++            : new BindValue(value);
+ 
+     // The directly bindable check first: such a value never reaches the converter
+     // registry (ADR 0006).

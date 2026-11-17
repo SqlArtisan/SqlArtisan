@@ -1,0 +1,574 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs
+index bfd0af1..0ffea14 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs
+@@ -3,8 +3,9 @@ namespace SqlArtisan.Internal;
+ internal sealed class DeleteBuilder(
+     DbTableBase table,
+     DmlJoinState state,
+-    params SqlPart[] rootParts) :
+-    SqlBuilderBase(rootParts),
++    SqlPart rootPart,
++    SqlPart? secondRootPart = null) :
++    SqlBuilderBase(rootPart, secondRootPart),
+     IDeleteBuilderDelete,
+     IDeleteBuilderDeleteOutput,
+     IDeleteBuilderFrom,
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs
+index 5fd5088..244acf7 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs
+@@ -28,8 +28,12 @@ internal sealed class InsertBuilder :
+     private readonly int _columnCount;
+     private InsertValuesClause? _valuesClause;
+ 
+-    internal InsertBuilder(DbTableBase table, int columnCount, params SqlPart[] rootParts) :
+-        base(rootParts)
++    internal InsertBuilder(
++        DbTableBase table,
++        int columnCount,
++        SqlPart rootPart,
++        SqlPart? secondRootPart = null) :
++        base(rootPart, secondRootPart)
+     {
+         _table = table;
+         _columnCount = columnCount;
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs
+index b710755..f1ad812 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs
+@@ -1,7 +1,10 @@
+ namespace SqlArtisan.Internal;
+ 
+-internal sealed class MergeBuilder(DbTableBase target, params SqlPart[] rootParts) :
+-    SqlBuilderBase(rootParts),
++internal sealed class MergeBuilder(
++    DbTableBase target,
++    SqlPart rootPart,
++    SqlPart? secondRootPart = null) :
++    SqlBuilderBase(rootPart, secondRootPart),
+     IMergeBuilderOn,
+     IMergeBuilderTarget,
+     IMergeBuilderThenInsert,
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs
+index 9b3a07e..4292ac0 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs
+@@ -18,7 +18,8 @@ internal class SelectBuilder :
+     ISelectBuilderWhere,
+     ISelectBuilderWithRollup
+ {
+-    internal SelectBuilder(params SqlPart[] rootParts) : base(rootParts)
++    internal SelectBuilder(SqlPart rootPart, SqlPart? secondRootPart = null)
++        : base(rootPart, secondRootPart)
+     {
+     }
+ 
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 77d81ce..54013a4 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -12,7 +12,8 @@ internal abstract class SqlBuilderBase
+     // Start at the List growth step instead so that initial array is never wasted.
+     private const int ExpectedClauseCount = 4;
+ 
+-    private readonly List<SqlPart> _parts;
++    private SqlPart[] _parts;
++    private int _partCount;
+ 
+     // Single-use guard: a successful Build() sets this; afterwards any stage
+     // call or Build() throws, blocking silent state contamination from a reused chain.
+@@ -26,10 +27,16 @@ internal abstract class SqlBuilderBase
+     // so any use of this one would extend or render the whole compound.
+     private bool _continued;
+ 
+-    protected SqlBuilderBase(SqlPart[] rootParts)
++    protected SqlBuilderBase(SqlPart rootPart, SqlPart? secondRootPart)
+     {
+-        _parts = new List<SqlPart>(Math.Max(rootParts.Length, ExpectedClauseCount));
+-        _parts.AddRange(rootParts);
++        _parts = new SqlPart[ExpectedClauseCount];
++        _parts[0] = rootPart;
++        _partCount = 1;
++        if (secondRootPart is not null)
++        {
++            _parts[1] = secondRootPart;
++            _partCount = 2;
++        }
+     }
+ 
+     // A set operator's continuation takes the frozen left branch's list over rather
+@@ -38,6 +45,7 @@ internal abstract class SqlBuilderBase
+     private protected SqlBuilderBase(SqlBuilderBase leftBranch)
+     {
+         _parts = leftBranch._parts;
++        _partCount = leftBranch._partCount;
+     }
+ 
+     // Non-null arms the correlated-DML guard (#253): UPDATE and DELETE return their
+@@ -55,7 +63,22 @@ internal abstract class SqlBuilderBase
+     protected internal void AddPart(SqlPart part)
+     {
+         ThrowIfFrozen();
+-        _parts.Add(part);
++        AppendPart(part);
++    }
++
++    // List<T>'s growth step (doubling) without the list object (ADR 0006).
++    private void AppendPart(SqlPart part)
++    {
++        SqlPart[] parts = _parts;
++        int count = _partCount;
++        if (count == parts.Length)
++        {
++            Array.Resize(ref parts, count * 2);
++            _parts = parts;
++        }
++
++        parts[count] = part;
++        _partCount = count + 1;
+     }
+ 
+     protected void ThrowIfFrozen()
+@@ -145,7 +168,7 @@ internal abstract class SqlBuilderBase
+         // The stage carries its own clause; a failed build restores the obligation
+         // with the parts, so a retry from the earlier stage still throws.
+         int pending = _pendingReturning;
+-        _parts.Add(extraPart);
++        AppendPart(extraPart);
+         _pendingReturning = 0;
+         try
+         {
+@@ -153,7 +176,7 @@ internal abstract class SqlBuilderBase
+         }
+         finally
+         {
+-            _parts.RemoveAt(_parts.Count - 1);
++            _parts[--_partCount] = null!;
+             _pendingReturning = pending;
+         }
+     }
+@@ -175,7 +198,7 @@ internal abstract class SqlBuilderBase
+             CorrelatedDmlGuardTarget
+                 ?? (ReturningTarget is { HasAlias: true } aliased ? aliased : null));
+         buffer.SwapPseudoRowTarget(ReturningTarget);
+-        buffer.AppendSpaceSeparated(CollectionsMarshal.AsSpan(_parts));
++        buffer.AppendSpaceSeparated(_parts.AsSpan(0, _partCount));
+         AppendTrailing(buffer);
+         // Set last so a throw above (Validate / empty-clause guard) leaves the
+         // builder usable for a fix-up on the same instance.
+@@ -209,7 +232,7 @@ internal abstract class SqlBuilderBase
+         DbTableBase? outer = ReturningTarget is { } target
+             ? buffer.SwapPseudoRowTarget(target)
+             : null;
+-        AppendNestedParts(buffer, CollectionsMarshal.AsSpan(_parts));
++        AppendNestedParts(buffer, _parts.AsSpan(0, _partCount));
+         if (ReturningTarget is not null)
+         {
+             buffer.SwapPseudoRowTarget(outer);
+@@ -361,6 +384,55 @@ internal abstract class SqlBuilderBase
+     // query about 15% of its time, and two probes plus the type tests about 10% more (ADR 0006).
+     private static readonly FrozenDictionary<Type, PartTraits> TraitsByType = IndexTraitsByType();
+ 
++    private const int TraitSlotCount = 256;
++
++    private static readonly (nint Key, PartTraits Traits)[] TraitSlots = BuildTraitSlots();
++
++    private static (nint Key, PartTraits Traits)[] BuildTraitSlots()
++    {
++        (nint Key, PartTraits Traits)[] slots = new (nint, PartTraits)[TraitSlotCount];
++        foreach (KeyValuePair<Type, PartTraits> entry in TraitsByType)
++        {
++            nint key = entry.Key.TypeHandle.Value;
++            int i = SlotOf(key);
++            while (slots[i].Key != 0)
++            {
++                i = (i + 1) & (TraitSlotCount - 1);
++            }
++
++            slots[i] = (key, entry.Value);
++        }
++
++        return slots;
++    }
++
++    [System.Runtime.CompilerServices.MethodImpl(
++        System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
++    private static int SlotOf(nint key) =>
++        (int)(((ulong)key * 0x9E3779B97F4A7C15UL) >> 56);
++
++    private static PartTraits TraitsOf(SqlPart part)
++    {
++        nint key = part.GetType().TypeHandle.Value;
++        (nint Key, PartTraits Traits)[] slots = TraitSlots;
++        int i = SlotOf(key);
++        while (true)
++        {
++            ref readonly (nint Key, PartTraits Traits) slot = ref slots[i];
++            if (slot.Key == key)
++            {
++                return slot.Traits;
++            }
++
++            if (slot.Key == 0)
++            {
++                return default;
++            }
++
++            i = (i + 1) & (TraitSlotCount - 1);
++        }
++    }
++
+     private static readonly ulong[] BlockExclusions =
+         BuildExclusionMasks(OncePerBlockClauses.Length, ExclusiveKinds);
+ 
+@@ -460,9 +532,9 @@ internal abstract class SqlBuilderBase
+         bool setOperatorPending = false;
+         bool inInsert = false;
+         bool insertSourceSeen = false;
+-        foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
++        foreach (SqlPart part in _parts.AsSpan(0, _partCount))
+         {
+-            TraitsByType.TryGetValue(part.GetType(), out PartTraits traits);
++            PartTraits traits = TraitsOf(part);
+             PartRole role = traits.Role;
+ 
+             if (joinConditionPending && role != PartRole.JoinCondition)
+@@ -650,13 +722,13 @@ internal abstract class SqlBuilderBase
+ 
+     // For a Validate(Dbms) override that must walk clause order (e.g. MERGE's
+     // branch pairing), where FindPart's first-of-type is not enough.
+-    private protected ReadOnlySpan<SqlPart> PartsSpan => CollectionsMarshal.AsSpan(_parts);
++    private protected ReadOnlySpan<SqlPart> PartsSpan => _parts.AsSpan(0, _partCount);
+ 
+     // The first appended part of type T, or null — for a Validate(Dbms) override
+     // to inspect which clauses a chain carries (e.g. a TOP prefix beside OFFSET).
+     private protected T? FindPart<T>() where T : class
+     {
+-        foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
++        foreach (SqlPart part in _parts.AsSpan(0, _partCount))
+         {
+             if (part is T match)
+             {
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index 8fd4709..9fc53d8 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -11,7 +11,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     // Shared, never-mutated instance handed to parameterless statements so they
+     // don't each allocate a list. SqlParameters only ever reads it.
+-    private static readonly List<KeyValuePair<string, BindValue>> s_emptyParameters = new();
++    private static readonly SqlParameters s_emptyParameters = new([], 0);
+ 
+     private readonly IDbmsDialect _dialect;
+     private char[] _buffer;
+@@ -19,7 +19,8 @@ internal sealed class SqlBuildingBuffer : IDisposable
+     // Allocated lazily on the first parameter; parameterless statements keep this null.
+     // A list (insertion-ordered) is used over a dictionary: parameter counts are
+     // small, so linear lookup is cheap and it allocates less than a hash table.
+-    private List<KeyValuePair<string, BindValue>>? _parameters;
++    private KeyValuePair<string, BindValue>[]? _parameters;
++    private int _parameterCount;
+     private bool _disposed;
+     // Correlated-DML guard state (#253): a bare target column rendered inside a
+     // subquery resolves to the inner scope — a silent tautology — so
+@@ -69,6 +70,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         }
+ 
+         _parameters = null;
++        _parameterCount = 0;
+         _disposed = true;
+     }
+ 
+@@ -293,9 +295,30 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     internal SqlBuildingBuffer EncloseInAliasQuotes(string value)
+     {
+-        Append(_dialect.AliasQuote);
+-        Append(value);
+-        Append(_dialect.AliasQuote);
++        int length = value?.Length ?? 0;
++        char quote = _dialect.AliasQuote;
++        EnsureCapacity(length + 2);
++        char[] buffer = _buffer;
++        int position = _position;
++        buffer[position] = quote;
++        value.AsSpan().CopyTo(buffer.AsSpan(position + 1));
++        buffer[position + 1 + length] = quote;
++        _position = position + length + 2;
++        return this;
++    }
++
++    internal SqlBuildingBuffer AppendAliasQualifier(string value)
++    {
++        int length = value.Length;
++        char quote = _dialect.AliasQuote;
++        EnsureCapacity(length + 3);
++        char[] buffer = _buffer;
++        int position = _position;
++        buffer[position] = quote;
++        value.AsSpan().CopyTo(buffer.AsSpan(position + 1));
++        buffer[position + 1 + length] = quote;
++        buffer[position + 2 + length] = '.';
++        _position = position + length + 3;
+         return this;
+     }
+ 
+@@ -646,9 +669,14 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     internal SqlBuildingBuffer EncloseInSpaces(string value)
+     {
+-        Append(' ');
+-        Append(value);
+-        Append(' ');
++        int length = value?.Length ?? 0;
++        EnsureCapacity(length + 2);
++        char[] buffer = _buffer;
++        int position = _position;
++        buffer[position] = ' ';
++        value.AsSpan().CopyTo(buffer.AsSpan(position + 1));
++        buffer[position + 1 + length] = ' ';
++        _position = position + length + 2;
+         return this;
+     }
+ 
+@@ -730,24 +758,21 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+         // The same instance formatted twice (SELECT and GROUP BY) reuses its marker: PostgreSQL
+         // 16, SQL Server 2022 and Oracle XE 21.3.0 reject distinct ones there (#241's twins).
+-        if (_parameters is not null)
++        foreach (ref readonly KeyValuePair<string, BindValue> parameter
++            in _parameters.AsSpan(0, _parameterCount))
+         {
+             // Linear by design (ADR 0006's best effort): 37 ms at 2,100 binds, and
+             // the driver's own parameter cap bounds the scan.
+-            foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++            if (ReferenceEquals(parameter.Value, bindValue))
+             {
+-                if (ReferenceEquals(parameter.Value, bindValue))
+-                {
+-                    Append(parameter.Key);
+-                    return this;
+-                }
++                Append(parameter.Key);
++                return this;
+             }
+         }
+ 
+-        _parameters ??= new();
+-        string name = ParameterNameCache.Get(_dialect.ParameterMarker, _parameters.Count);
++        string name = ParameterNameCache.Get(_dialect.ParameterMarker, _parameterCount);
+         Append(name);
+-        _parameters.Add(new(name, bindValue));
++        AddParameterEntry(new(name, bindValue));
+         return this;
+     }
+ 
+@@ -762,7 +787,6 @@ internal sealed class SqlBuildingBuffer : IDisposable
+             throw new ArgumentException("An output variable name is required.");
+         }
+ 
+-        _parameters ??= new();
+         string name = $"{_dialect.ParameterMarker}{output.Variable}";
+ 
+         if (ContainsParameterName(name))
+@@ -773,7 +797,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         }
+ 
+         Append(name);
+-        _parameters.Add(new(name, new BindValue(
++        AddParameterEntry(new(name, new BindValue(
+             DBNull.Value,
+             dbType: output.DbType,
+             direction: ParameterDirection.Output,
+@@ -788,21 +812,39 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         // The buffer relinquishes its reference so the caller's instance is
+         // never mutated after this point (Dispose only returns the char buffer).
+         string sql = new(_buffer, 0, _position);
+-        List<KeyValuePair<string, BindValue>> parameters = _parameters ?? s_emptyParameters;
++        SqlParameters parameters = _parameters is null
++            ? s_emptyParameters
++            : new(_parameters, _parameterCount);
+         _parameters = null;
++        _parameterCount = 0;
+         return new(sql, parameters);
+     }
+ 
+-    private bool ContainsParameterName(string name)
++    // List<T>'s own growth steps (4, then doubling), without the list object.
++    private void AddParameterEntry(KeyValuePair<string, BindValue> entry)
+     {
+-        if (_parameters is null)
++        KeyValuePair<string, BindValue>[]? parameters = _parameters;
++        int count = _parameterCount;
++        if (parameters is null)
++        {
++            _parameters = parameters = new KeyValuePair<string, BindValue>[4];
++        }
++        else if (count == parameters.Length)
+         {
+-            return false;
++            Array.Resize(ref parameters, count * 2);
++            _parameters = parameters;
+         }
+ 
+-        for (int i = 0; i < _parameters.Count; i++)
++        parameters[count] = entry;
++        _parameterCount = count + 1;
++    }
++
++    private bool ContainsParameterName(string name)
++    {
++        foreach (ref readonly KeyValuePair<string, BindValue> parameter
++            in _parameters.AsSpan(0, _parameterCount))
+         {
+-            if (_parameters[i].Key == name)
++            if (parameter.Key == name)
+             {
+                 return true;
+             }
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs
+index edfaf12..db47bfc 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs
+@@ -3,8 +3,9 @@ namespace SqlArtisan.Internal;
+ internal sealed class UpdateBuilder(
+     DbTableBase table,
+     DmlJoinState state,
+-    params SqlPart[] rootParts) :
+-    SqlBuilderBase(rootParts),
++    SqlPart rootPart,
++    SqlPart? secondRootPart = null) :
++    SqlBuilderBase(rootPart, secondRootPart),
+     IUpdateBuilderFrom,
+     IUpdateBuilderFromJoinOn,
+     IUpdateBuilderJoinOn,
+diff --git a/src/SqlArtisan/SqlBuilder/SqlParameters.cs b/src/SqlArtisan/SqlBuilder/SqlParameters.cs
+index 955ec7d..5b1a283 100644
+--- a/src/SqlArtisan/SqlBuilder/SqlParameters.cs
++++ b/src/SqlArtisan/SqlBuilder/SqlParameters.cs
+@@ -6,22 +6,24 @@ namespace SqlArtisan;
+ /// </summary>
+ public sealed class SqlParameters
+ {
+-    private readonly List<KeyValuePair<string, BindValue>> _parameters;
++    private readonly KeyValuePair<string, BindValue>[] _parameters;
++    private readonly int _count;
+ 
+-    internal SqlParameters(List<KeyValuePair<string, BindValue>> parameters)
++    internal SqlParameters(KeyValuePair<string, BindValue>[] parameters, int count)
+     {
+         _parameters = parameters;
++        _count = count;
+     }
+ 
+     /// <summary>
+     /// Gets the number of bound parameters.
+     /// </summary>
+-    public int Count => _parameters.Count;
++    public int Count => _count;
+ 
+     /// <summary>
+     /// Gets the parameter marker names, in bind order.
+     /// </summary>
+-    public IEnumerable<string> ParameterNames => _parameters.Select(p => p.Key);
++    public IEnumerable<string> ParameterNames => EnumerateNames();
+ 
+     /// <summary>
+     /// Invokes <paramref name="action"/> once per parameter, in bind order, with its marker name
+@@ -30,12 +32,20 @@ public sealed class SqlParameters
+     /// <param name="action">The callback receiving each parameter's name and value.</param>
+     public void ForEach(Action<string, BindValue> action)
+     {
+-        foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++        foreach (KeyValuePair<string, BindValue> parameter in _parameters.AsSpan(0, _count))
+         {
+             action(parameter.Key, parameter.Value);
+         }
+     }
+ 
++    private IEnumerable<string> EnumerateNames()
++    {
++        for (int i = 0; i < _count; i++)
++        {
++            yield return _parameters[i].Key;
++        }
++    }
++
+     /// <summary>
+     /// Gets the value of the named parameter, cast to <typeparamref name="T"/>.
+     /// </summary>
+@@ -50,7 +60,7 @@ public sealed class SqlParameters
+     /// <exception cref="InvalidCastException">The stored value cannot be cast to <typeparamref name="T"/>. A stored SQL <c>NULL</c> is held as <see cref="DBNull"/>, so it throws unless <typeparamref name="T"/> is a type <see cref="DBNull"/> converts to, such as <see cref="object"/>.</exception>
+     public T? Get<T>(string name)
+     {
+-        foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++        foreach (KeyValuePair<string, BindValue> parameter in _parameters.AsSpan(0, _count))
+         {
+             if (parameter.Key == name)
+             {
+diff --git a/src/SqlArtisan/SqlBuilder/SqlStatement.cs b/src/SqlArtisan/SqlBuilder/SqlStatement.cs
+index 5c3209a..0025d71 100644
+--- a/src/SqlArtisan/SqlBuilder/SqlStatement.cs
++++ b/src/SqlArtisan/SqlBuilder/SqlStatement.cs
+@@ -5,10 +5,10 @@ namespace SqlArtisan;
+ /// </summary>
+ public sealed class SqlStatement
+ {
+-    internal SqlStatement(string text, List<KeyValuePair<string, BindValue>> parameters)
++    internal SqlStatement(string text, SqlParameters parameters)
+     {
+         Text = text;
+-        Parameters = new(parameters);
++        Parameters = parameters;
+     }
+ 
+     /// <summary>
+diff --git a/src/SqlArtisan/SqlPart/Expression/BindValue.cs b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+index 4948ff9..2521385 100644
+--- a/src/SqlArtisan/SqlPart/Expression/BindValue.cs
++++ b/src/SqlArtisan/SqlPart/Expression/BindValue.cs
+@@ -14,6 +14,8 @@ namespace SqlArtisan;
+ public class BindValue : SqlExpression
+ {
+     // Sql.Bind shares it: the remedy for a null bind is BindNull, not Sql.Null.
++    private static readonly System.Reflection.Assembly s_assembly = typeof(BindValue).Assembly;
++
+     internal const string NullValueMessage =
+         "A C# null cannot be bound; use Sql.BindNull to bind SQL NULL.";
+ 
+@@ -45,7 +47,9 @@ public class BindValue : SqlExpression
+ 
+         // The driver would get the object itself (`new BindValue(u.Id + 1)` bound an
+         // AdditionOperator); any enum binds, the explicit spelling #667's resolvers name.
+-        if (value is SqlPart or ISqlBuilder or ISubquery || IsSqlArtisanObject(value.GetType()))
++        if (!ExpressionResolver.IsDirectlyBindable(value)
++            && (value is SqlPart or ISqlBuilder or ISubquery
++                || IsSqlArtisanObject(value.GetType())))
+         {
+             throw new ArgumentException(
+                 "A SqlArtisan object cannot be bound; pass a .NET value, "
+@@ -84,7 +88,7 @@ public class BindValue : SqlExpression
+     private static bool IsSqlArtisanObject(Type type)
+     {
+         Type tested = type.GetElementType() ?? type;
+-        return !tested.IsEnum && tested.Assembly == typeof(BindValue).Assembly;
++        return !tested.IsEnum && tested.Assembly == s_assembly;
+     }
+ 
+     internal override void Format(SqlBuildingBuffer buffer) =>
+diff --git a/src/SqlArtisan/SqlPart/Expression/DbColumn.cs b/src/SqlArtisan/SqlPart/Expression/DbColumn.cs
+index 0a79a6b..caf28ee 100644
+--- a/src/SqlArtisan/SqlPart/Expression/DbColumn.cs
++++ b/src/SqlArtisan/SqlPart/Expression/DbColumn.cs
+@@ -54,8 +54,7 @@ public sealed class DbColumn : SqlExpression
+         }
+         else if (!string.IsNullOrEmpty(correlationName))
+         {
+-            buffer.EncloseInAliasQuotes(correlationName);
+-            buffer.Append('.');
++            buffer.AppendAliasQualifier(correlationName);
+         }
+         else
+         {

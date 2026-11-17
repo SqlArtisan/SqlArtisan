@@ -1,0 +1,124 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 7535aa7..128966d 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -12,7 +12,8 @@ internal abstract class SqlBuilderBase
+     // Start at the List growth step instead so that initial array is never wasted.
+     private const int ExpectedClauseCount = 4;
+ 
+-    private readonly List<SqlPart> _parts;
++    private SqlPart[] _parts;
++    private int _partCount;
+ 
+     // Single-use guard: a successful Build() sets this; afterwards any stage
+     // call or Build() throws, blocking silent state contamination from a reused chain.
+@@ -28,11 +29,13 @@ internal abstract class SqlBuilderBase
+ 
+     protected SqlBuilderBase(SqlPart rootPart, SqlPart? secondRootPart)
+     {
+-        _parts = new List<SqlPart>(ExpectedClauseCount);
+-        _parts.Add(rootPart);
++        _parts = new SqlPart[ExpectedClauseCount];
++        _parts[0] = rootPart;
++        _partCount = 1;
+         if (secondRootPart is not null)
+         {
+-            _parts.Add(secondRootPart);
++            _parts[1] = secondRootPart;
++            _partCount = 2;
+         }
+     }
+ 
+@@ -42,6 +45,7 @@ internal abstract class SqlBuilderBase
+     private protected SqlBuilderBase(SqlBuilderBase leftBranch)
+     {
+         _parts = leftBranch._parts;
++        _partCount = leftBranch._partCount;
+     }
+ 
+     // Non-null arms the correlated-DML guard (#253): UPDATE and DELETE return their
+@@ -59,7 +63,22 @@ internal abstract class SqlBuilderBase
+     protected internal void AddPart(SqlPart part)
+     {
+         ThrowIfFrozen();
+-        _parts.Add(part);
++        AppendPart(part);
++    }
++
++    // List<T>'s growth step (doubling) without the list object (ADR 0006).
++    private void AppendPart(SqlPart part)
++    {
++        SqlPart[] parts = _parts;
++        int count = _partCount;
++        if (count == parts.Length)
++        {
++            Array.Resize(ref parts, count * 2);
++            _parts = parts;
++        }
++
++        parts[count] = part;
++        _partCount = count + 1;
+     }
+ 
+     protected void ThrowIfFrozen()
+@@ -149,7 +168,7 @@ internal abstract class SqlBuilderBase
+         // The stage carries its own clause; a failed build restores the obligation
+         // with the parts, so a retry from the earlier stage still throws.
+         int pending = _pendingReturning;
+-        _parts.Add(extraPart);
++        AppendPart(extraPart);
+         _pendingReturning = 0;
+         try
+         {
+@@ -157,7 +176,7 @@ internal abstract class SqlBuilderBase
+         }
+         finally
+         {
+-            _parts.RemoveAt(_parts.Count - 1);
++            _parts[--_partCount] = null!;
+             _pendingReturning = pending;
+         }
+     }
+@@ -179,7 +198,7 @@ internal abstract class SqlBuilderBase
+             CorrelatedDmlGuardTarget
+                 ?? (ReturningTarget is { HasAlias: true } aliased ? aliased : null));
+         buffer.SwapPseudoRowTarget(ReturningTarget);
+-        buffer.AppendSpaceSeparated(CollectionsMarshal.AsSpan(_parts));
++        buffer.AppendSpaceSeparated(_parts.AsSpan(0, _partCount));
+         AppendTrailing(buffer);
+         // Set last so a throw above (Validate / empty-clause guard) leaves the
+         // builder usable for a fix-up on the same instance.
+@@ -213,7 +232,7 @@ internal abstract class SqlBuilderBase
+         DbTableBase? outer = ReturningTarget is { } target
+             ? buffer.SwapPseudoRowTarget(target)
+             : null;
+-        AppendNestedParts(buffer, CollectionsMarshal.AsSpan(_parts));
++        AppendNestedParts(buffer, _parts.AsSpan(0, _partCount));
+         if (ReturningTarget is not null)
+         {
+             buffer.SwapPseudoRowTarget(outer);
+@@ -464,7 +483,7 @@ internal abstract class SqlBuilderBase
+         bool setOperatorPending = false;
+         bool inInsert = false;
+         bool insertSourceSeen = false;
+-        foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
++        foreach (SqlPart part in _parts.AsSpan(0, _partCount))
+         {
+             TraitsByType.TryGetValue(part.GetType(), out PartTraits traits);
+             PartRole role = traits.Role;
+@@ -654,13 +673,13 @@ internal abstract class SqlBuilderBase
+ 
+     // For a Validate(Dbms) override that must walk clause order (e.g. MERGE's
+     // branch pairing), where FindPart's first-of-type is not enough.
+-    private protected ReadOnlySpan<SqlPart> PartsSpan => CollectionsMarshal.AsSpan(_parts);
++    private protected ReadOnlySpan<SqlPart> PartsSpan => _parts.AsSpan(0, _partCount);
+ 
+     // The first appended part of type T, or null — for a Validate(Dbms) override
+     // to inspect which clauses a chain carries (e.g. a TOP prefix beside OFFSET).
+     private protected T? FindPart<T>() where T : class
+     {
+-        foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
++        foreach (SqlPart part in _parts.AsSpan(0, _partCount))
+         {
+             if (part is T match)
+             {

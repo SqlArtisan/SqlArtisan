@@ -1,0 +1,207 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+index 8fd4709..9d34a9e 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuildingBuffer.cs
+@@ -11,7 +11,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+     // Shared, never-mutated instance handed to parameterless statements so they
+     // don't each allocate a list. SqlParameters only ever reads it.
+-    private static readonly List<KeyValuePair<string, BindValue>> s_emptyParameters = new();
++    private static readonly SqlParameters s_emptyParameters = new([], 0);
+ 
+     private readonly IDbmsDialect _dialect;
+     private char[] _buffer;
+@@ -19,7 +19,8 @@ internal sealed class SqlBuildingBuffer : IDisposable
+     // Allocated lazily on the first parameter; parameterless statements keep this null.
+     // A list (insertion-ordered) is used over a dictionary: parameter counts are
+     // small, so linear lookup is cheap and it allocates less than a hash table.
+-    private List<KeyValuePair<string, BindValue>>? _parameters;
++    private KeyValuePair<string, BindValue>[]? _parameters;
++    private int _parameterCount;
+     private bool _disposed;
+     // Correlated-DML guard state (#253): a bare target column rendered inside a
+     // subquery resolves to the inner scope — a silent tautology — so
+@@ -69,6 +70,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         }
+ 
+         _parameters = null;
++        _parameterCount = 0;
+         _disposed = true;
+     }
+ 
+@@ -730,24 +732,21 @@ internal sealed class SqlBuildingBuffer : IDisposable
+ 
+         // The same instance formatted twice (SELECT and GROUP BY) reuses its marker: PostgreSQL
+         // 16, SQL Server 2022 and Oracle XE 21.3.0 reject distinct ones there (#241's twins).
+-        if (_parameters is not null)
++        foreach (ref readonly KeyValuePair<string, BindValue> parameter
++            in _parameters.AsSpan(0, _parameterCount))
+         {
+             // Linear by design (ADR 0006's best effort): 37 ms at 2,100 binds, and
+             // the driver's own parameter cap bounds the scan.
+-            foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++            if (ReferenceEquals(parameter.Value, bindValue))
+             {
+-                if (ReferenceEquals(parameter.Value, bindValue))
+-                {
+-                    Append(parameter.Key);
+-                    return this;
+-                }
++                Append(parameter.Key);
++                return this;
+             }
+         }
+ 
+-        _parameters ??= new();
+-        string name = ParameterNameCache.Get(_dialect.ParameterMarker, _parameters.Count);
++        string name = ParameterNameCache.Get(_dialect.ParameterMarker, _parameterCount);
+         Append(name);
+-        _parameters.Add(new(name, bindValue));
++        AddParameterEntry(new(name, bindValue));
+         return this;
+     }
+ 
+@@ -762,7 +761,6 @@ internal sealed class SqlBuildingBuffer : IDisposable
+             throw new ArgumentException("An output variable name is required.");
+         }
+ 
+-        _parameters ??= new();
+         string name = $"{_dialect.ParameterMarker}{output.Variable}";
+ 
+         if (ContainsParameterName(name))
+@@ -773,7 +771,7 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         }
+ 
+         Append(name);
+-        _parameters.Add(new(name, new BindValue(
++        AddParameterEntry(new(name, new BindValue(
+             DBNull.Value,
+             dbType: output.DbType,
+             direction: ParameterDirection.Output,
+@@ -788,21 +786,39 @@ internal sealed class SqlBuildingBuffer : IDisposable
+         // The buffer relinquishes its reference so the caller's instance is
+         // never mutated after this point (Dispose only returns the char buffer).
+         string sql = new(_buffer, 0, _position);
+-        List<KeyValuePair<string, BindValue>> parameters = _parameters ?? s_emptyParameters;
++        SqlParameters parameters = _parameters is null
++            ? s_emptyParameters
++            : new(_parameters, _parameterCount);
+         _parameters = null;
++        _parameterCount = 0;
+         return new(sql, parameters);
+     }
+ 
+-    private bool ContainsParameterName(string name)
++    // List<T>'s own growth steps (4, then doubling), without the list object.
++    private void AddParameterEntry(KeyValuePair<string, BindValue> entry)
+     {
+-        if (_parameters is null)
++        KeyValuePair<string, BindValue>[]? parameters = _parameters;
++        int count = _parameterCount;
++        if (parameters is null)
++        {
++            _parameters = parameters = new KeyValuePair<string, BindValue>[4];
++        }
++        else if (count == parameters.Length)
+         {
+-            return false;
++            Array.Resize(ref parameters, count * 2);
++            _parameters = parameters;
+         }
+ 
+-        for (int i = 0; i < _parameters.Count; i++)
++        parameters[count] = entry;
++        _parameterCount = count + 1;
++    }
++
++    private bool ContainsParameterName(string name)
++    {
++        foreach (ref readonly KeyValuePair<string, BindValue> parameter
++            in _parameters.AsSpan(0, _parameterCount))
+         {
+-            if (_parameters[i].Key == name)
++            if (parameter.Key == name)
+             {
+                 return true;
+             }
+diff --git a/src/SqlArtisan/SqlBuilder/SqlParameters.cs b/src/SqlArtisan/SqlBuilder/SqlParameters.cs
+index 955ec7d..5b1a283 100644
+--- a/src/SqlArtisan/SqlBuilder/SqlParameters.cs
++++ b/src/SqlArtisan/SqlBuilder/SqlParameters.cs
+@@ -6,22 +6,24 @@ namespace SqlArtisan;
+ /// </summary>
+ public sealed class SqlParameters
+ {
+-    private readonly List<KeyValuePair<string, BindValue>> _parameters;
++    private readonly KeyValuePair<string, BindValue>[] _parameters;
++    private readonly int _count;
+ 
+-    internal SqlParameters(List<KeyValuePair<string, BindValue>> parameters)
++    internal SqlParameters(KeyValuePair<string, BindValue>[] parameters, int count)
+     {
+         _parameters = parameters;
++        _count = count;
+     }
+ 
+     /// <summary>
+     /// Gets the number of bound parameters.
+     /// </summary>
+-    public int Count => _parameters.Count;
++    public int Count => _count;
+ 
+     /// <summary>
+     /// Gets the parameter marker names, in bind order.
+     /// </summary>
+-    public IEnumerable<string> ParameterNames => _parameters.Select(p => p.Key);
++    public IEnumerable<string> ParameterNames => EnumerateNames();
+ 
+     /// <summary>
+     /// Invokes <paramref name="action"/> once per parameter, in bind order, with its marker name
+@@ -30,12 +32,20 @@ public sealed class SqlParameters
+     /// <param name="action">The callback receiving each parameter's name and value.</param>
+     public void ForEach(Action<string, BindValue> action)
+     {
+-        foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++        foreach (KeyValuePair<string, BindValue> parameter in _parameters.AsSpan(0, _count))
+         {
+             action(parameter.Key, parameter.Value);
+         }
+     }
+ 
++    private IEnumerable<string> EnumerateNames()
++    {
++        for (int i = 0; i < _count; i++)
++        {
++            yield return _parameters[i].Key;
++        }
++    }
++
+     /// <summary>
+     /// Gets the value of the named parameter, cast to <typeparamref name="T"/>.
+     /// </summary>
+@@ -50,7 +60,7 @@ public sealed class SqlParameters
+     /// <exception cref="InvalidCastException">The stored value cannot be cast to <typeparamref name="T"/>. A stored SQL <c>NULL</c> is held as <see cref="DBNull"/>, so it throws unless <typeparamref name="T"/> is a type <see cref="DBNull"/> converts to, such as <see cref="object"/>.</exception>
+     public T? Get<T>(string name)
+     {
+-        foreach (KeyValuePair<string, BindValue> parameter in _parameters)
++        foreach (KeyValuePair<string, BindValue> parameter in _parameters.AsSpan(0, _count))
+         {
+             if (parameter.Key == name)
+             {
+diff --git a/src/SqlArtisan/SqlBuilder/SqlStatement.cs b/src/SqlArtisan/SqlBuilder/SqlStatement.cs
+index 5c3209a..0025d71 100644
+--- a/src/SqlArtisan/SqlBuilder/SqlStatement.cs
++++ b/src/SqlArtisan/SqlBuilder/SqlStatement.cs
+@@ -5,10 +5,10 @@ namespace SqlArtisan;
+ /// </summary>
+ public sealed class SqlStatement
+ {
+-    internal SqlStatement(string text, List<KeyValuePair<string, BindValue>> parameters)
++    internal SqlStatement(string text, SqlParameters parameters)
+     {
+         Text = text;
+-        Parameters = new(parameters);
++        Parameters = parameters;
+     }
+ 
+     /// <summary>

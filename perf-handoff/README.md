@@ -27,6 +27,10 @@
 | `patches/alt-01-…` | 01 の代案(辞書 1 つ)。01 と 02 のあとに当てる |
 | `harness/` | 時間とアロケーションを測るコンソール。`SqlArtisan.sln` には入っていない |
 | `walkcheck/` | 01 の種別コードを全 `SqlPart` クラスについて元の表と突き合わせるコンソール |
+| `results/exploration-2.md` | 模索 2 回目の調査報告。検討済みの案とは別の候補 7 つの実測、遅くなる形、採否の勧め |
+| `patches/explore-01`〜`07` | 模索 2 回目の試作。採用版を当てた `f428588` に対する差分(当て方は `results/exploration-2.md` の 6 節) |
+| `patches/explore-all.diff` | 01 + 03〜07 をまとめたもの(02 は含まない) |
+| `harness/cmp.py` | 変種を 1 プロセスずつ交互に走らせて最小値 / 中央値を並べるスクリプト |
 
 ## 採用版: 表の一本化だけ(ユーザー判断)
 
@@ -52,6 +56,27 @@
 不採用の 2 つの記録は残してある: 事前確保は `patches/declined-walk-table-and-reservation.diff` と
 `results/declined-reservation.md`、ハッシュ索引は `patches/final-walk-table-and-parameter-index.diff` と
 `results/panel-audit.md`。
+
+## 模索 2 回目(採否は未決。調査報告だけ)
+
+検討済みの案(`patches/01`〜`09`、事前確保、ハッシュ索引)とは別の候補を調べた。
+詳細は `results/exploration-2.md`。採否はユーザー判断で、まだ決まっていない。
+
+| 案 | 何を変えるか | 実測(採用版比) | 報告での勧め |
+|---|---|---|---|
+| A1 `explore-01` | `BindValue` コンストラクタの検査で、直接バインドできる型を先に通す(検査は残る) | 10 列 INSERT −18〜23%、20 値の `IN` −9〜25%、単純な SELECT −4〜7%。確保は不変。遅くなった形なし | 勧める |
+| A2 `explore-02` | リゾルバで直接バインド型をサブクエリ判定より先に見る | 10 列 INSERT でさらに −9〜12%。スカラーサブクエリのオペランドが +10〜17 ns | 勧めない |
+| B `explore-03` | 引用符つき識別子を 1 回の容量確認で書く | ベンチマークのクエリ −3〜5% | 任意 |
+| C1 `explore-04` | ビルダーのルート句を `params` 配列で渡さない | 単純な SELECT −7%、文 1 つにつき −32 B | 勧める |
+| C2 `explore-05` | 句の一覧を `List` から配列 + 個数にする | さらに −24 B | 任意 |
+| D `explore-06` | パラメータを `List` から配列 + 個数にする | −24 B、ベンチマークのクエリ −1〜4% | 任意 |
+| E `explore-07` | 重複句チェックの表引きを型ハンドルの専用表にする | ベンチマークのクエリ −4〜6% | 任意 |
+
+- 全部(A2 以外)を入れると、公式ベンチマークは採用版 1.413 / 1.518 µs → 1.218 / 1.266 µs、
+  2.27 → 2.19 KB(同じ回の Sqlify は 1.57〜1.65 µs)。基準機で順位が入れ替わるかは測っていない。
+- どれも 1 文あたり 0.05〜0.6 µs の短縮で、DB の往復時間に対しては見えない。
+- ハーネスに値の種類ごとの受理・拒否を比べる `bindguard` と、式の生成・UPDATE・DELETE・
+  サブクエリ・コンバーターなどのシナリオを足した(`results/exploration-2.md` の 6 節)。
 
 ## 索引あり版(パネルレビュー後。不採用)
 
@@ -165,6 +190,8 @@ dotnet out/base/H.dll 7 only=manyIn1b_100,manyIn2b_60,eqIn64,inAfter64   # 単�
 dotnet out/base/H.dll mergemsg   # 保持した MERGE 分岐に UPDATE SET ... WHERE と DELETE。名指しされる排他ペアを表示
 dotnet out/base/H.dll outloop 32 223   # 保持ステージにバインド 32 個 → 出力 223 個 → バインド。試作 06 はここで戻らない
 dotnet out/base/H.dll fuzz 3000 1500   # 内部バッファへの乱数列。ダイジェストを基準と比べる。試作 06 はハングする
+dotnet out/base/H.dll bindguard        # 値 59 種 × 経路 9 通りの受理・拒否・メッセージ。変種間で diff する
+python3 cmp.py 4 5 bindInt,full,simple,insert10 base variant   # out/<名前>/H.dll を 1 本ずつ交互に走らせる
 
 # 変種(別ツリーにパッチを当てて、そのツリーを参照してビルド)
 git worktree add /tmp/sa-variant f428588

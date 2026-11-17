@@ -1,0 +1,69 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 77d81ce..1addd35 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -361,6 +361,55 @@ internal abstract class SqlBuilderBase
+     // query about 15% of its time, and two probes plus the type tests about 10% more (ADR 0006).
+     private static readonly FrozenDictionary<Type, PartTraits> TraitsByType = IndexTraitsByType();
+ 
++    private const int TraitSlotCount = 256;
++
++    private static readonly (nint Key, PartTraits Traits)[] TraitSlots = BuildTraitSlots();
++
++    private static (nint Key, PartTraits Traits)[] BuildTraitSlots()
++    {
++        (nint Key, PartTraits Traits)[] slots = new (nint, PartTraits)[TraitSlotCount];
++        foreach (KeyValuePair<Type, PartTraits> entry in TraitsByType)
++        {
++            nint key = entry.Key.TypeHandle.Value;
++            int i = SlotOf(key);
++            while (slots[i].Key != 0)
++            {
++                i = (i + 1) & (TraitSlotCount - 1);
++            }
++
++            slots[i] = (key, entry.Value);
++        }
++
++        return slots;
++    }
++
++    [System.Runtime.CompilerServices.MethodImpl(
++        System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
++    private static int SlotOf(nint key) =>
++        (int)(((ulong)key * 0x9E3779B97F4A7C15UL) >> 56);
++
++    private static PartTraits TraitsOf(SqlPart part)
++    {
++        nint key = part.GetType().TypeHandle.Value;
++        (nint Key, PartTraits Traits)[] slots = TraitSlots;
++        int i = SlotOf(key);
++        while (true)
++        {
++            ref readonly (nint Key, PartTraits Traits) slot = ref slots[i];
++            if (slot.Key == key)
++            {
++                return slot.Traits;
++            }
++
++            if (slot.Key == 0)
++            {
++                return default;
++            }
++
++            i = (i + 1) & (TraitSlotCount - 1);
++        }
++    }
++
+     private static readonly ulong[] BlockExclusions =
+         BuildExclusionMasks(OncePerBlockClauses.Length, ExclusiveKinds);
+ 
+@@ -462,7 +511,7 @@ internal abstract class SqlBuilderBase
+         bool insertSourceSeen = false;
+         foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
+         {
+-            TraitsByType.TryGetValue(part.GetType(), out PartTraits traits);
++            PartTraits traits = TraitsOf(part);
+             PartRole role = traits.Role;
+ 
+             if (joinConditionPending && role != PartRole.JoinCondition)
