@@ -1,0 +1,13 @@
+perf: Read each part once in the duplicate-clause walk
+
+The duplicate-clause walk still cost the benchmark query about a seventh of its
+build: two FrozenDictionary probes and some thirty type tests per part. One
+table keyed by exact type now gives a part's role and both its kinds in one
+probe, and the exclusive pairs are read through a per-kind mask. The tables the
+walk is built from are unchanged, so are its decisions and every message;
+RequirementOnlyOnClause, which the type tests matched through its base, is
+listed beside it, and DuplicateClauseWalkTests fails for a derived clause or an
+ISelectItemsClause / IJoinedRelation implementer the table lacks.
+
+The emitted SQL, the parameters and the allocated bytes are unchanged for every
+statement.

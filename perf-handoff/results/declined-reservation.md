@@ -1,7 +1,11 @@
-# 採用版(索引なし)の再検証
+# 不採用: 索引なし版(表の一本化 + 容量の事前確保)の検証記録
 
-対象は `patches/adopted-walk-table-and-reservation.diff`(`f428588` に当てる 1 コミット分、
-コミット文は `patches/adopted-commit-message.txt`)。`patches/final-walk-table-and-parameter-index.diff`
+容量の事前確保は不採用になった(デグレが 3 件出た部分で、短縮は 1 文あたり 0.1〜0.5 µs)。採用するのは
+表の一本化だけで、`results/adopted-walk-table.md` を見ること。以下は経緯の記録で、表の「採用版」は
+この不採用版を指す。
+
+対象は `patches/declined-walk-table-and-reservation.diff`(`f428588` に当てる 1 コミット分、
+コミット文は `patches/declined-walk-table-and-reservation-commit-message.txt`)。`patches/final-walk-table-and-parameter-index.diff`
 から、128 個以上で切り替わるハッシュ索引(`IndexedParameterList`)だけを外したもの。
 128 個以上のパラメータを持つ文は稀、という判断による。
 

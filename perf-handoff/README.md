@@ -5,8 +5,8 @@
 
 - 基準コミット: `f428588`(#845 マージ直後の `main`)。
 - `src/` と `tests/` は変更していない。実装は `patches/` の差分としてだけ存在する。
-- **採用するのは `patches/adopted-walk-table-and-reservation.diff` の 1 本**(索引なし)。
-  `patches/final-…` はハッシュ索引つきの版で不採用。`patches/01`〜`09` はそこに至るまでの試作で、
+- **採用するのは `patches/adopted-walk-table.diff` の 1 本**(重複句チェックの表の一本化だけ)。
+  容量の事前確保(`patches/declined-…`)とハッシュ索引(`patches/final-…`)は不採用。`patches/01`〜`09` はそこに至るまでの試作で、
   そのまま積むとデグレと無限ループがある(下の「索引あり版」と「レビュー」)。
 - このフォルダは引き継ぎ用で、`main` に入れるものではない。実装が済んだら消す。
 
@@ -14,9 +14,11 @@
 |---|---|
 | `README.md` | この文書。結論、施策ごとの中身と実装時の注意 |
 | `results/measurements.md` | 生の計測値と、変種の名前(`base` / `e1` / `p1` …)の対応 |
-| `patches/adopted-walk-table-and-reservation.diff` | 採用版(索引なし)。`f428588` に `git apply` で当たる 1 コミット分 |
-| `patches/adopted-commit-message.txt` | 採用版のコミットメッセージ |
-| `results/adopted-no-index.md` | 採用版のゲート、変異テスト、計測、確かめていないこと |
+| `patches/adopted-walk-table.diff` | 採用版(表の一本化だけ)。`f428588` に `git apply` で当たる 1 コミット分(`SqlBuilderBase.cs` とテスト 2 ファイル) |
+| `patches/adopted-walk-table-commit-message.txt` | 採用版のコミットメッセージ |
+| `results/adopted-walk-table.md` | 採否の決定、採用版のゲート、変異テスト、計測、取り込み時に必要なこと |
+| `patches/declined-walk-table-and-reservation.diff` と同 `-commit-message.txt` | 表の一本化 + 容量の事前確保の版(不採用) |
+| `results/declined-reservation.md` | その版の検証記録 |
 | `patches/final-walk-table-and-parameter-index.diff` | 索引あり版(不採用)。`f428588` に `git apply` で当たる 1 コミット分(ソース 8 ファイル、テスト 3 ファイル、CHANGELOG) |
 | `patches/final-commit-message.txt` | 索引あり版のコミットメッセージ |
 | `results/panel-audit.md` | 索引あり版に対する 3 モデルのパネルレビューの記録、判定、最終版の計測、残るコスト |
@@ -25,21 +27,28 @@
 | `harness/` | 時間とアロケーションを測るコンソール。`SqlArtisan.sln` には入っていない |
 | `walkcheck/` | 01 の種別コードを全 `SqlPart` クラスについて元の表と突き合わせるコンソール |
 
-## 採用版: 索引なし(ユーザー判断)
+## 採用版: 表の一本化だけ(ユーザー判断)
 
-128 個以上のパラメータを持つ文は稀なので、ハッシュ索引は採用しない。採用するのは
-`patches/adopted-walk-table-and-reservation.diff`(コミット文は `patches/adopted-commit-message.txt`)で、
-下の最終版から索引だけを外したもの。ゲート、変異テスト、現行との出力比較、計測は
-`results/adopted-no-index.md` にある。
+| 施策 | 決定 | 理由 |
+|---|---|---|
+| 重複句チェックの表の一本化 | 採用 | 全文に効き、確保は変わらず、レビューでデグレが一度も出ていない |
+| 暗黙バインドと容量の事前確保 | 不採用 | デグレが 3 件出た部分で、短縮は 1 文あたり 0.1〜0.5 µs |
+| 128 個以上でのハッシュ索引 | 不採用 | 128 個以上のパラメータを持つ文は稀 |
 
-- 現行より遅い形も、確保が増える形も、測った範囲にない。
-- 頻用ケースは索引あり版と同じ(ベンチマークのクエリ 1,054〜1,071 → 922〜948 ns、20 値の `IN`
-  約 1,500〜1,650 → 約 1,010〜1,090 ns)。
-- 索引を外した影響は 128 個以上だけ: 300 個までは 0〜4 µs、1,000 個で約 0.12〜0.16 ms 遅い
-  (それでも現行より約 30〜40% 速い)。
+採用するのは `patches/adopted-walk-table.diff`(コミット文は `patches/adopted-walk-table-commit-message.txt`)。
+ゲート、変異テスト、現行との出力比較、計測は `results/adopted-walk-table.md` にある。
 
-`patches/final-walk-table-and-parameter-index.diff` と `results/panel-audit.md` は、索引あり版の
-記録として残してある。
+- ベンチマークのクエリは最小値どうしで 0.91〜0.94 倍(5 方言とも)。確保は測ったすべての形で現行と同じ。
+- バインドが時間の大半を占める文(値の多い `IN` など)は現行と区別がつかない。遅くなった形はない。
+- SQL、パラメータ、例外とメッセージは現行と一致する。
+
+取り込み時に必要なこと: コンテナを使う結合テストを CI で通す。CHANGELOG の未リリース項目の
+「約 15%」と README のベンチマーク表は、基準機で公式ベンチマークを測り直して差し替える
+(パッチはどちらも変えていない)。
+
+不採用の 2 つの記録は残してある: 事前確保は `patches/declined-walk-table-and-reservation.diff` と
+`results/declined-reservation.md`、ハッシュ索引は `patches/final-walk-table-and-parameter-index.diff` と
+`results/panel-audit.md`。
 
 ## 索引あり版(パネルレビュー後。不採用)
 
