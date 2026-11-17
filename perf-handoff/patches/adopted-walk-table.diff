@@ -1,5 +1,5 @@
 diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
-index 60772cf..77d81ce 100644
+index 60772cf..81837e6 100644
 --- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
 +++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
 @@ -1,4 +1,5 @@
@@ -8,7 +8,7 @@ index 60772cf..77d81ce 100644
  using System.Diagnostics.CodeAnalysis;
  using System.Runtime.InteropServices;
  
-@@ -322,17 +323,79 @@ internal abstract class SqlBuilderBase
+@@ -322,17 +323,76 @@ internal abstract class SqlBuilderBase
          ["INSERT ... WHERE", "DELETE WHERE"],
          ["INSERT ... WHERE", "UPDATE SET ... WHERE"]);
  
@@ -27,11 +27,8 @@ index 60772cf..77d81ce 100644
 +            typeof(UnionOperator), typeof(ExceptOperator), typeof(IntersectOperator),
 +            typeof(MinusOperator),
 +        ]),
-+        (PartRole.SelectItems, [
-+            typeof(SelectClause), typeof(SelectClauseWithDistinct), typeof(SelectClauseWithHints),
-+            typeof(SelectClauseWithHintsDistinct), typeof(SelectClauseWithTop),
-+            typeof(SelectClauseWithDistinctTop),
-+        ]),
++        // The SELECT kind's own list, so a new SELECT clause cannot be given one and not the other.
++        (PartRole.SelectItems, OncePerBlockClauses[IndexOfKind("SELECT")].Types),
 +        (PartRole.MergeWhen, [
 +            typeof(WhenMatchedClause), typeof(WhenNotMatchedClause),
 +            typeof(WhenNotMatchedBySourceClause),
@@ -97,7 +94,7 @@ index 60772cf..77d81ce 100644
      {
          Dictionary<Type, int> kindByType = [];
          for (int i = 0; i < kinds.Length; i++)
-@@ -343,7 +406,46 @@ internal abstract class SqlBuilderBase
+@@ -343,7 +403,46 @@ internal abstract class SqlBuilderBase
              }
          }
  
@@ -145,7 +142,7 @@ index 60772cf..77d81ce 100644
      }
  
      // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
-@@ -360,17 +462,20 @@ internal abstract class SqlBuilderBase
+@@ -360,17 +459,20 @@ internal abstract class SqlBuilderBase
          bool insertSourceSeen = false;
          foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
          {
@@ -169,7 +166,7 @@ index 60772cf..77d81ce 100644
              {
                  seen = 0;
                  setOperatorPending = true;
-@@ -381,13 +486,13 @@ internal abstract class SqlBuilderBase
+@@ -381,13 +483,13 @@ internal abstract class SqlBuilderBase
  
              setOperatorPending = false;
  
@@ -185,7 +182,7 @@ index 60772cf..77d81ce 100644
              {
                  seen &= ~(1UL << WithClauseIndex);
                  inInsert = true;
-@@ -395,7 +500,7 @@ internal abstract class SqlBuilderBase
+@@ -395,7 +497,7 @@ internal abstract class SqlBuilderBase
  
              // VALUES, SET, and SELECT spell an INSERT's one row source (SET renders
              // as VALUES), a duplicate the kind-level checks below cannot see.
@@ -194,7 +191,7 @@ index 60772cf..77d81ce 100644
              {
                  if (insertSourceSeen)
                  {
-@@ -409,22 +514,18 @@ internal abstract class SqlBuilderBase
+@@ -409,22 +511,18 @@ internal abstract class SqlBuilderBase
  
              // ON/USING legally repeat once per join, so they pair by adjacency
              // rather than by a once-per-block entry.
@@ -220,7 +217,7 @@ index 60772cf..77d81ce 100644
              {
                  if (joinConditionSeen)
                  {
-@@ -437,8 +538,8 @@ internal abstract class SqlBuilderBase
+@@ -437,8 +535,8 @@ internal abstract class SqlBuilderBase
                  joinConditionPending = false;
              }
  
@@ -231,7 +228,7 @@ index 60772cf..77d81ce 100644
              {
                  ulong bit = 1UL << kind;
                  if ((seen & bit) != 0)
-@@ -448,22 +549,16 @@ internal abstract class SqlBuilderBase
+@@ -448,22 +546,16 @@ internal abstract class SqlBuilderBase
                          + "per query block; a stage on a held builder was called twice.");
                  }
  
@@ -258,7 +255,7 @@ index 60772cf..77d81ce 100644
              {
                  ulong bit = 1UL << branchKind;
                  if ((seenInBranch & bit) != 0)
-@@ -474,18 +569,9 @@ internal abstract class SqlBuilderBase
+@@ -474,18 +566,9 @@ internal abstract class SqlBuilderBase
                          + "builder was called twice.");
                  }
  
@@ -279,7 +276,7 @@ index 60772cf..77d81ce 100644
                  }
  
                  seenInBranch |= bit;
-@@ -514,6 +600,42 @@ internal abstract class SqlBuilderBase
+@@ -514,6 +597,42 @@ internal abstract class SqlBuilderBase
  
      private bool HoldsReturningInto() => FindPart<ReturningIntoClause>() is not null;
  

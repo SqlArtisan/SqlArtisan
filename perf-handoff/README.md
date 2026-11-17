@@ -16,7 +16,8 @@
 | `results/measurements.md` | 生の計測値と、変種の名前(`base` / `e1` / `p1` …)の対応 |
 | `patches/adopted-walk-table.diff` | 採用版(表の一本化だけ)。`f428588` に `git apply` で当たる 1 コミット分(`SqlBuilderBase.cs` とテスト 2 ファイル) |
 | `patches/adopted-walk-table-commit-message.txt` | 採用版のコミットメッセージ |
-| `results/adopted-walk-table.md` | 採否の決定、採用版のゲート、変異テスト、計測、取り込み時に必要なこと |
+| `results/adopted-walk-table.md` | 採否の決定、採用版のゲート、変異テスト、計測、取り込み時に必要なこと、別案との比較 |
+| `results/compared-alternative-plan.md` | 比較した別案の設計書(同じ施策の別設計。採用版はここから SELECT の一覧の共有だけを取り込んだ) |
 | `patches/declined-walk-table-and-reservation.diff` と同 `-commit-message.txt` | 表の一本化 + 容量の事前確保の版(不採用) |
 | `results/declined-reservation.md` | その版の検証記録 |
 | `patches/final-walk-table-and-parameter-index.diff` | 索引あり版(不採用)。`f428588` に `git apply` で当たる 1 コミット分(ソース 8 ファイル、テスト 3 ファイル、CHANGELOG) |
@@ -38,7 +39,9 @@
 採用するのは `patches/adopted-walk-table.diff`(コミット文は `patches/adopted-walk-table-commit-message.txt`)。
 ゲート、変異テスト、現行との出力比較、計測は `results/adopted-walk-table.md` にある。
 
-- ベンチマークのクエリは最小値どうしで 0.91〜0.94 倍(5 方言とも)。確保は測ったすべての形で現行と同じ。
+- ベンチマークのクエリは最小値どうしで 0.90〜0.94 倍。確保は測ったすべての形で現行と同じ。
+- 同じ施策の別の設計書と独立エージェントで比べ、その良い点(SELECT の型一覧を 1 か所に持つ)を
+  取り込んである。
 - バインドが時間の大半を占める文(値の多い `IN` など)は現行と区別がつかない。遅くなった形はない。
 - SQL、パラメータ、例外とメッセージは現行と一致する。
 

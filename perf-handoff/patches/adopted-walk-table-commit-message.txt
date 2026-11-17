@@ -7,7 +7,9 @@ probe, and the exclusive pairs are read through a per-kind mask. The tables the
 walk is built from are unchanged, so are its decisions and every message;
 RequirementOnlyOnClause, which the type tests matched through its base, is
 listed beside it, and DuplicateClauseWalkTests fails for a derived clause or an
-ISelectItemsClause / IJoinedRelation implementer the table lacks.
+ISelectItemsClause / IJoinedRelation implementer the table lacks. The SELECT
+role reads the SELECT kind's own type list, so that test also fails for a SELECT
+clause the kind table lacks, which nothing caught before.
 
 The emitted SQL, the parameters and the allocated bytes are unchanged for every
 statement.
