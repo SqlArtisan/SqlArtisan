@@ -1,0 +1,104 @@
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs
+index bfd0af16..0ffea146 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Delete/DeleteBuilder.cs
+@@ -3,8 +3,9 @@ namespace SqlArtisan.Internal;
+ internal sealed class DeleteBuilder(
+     DbTableBase table,
+     DmlJoinState state,
+-    params SqlPart[] rootParts) :
+-    SqlBuilderBase(rootParts),
++    SqlPart rootPart,
++    SqlPart? secondRootPart = null) :
++    SqlBuilderBase(rootPart, secondRootPart),
+     IDeleteBuilderDelete,
+     IDeleteBuilderDeleteOutput,
+     IDeleteBuilderFrom,
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs
+index 5fd50880..244acf76 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Insert/InsertBuilder.cs
+@@ -28,8 +28,12 @@ internal sealed class InsertBuilder :
+     private readonly int _columnCount;
+     private InsertValuesClause? _valuesClause;
+ 
+-    internal InsertBuilder(DbTableBase table, int columnCount, params SqlPart[] rootParts) :
+-        base(rootParts)
++    internal InsertBuilder(
++        DbTableBase table,
++        int columnCount,
++        SqlPart rootPart,
++        SqlPart? secondRootPart = null) :
++        base(rootPart, secondRootPart)
+     {
+         _table = table;
+         _columnCount = columnCount;
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs
+index b710755e..f1ad812c 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Merge/MergeBuilder.cs
+@@ -1,7 +1,10 @@
+ namespace SqlArtisan.Internal;
+ 
+-internal sealed class MergeBuilder(DbTableBase target, params SqlPart[] rootParts) :
+-    SqlBuilderBase(rootParts),
++internal sealed class MergeBuilder(
++    DbTableBase target,
++    SqlPart rootPart,
++    SqlPart? secondRootPart = null) :
++    SqlBuilderBase(rootPart, secondRootPart),
+     IMergeBuilderOn,
+     IMergeBuilderTarget,
+     IMergeBuilderThenInsert,
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs
+index 9b3a07ed..4292ac0d 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Select/SelectBuilder.cs
+@@ -18,7 +18,8 @@ internal class SelectBuilder :
+     ISelectBuilderWhere,
+     ISelectBuilderWithRollup
+ {
+-    internal SelectBuilder(params SqlPart[] rootParts) : base(rootParts)
++    internal SelectBuilder(SqlPart rootPart, SqlPart? secondRootPart = null)
++        : base(rootPart, secondRootPart)
+     {
+     }
+ 
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+index 81837e6d..4f3a2271 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/SqlBuilderBase.cs
+@@ -26,10 +26,14 @@ internal abstract class SqlBuilderBase
+     // so any use of this one would extend or render the whole compound.
+     private bool _continued;
+ 
+-    protected SqlBuilderBase(SqlPart[] rootParts)
++    protected SqlBuilderBase(SqlPart rootPart, SqlPart? secondRootPart)
+     {
+-        _parts = new List<SqlPart>(Math.Max(rootParts.Length, ExpectedClauseCount));
+-        _parts.AddRange(rootParts);
++        _parts = new List<SqlPart>(ExpectedClauseCount);
++        _parts.Add(rootPart);
++        if (secondRootPart is not null)
++        {
++            _parts.Add(secondRootPart);
++        }
+     }
+ 
+     // A set operator's continuation takes the frozen left branch's list over rather
+diff --git a/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs b/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs
+index edfaf12f..db47bfcd 100644
+--- a/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs
++++ b/src/SqlArtisan/Internal/SqlBuilder/Update/UpdateBuilder.cs
+@@ -3,8 +3,9 @@ namespace SqlArtisan.Internal;
+ internal sealed class UpdateBuilder(
+     DbTableBase table,
+     DmlJoinState state,
+-    params SqlPart[] rootParts) :
+-    SqlBuilderBase(rootParts),
++    SqlPart rootPart,
++    SqlPart? secondRootPart = null) :
++    SqlBuilderBase(rootPart, secondRootPart),
+     IUpdateBuilderFrom,
+     IUpdateBuilderFromJoinOn,
+     IUpdateBuilderJoinOn,

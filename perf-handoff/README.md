@@ -27,6 +27,8 @@
 | `patches/alt-01-…` | 01 の代案(辞書 1 つ)。01 と 02 のあとに当てる |
 | `harness/` | 時間とアロケーションを測るコンソール。`SqlArtisan.sln` には入っていない |
 | `walkcheck/` | 01 の種別コードを全 `SqlPart` クラスについて元の表と突き合わせるコンソール |
+| `implementation-plan.md` | 採用する 3 つの修正(表の一本化、ルート句の配列廃止、`BindValue` の検査)の実装案。別セッションがこれだけで実装に入れる |
+| `patches/impl-02`、`impl-03` | 上の 2 つ目と 3 つ目の実装差分(1 つ目は `adopted-walk-table.diff`)。参照ブランチは `perf/build-path-walk-table-and-bind-check` |
 | `results/exploration-2.md` | 模索 2 回目の調査報告。検討済みの案とは別の候補 7 つの実測、遅くなる形、採否の勧め |
 | `patches/explore-01`〜`07` | 模索 2 回目の試作。採用版を当てた `f428588` に対する差分(当て方は `results/exploration-2.md` の 6 節) |
 | `patches/explore-all.diff` | 01 + 03〜07 をまとめたもの(02 は含まない) |
