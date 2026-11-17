@@ -50,14 +50,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   call that names it (`Else(thenExpr: x)`) no longer compiles, and `Else(null)`
   reports `elseExpr` as the parameter.
 - `Build()` finds each clause's kind with one lookup when it checks a statement
-  for a clause written twice, instead of scanning every clause kind's types. The
-  benchmark query builds about 15% faster on .NET 10, allocating the same bytes,
-  and the check runs for every statement and every nested query block.
+  for a clause written twice, instead of scanning every clause kind's types,
+  allocating nothing more. The check runs for every statement and every nested
+  query block.
 - A bound number, string, date or other value SqlArtisan binds directly is no
   longer tested against the SqlArtisan types `new BindValue(...)` rejects, which
-  none of them can be, so a statement spends less time on each value it binds.
-  Every statement also allocates 32 bytes less, the array its builder was
-  started with.
+  none of them can be, so a statement spends less time on each such value. Any
+  other value, such as a `byte[]` or a `BindArray(...)` array, is tested as
+  before and pays the added check on top.
+- Each query builder, a subquery's included, allocates one array less: 32
+  bytes, or 40 for one opened by `With(...)`.
 
 ### Fixed
 - `SqlArtisan.Dapper`'s `SqlMapper.AddTypeHandler` decides whether to register
