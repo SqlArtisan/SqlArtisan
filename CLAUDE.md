@@ -59,6 +59,12 @@ dotnet format SqlArtisan.sln --verify-no-changes   # .editorconfig style gate (C
 bash tools/regen-pict.sh                # regenerate every model's combinatorial cases after editing a .pict
 ```
 
+Mutation testing (Stryker.NET) is occasional — before a release or a large
+Analyzers change — not a CI gate: `dotnet tool restore`, then `dotnet stryker`
+from a test project directory. Each test project's `stryker-config.json` fixes
+its scope; the Analyzers one is narrowed because a whole-project run exceeds
+two hours.
+
 Always run `dotnet test` after changing `src/`. Tests assert the **exact** SQL
 string, so any output change will surface here. Also run
 `dotnet format SqlArtisan.sln` before pushing — CI fails on any `.editorconfig`

@@ -1,0 +1,15 @@
+{
+  "stryker-config": {
+    "project": "SqlArtisan.csproj",
+    "mutate": [
+      "**/Internal/SqlBuilder/**/*.cs"
+    ],
+    "concurrency": 4,
+    "reporters": [
+      "html",
+      "json",
+      "progress",
+      "cleartext"
+    ]
+  }
+}

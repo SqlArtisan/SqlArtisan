@@ -1,0 +1,20 @@
+{
+  "stryker-config": {
+    "project": "SqlArtisan.TableClassGen.csproj",
+    "mutate": [
+      "**/*.cs",
+      "!**/Catalog/InformationSchemaCatalogReader.cs",
+      "!**/Catalog/OracleCatalogReader.cs",
+      "!**/Catalog/Index/CatalogColumnIndexReader.cs",
+      "!**/Catalog/Table/InformationSchema/*.cs",
+      "!**/Catalog/Table/Oracle/*.cs"
+    ],
+    "concurrency": 4,
+    "reporters": [
+      "html",
+      "json",
+      "progress",
+      "cleartext"
+    ]
+  }
+}

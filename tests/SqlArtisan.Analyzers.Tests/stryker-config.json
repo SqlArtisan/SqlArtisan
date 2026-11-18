@@ -1,0 +1,30 @@
+{
+  "stryker-config": {
+    "project": "SqlArtisan.Analyzers.csproj",
+    "mutate": [
+      "**/DialectSupportResolver.cs",
+      "**/VersionBounds.cs",
+      "**/EngineVersion.cs",
+      "**/DialectTargetSet.cs",
+      "**/TargetDbms.cs",
+      "**/DbmsSupport.cs",
+      "**/ConstantNullPredicateRule.cs",
+      "**/NotInNullableSubqueryRule.cs",
+      "**/InsertMissingRequiredColumnRule.cs",
+      "**/CountNullableColumnRule.cs",
+      "**/UnusableIndexPredicateRule.cs",
+      "**/TypeCategoryMismatchRule.cs",
+      "**/TextColumnPlusRule.cs",
+      "**/SchemaMetadata.cs",
+      "**/SourceDeclaration.cs",
+      "**/FluentChain.cs"
+    ],
+    "concurrency": 4,
+    "reporters": [
+      "html",
+      "json",
+      "progress",
+      "cleartext"
+    ]
+  }
+}
