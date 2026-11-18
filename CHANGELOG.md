@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-11-18
 ### Added
 - `SQLA0102` reports, on SQL Server, a compound's `OrderBy(...)` followed by
   `OffsetRows(...)` or `FetchNext(...)` in a subquery, CTE body, derived table or

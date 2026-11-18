@@ -10,8 +10,9 @@ for the published packages — `SqlArtisan`, `SqlArtisan.ArrayBind`,
 ## SemVer commitment
 
 From **1.0**, SqlArtisan follows [Semantic Versioning](https://semver.org/) —
-breaking changes only in major releases. Until then (0.x), any release may
-contain breaking changes, each marked **Breaking:** in the
+breaking changes only in major releases. Until then (0.x and the 1.0.0 release
+candidates), any release may contain breaking changes, each marked
+**Breaking:** in the
 [CHANGELOG](https://github.com/h-tacayama/SqlArtisan/blob/main/CHANGELOG.md).
 A breaking change that slips into a minor or patch release by mistake is
 treated as a bug — please open an
