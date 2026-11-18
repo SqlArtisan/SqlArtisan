@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -25,10 +26,14 @@ internal abstract class SqlBuilderBase
     // so any use of this one would extend or render the whole compound.
     private bool _continued;
 
-    protected SqlBuilderBase(SqlPart[] rootParts)
+    protected SqlBuilderBase(SqlPart rootPart, SqlPart? secondRootPart)
     {
-        _parts = new List<SqlPart>(Math.Max(rootParts.Length, ExpectedClauseCount));
-        _parts.AddRange(rootParts);
+        _parts = new List<SqlPart>(ExpectedClauseCount);
+        _parts.Add(rootPart);
+        if (secondRootPart is not null)
+        {
+            _parts.Add(secondRootPart);
+        }
     }
 
     // A set operator's continuation takes the frozen left branch's list over rather
@@ -322,28 +327,118 @@ internal abstract class SqlBuilderBase
         ["INSERT ... WHERE", "DELETE WHERE"],
         ["INSERT ... WHERE", "UPDATE SET ... WHERE"]);
 
-    // Each part's kind in one probe: an Array.IndexOf over every kind's types cost the
-    // benchmark query about 15% of its time (ADR 0006). Built once: a lookup allocates nothing.
-    private static readonly FrozenDictionary<Type, int> OncePerBlockKindByType =
-        IndexKindsByType(OncePerBlockClauses);
+    // What the walk reads off a part besides its kinds. One entry per type: the lookup is by
+    // exact type, so a derived clause is listed beside its base (DuplicateClauseWalkTests).
+    private static readonly (PartRole Role, Type[] Types)[] PartRoles =
+    [
+        (PartRole.JoinCondition, [
+            typeof(OnClause), typeof(RequirementOnlyOnClause), typeof(JoinUsingClause),
+        ]),
+        (PartRole.SetOperator, [
+            typeof(UnionOperator), typeof(ExceptOperator), typeof(IntersectOperator),
+            typeof(MinusOperator),
+        ]),
+        // The SELECT kind's own list, so a new SELECT clause cannot be given one and not the other.
+        (PartRole.SelectItems, OncePerBlockClauses[IndexOfKind("SELECT")].Types),
+        (PartRole.MergeWhen, [
+            typeof(WhenMatchedClause), typeof(WhenNotMatchedClause),
+            typeof(WhenNotMatchedBySourceClause),
+        ]),
+        (PartRole.InsertTarget, [typeof(InsertIntoClause), typeof(InsertIgnoreIntoClause)]),
+        (PartRole.InsertRowSource, [typeof(InsertValuesClause), typeof(InsertSetClause)]),
+        (PartRole.ConditionedJoin, [
+            typeof(InnerJoinClause), typeof(LeftJoinClause), typeof(RightJoinClause),
+            typeof(FullJoinClause), typeof(JoinLateralClause),
+        ]),
+        (PartRole.ConditionFreeJoin, [
+            typeof(LeftJoinLateralClause), typeof(CrossJoinLateralClause), typeof(CrossJoinClause),
+            typeof(NaturalJoinClause), typeof(NaturalLeftJoinClause),
+            typeof(NaturalRightJoinClause), typeof(NaturalFullJoinClause),
+            typeof(CrossApplyClause), typeof(OuterApplyClause),
+        ]),
+    ];
 
-    private static readonly FrozenDictionary<Type, int> OncePerBranchKindByType =
-        IndexKindsByType(OncePerBranchClauses);
+    // Every fact the walk needs about a part in one probe: per-kind scans cost the benchmark
+    // query about 15% of its time, and two probes plus the type tests about 10% more (ADR 0006).
+    // Packed into an int, since a table over a value type of its own took startup 4-8 ms to JIT.
+    private static readonly FrozenDictionary<Type, int> TraitsByType = IndexTraitsByType();
 
-    // Add throws on a type listed under two kinds, which the scan would have read as the first.
-    private static FrozenDictionary<Type, int> IndexKindsByType(
-        (string Name, Type[] Types)[] kinds)
+    // A part's traits: its role in the low byte, then each kind one past its index, so the
+    // zero a failed lookup leaves reads as no role and no kind.
+    private const int RoleMask = 0xFF;
+    private const int KindMask = 0xFF;
+    private const int BlockKindShift = 8;
+    private const int BranchKindShift = 16;
+
+    private static readonly ulong[] BlockExclusions =
+        BuildExclusionMasks(OncePerBlockClauses.Length, ExclusiveKinds);
+
+    private static readonly ulong[] BranchExclusions =
+        BuildExclusionMasks(OncePerBranchClauses.Length, ExclusiveBranchKinds);
+
+    private static FrozenDictionary<Type, int> IndexTraitsByType()
     {
-        Dictionary<Type, int> kindByType = [];
+        Dictionary<Type, int> traitsByType = [];
+        foreach ((PartRole role, Type[] types) in PartRoles)
+        {
+            foreach (Type type in types)
+            {
+                traitsByType.Add(type, (int)role);
+            }
+        }
+
+        AddKinds(traitsByType, OncePerBlockClauses, BlockKindShift);
+        AddKinds(traitsByType, OncePerBranchClauses, BranchKindShift);
+        return traitsByType.ToFrozenDictionary();
+    }
+
+    // Throws on a type listed under two kinds of one table, which a scan would read as the first.
+    private static void AddKinds(
+        Dictionary<Type, int> traitsByType,
+        (string Name, Type[] Types)[] kinds,
+        int shift)
+    {
         for (int i = 0; i < kinds.Length; i++)
         {
             foreach (Type type in kinds[i].Types)
             {
-                kindByType.Add(type, i);
+                traitsByType.TryGetValue(type, out int traits);
+                if (((traits >> shift) & KindMask) != 0)
+                {
+                    throw new ArgumentException($"{type.Name} is listed under two clause kinds.");
+                }
+
+                traitsByType[type] = traits | ((i + 1) << shift);
             }
         }
+    }
 
-        return kindByType.ToFrozenDictionary();
+    private static PartRole RoleOf(int traits) => (PartRole)(traits & RoleMask);
+
+    // Per kind, the kinds it cannot share a block with: the walk reads the pair table
+    // only once a part meets one of them.
+    private static ulong[] BuildExclusionMasks(int kindCount, (int Kind, int Other)[] pairs)
+    {
+        ulong[] masks = new ulong[kindCount];
+        foreach ((int kind, int other) in pairs)
+        {
+            masks[kind] |= 1UL << other;
+        }
+
+        return masks;
+    }
+
+    private enum PartRole : byte
+    {
+        None,
+        JoinCondition,
+        SetOperator,
+        SelectItems,
+        MergeWhen,
+        InsertTarget,
+        InsertRowSource,
+        ConditionedJoin,
+        ConditionFreeJoin,
     }
 
     // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
@@ -360,17 +455,20 @@ internal abstract class SqlBuilderBase
         bool insertSourceSeen = false;
         foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
         {
-            if (joinConditionPending && part is not (OnClause or JoinUsingClause))
+            TraitsByType.TryGetValue(part.GetType(), out int traits);
+            PartRole role = RoleOf(traits);
+
+            if (joinConditionPending && role != PartRole.JoinCondition)
             {
                 ThrowJoinConditionMissing();
             }
 
-            if (setOperatorPending && part is not ISelectItemsClause)
+            if (setOperatorPending && role != PartRole.SelectItems)
             {
                 ThrowSetOperatorOperandMissing();
             }
 
-            if (part is UnionOperator or ExceptOperator or IntersectOperator or MinusOperator)
+            if (role == PartRole.SetOperator)
             {
                 seen = 0;
                 setOperatorPending = true;
@@ -381,13 +479,13 @@ internal abstract class SqlBuilderBase
 
             setOperatorPending = false;
 
-            if (part is WhenMatchedClause or WhenNotMatchedClause or WhenNotMatchedBySourceClause)
+            if (role == PartRole.MergeWhen)
             {
                 seenInBranch = 0;
                 continue;
             }
 
-            if (part is InsertIntoClause or InsertIgnoreIntoClause)
+            if (role == PartRole.InsertTarget)
             {
                 seen &= ~(1UL << WithClauseIndex);
                 inInsert = true;
@@ -395,7 +493,7 @@ internal abstract class SqlBuilderBase
 
             // VALUES, SET, and SELECT spell an INSERT's one row source (SET renders
             // as VALUES), a duplicate the kind-level checks below cannot see.
-            if (inInsert && part is InsertValuesClause or InsertSetClause or ISelectItemsClause)
+            if (inInsert && role is PartRole.InsertRowSource or PartRole.SelectItems)
             {
                 if (insertSourceSeen)
                 {
@@ -409,22 +507,18 @@ internal abstract class SqlBuilderBase
 
             // ON/USING legally repeat once per join, so they pair by adjacency
             // rather than by a once-per-block entry.
-            if (part is InnerJoinClause or LeftJoinClause or RightJoinClause or FullJoinClause
-                or JoinLateralClause)
+            if (role == PartRole.ConditionedJoin)
             {
                 joinConditionSeen = false;
                 joinConditionPending = true;
             }
-            else if (part is LeftJoinLateralClause or CrossJoinLateralClause
-                or CrossJoinClause or NaturalJoinClause or NaturalLeftJoinClause
-                or NaturalRightJoinClause or NaturalFullJoinClause
-                or CrossApplyClause or OuterApplyClause)
+            else if (role == PartRole.ConditionFreeJoin)
             {
                 // Consumes the slot: an ON after a condition-free join is a repeated
                 // stage, not its condition (`CROSS JOIN ... ON` runs on SQLite, wrong).
                 joinConditionSeen = true;
             }
-            else if (part is OnClause or JoinUsingClause)
+            else if (role == PartRole.JoinCondition)
             {
                 if (joinConditionSeen)
                 {
@@ -437,8 +531,8 @@ internal abstract class SqlBuilderBase
                 joinConditionPending = false;
             }
 
-            Type partType = part.GetType();
-            if (OncePerBlockKindByType.TryGetValue(partType, out int kind))
+            int kind = ((traits >> BlockKindShift) & KindMask) - 1;
+            if (kind >= 0)
             {
                 ulong bit = 1UL << kind;
                 if ((seen & bit) != 0)
@@ -448,22 +542,16 @@ internal abstract class SqlBuilderBase
                         + "per query block; a stage on a held builder was called twice.");
                 }
 
-                for (int j = 0; j < ExclusiveKinds.Length; j++)
+                if ((seen & BlockExclusions[kind]) != 0)
                 {
-                    if (ExclusiveKinds[j].Kind == kind
-                        && (seen & (1UL << ExclusiveKinds[j].Other)) != 0)
-                    {
-                        throw new ArgumentException(
-                            $"{OncePerBlockClauses[kind].Name} cannot be combined with "
-                            + $"{OncePerBlockClauses[ExclusiveKinds[j].Other].Name} in one query "
-                            + "block; a stage on a held builder supplied both.");
-                    }
+                    ThrowExclusiveKind(kind, seen);
                 }
 
                 seen |= bit;
             }
 
-            if (OncePerBranchKindByType.TryGetValue(partType, out int branchKind))
+            int branchKind = (traits >> BranchKindShift) - 1;
+            if (branchKind >= 0)
             {
                 ulong bit = 1UL << branchKind;
                 if ((seenInBranch & bit) != 0)
@@ -474,18 +562,9 @@ internal abstract class SqlBuilderBase
                         + "builder was called twice.");
                 }
 
-                for (int j = 0; j < ExclusiveBranchKinds.Length; j++)
+                if ((seenInBranch & BranchExclusions[branchKind]) != 0)
                 {
-                    if (ExclusiveBranchKinds[j].Kind == branchKind
-                        && (seenInBranch & (1UL << ExclusiveBranchKinds[j].Other)) != 0)
-                    {
-                        string action = OncePerBranchClauses[branchKind].Name;
-                        string other = OncePerBranchClauses[ExclusiveBranchKinds[j].Other].Name;
-                        throw new ArgumentException(
-                            $"A MERGE WHEN branch takes one action; {action} "
-                            + $"cannot be combined with {other}, "
-                            + "and a stage on a held builder supplied both.");
-                    }
+                    ThrowExclusiveBranchKind(branchKind, seenInBranch);
                 }
 
                 seenInBranch |= bit;
@@ -513,6 +592,42 @@ internal abstract class SqlBuilderBase
     }
 
     private bool HoldsReturningInto() => FindPart<ReturningIntoClause>() is not null;
+
+    // Names the first pair in table order, the pair the walk met before the masks.
+    [DoesNotReturn]
+    private static void ThrowExclusiveKind(int kind, ulong seen)
+    {
+        foreach ((int pairKind, int other) in ExclusiveKinds)
+        {
+            if (pairKind == kind && (seen & (1UL << other)) != 0)
+            {
+                throw new ArgumentException(
+                    $"{OncePerBlockClauses[kind].Name} cannot be combined with "
+                    + $"{OncePerBlockClauses[other].Name} in one query "
+                    + "block; a stage on a held builder supplied both.");
+            }
+        }
+
+        throw new UnreachableException();
+    }
+
+    [DoesNotReturn]
+    private static void ThrowExclusiveBranchKind(int branchKind, ulong seenInBranch)
+    {
+        foreach ((int pairKind, int other) in ExclusiveBranchKinds)
+        {
+            if (pairKind == branchKind && (seenInBranch & (1UL << other)) != 0)
+            {
+                throw new ArgumentException(
+                    "A MERGE WHEN branch takes one action; "
+                    + $"{OncePerBranchClauses[branchKind].Name} cannot be combined with "
+                    + $"{OncePerBranchClauses[other].Name}, "
+                    + "and a stage on a held builder supplied both.");
+            }
+        }
+
+        throw new UnreachableException();
+    }
 
     [DoesNotReturn]
     private static void ThrowJoinConditionMissing() =>

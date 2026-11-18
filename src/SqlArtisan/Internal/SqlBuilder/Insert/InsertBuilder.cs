@@ -28,8 +28,12 @@ internal sealed class InsertBuilder :
     private readonly int _columnCount;
     private InsertValuesClause? _valuesClause;
 
-    internal InsertBuilder(DbTableBase table, int columnCount, params SqlPart[] rootParts) :
-        base(rootParts)
+    internal InsertBuilder(
+        DbTableBase table,
+        int columnCount,
+        SqlPart rootPart,
+        SqlPart? secondRootPart = null) :
+        base(rootPart, secondRootPart)
     {
         _table = table;
         _columnCount = columnCount;

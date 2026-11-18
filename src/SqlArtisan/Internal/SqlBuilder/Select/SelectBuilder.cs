@@ -18,7 +18,8 @@ internal class SelectBuilder :
     ISelectBuilderWhere,
     ISelectBuilderWithRollup
 {
-    internal SelectBuilder(params SqlPart[] rootParts) : base(rootParts)
+    internal SelectBuilder(SqlPart rootPart, SqlPart? secondRootPart = null)
+        : base(rootPart, secondRootPart)
     {
     }
 

@@ -622,6 +622,23 @@ public class BuilderReuseTests
     }
 
     [Fact]
+    public void Values_ThenSelect_OnHeldInsertIgnoreStage_ThrowsArgumentException()
+    {
+        TestTable target = new();
+        TestTable s = new("s");
+        IInsertIgnoreBuilderColumns held = InsertIgnoreInto(target, target.Code);
+        var values = held.Values(1);
+        held.Select(s.Code).From(s);
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => values.Build(Dbms.MySql));
+
+        Assert.Equal(
+            "An INSERT takes one row source — VALUES, SET, or SELECT; "
+                + "a stage on a held builder supplied a second.",
+            ex.Message);
+    }
+
+    [Fact]
     public void Set_ThenValues_OnHeldInsertStage_ThrowsArgumentException()
     {
         // SET renders as a VALUES row, so the pair is a duplicate row source.
@@ -808,6 +825,24 @@ public class BuilderReuseTests
         ISqlBuilder second = held.ThenDelete();
 
         ArgumentException ex = Assert.Throws<ArgumentException>(() => second.Build());
+
+        Assert.Equal(
+            "A MERGE WHEN branch takes one action; DELETE cannot be combined with UPDATE SET, "
+                + "and a stage on a held builder supplied both.",
+            ex.Message);
+    }
+
+    [Fact]
+    public void ThenUpdateSetWhere_ThenThenDelete_OnHeldBranch_ThrowsArgumentException()
+    {
+        // DELETE excludes UPDATE SET and its WHERE alike; the message names the pair listed first.
+        TestTable t = new("t");
+        TestTable s = new("s");
+        IMergeBuilderWhenMatched held = MergeInto(t).Using(s).On(t.Code == s.Code).WhenMatched();
+        held.ThenUpdateSet(t.Name == s.Name).Where(t.Code == 1);
+        ISqlBuilder second = held.ThenDelete();
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => second.Build(Dbms.Oracle));
 
         Assert.Equal(
             "A MERGE WHEN branch takes one action; DELETE cannot be combined with UPDATE SET, "
