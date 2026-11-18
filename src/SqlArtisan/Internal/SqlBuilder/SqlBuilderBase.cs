@@ -360,7 +360,15 @@ internal abstract class SqlBuilderBase
 
     // Every fact the walk needs about a part in one probe: per-kind scans cost the benchmark
     // query about 15% of its time, and two probes plus the type tests about 10% more (ADR 0006).
-    private static readonly FrozenDictionary<Type, PartTraits> TraitsByType = IndexTraitsByType();
+    // Packed into an int, since a table over a value type of its own took startup 4-8 ms to JIT.
+    private static readonly FrozenDictionary<Type, int> TraitsByType = IndexTraitsByType();
+
+    // A part's traits: its role in the low byte, then each kind one past its index, so the
+    // zero a failed lookup leaves reads as no role and no kind.
+    private const int RoleMask = 0xFF;
+    private const int KindMask = 0xFF;
+    private const int BlockKindShift = 8;
+    private const int BranchKindShift = 16;
 
     private static readonly ulong[] BlockExclusions =
         BuildExclusionMasks(OncePerBlockClauses.Length, ExclusiveKinds);
@@ -368,47 +376,44 @@ internal abstract class SqlBuilderBase
     private static readonly ulong[] BranchExclusions =
         BuildExclusionMasks(OncePerBranchClauses.Length, ExclusiveBranchKinds);
 
-    private static FrozenDictionary<Type, PartTraits> IndexTraitsByType()
+    private static FrozenDictionary<Type, int> IndexTraitsByType()
     {
-        Dictionary<Type, PartRole> roleByType = [];
+        Dictionary<Type, int> traitsByType = [];
         foreach ((PartRole role, Type[] types) in PartRoles)
         {
             foreach (Type type in types)
             {
-                roleByType.Add(type, role);
+                traitsByType.Add(type, (int)role);
             }
         }
 
-        Dictionary<Type, int> blockKindByType = IndexKindsByType(OncePerBlockClauses);
-        Dictionary<Type, int> branchKindByType = IndexKindsByType(OncePerBranchClauses);
-
-        Dictionary<Type, PartTraits> traitsByType = [];
-        foreach (Type type in (Type[])[
-            .. roleByType.Keys, .. blockKindByType.Keys, .. branchKindByType.Keys])
-        {
-            traitsByType[type] = new PartTraits(
-                roleByType.GetValueOrDefault(type),
-                blockKindByType.GetValueOrDefault(type, -1),
-                branchKindByType.GetValueOrDefault(type, -1));
-        }
-
+        AddKinds(traitsByType, OncePerBlockClauses, BlockKindShift);
+        AddKinds(traitsByType, OncePerBranchClauses, BranchKindShift);
         return traitsByType.ToFrozenDictionary();
     }
 
-    // Add throws on a type listed under two kinds, which a scan would have read as the first.
-    private static Dictionary<Type, int> IndexKindsByType((string Name, Type[] Types)[] kinds)
+    // Throws on a type listed under two kinds of one table, which a scan would read as the first.
+    private static void AddKinds(
+        Dictionary<Type, int> traitsByType,
+        (string Name, Type[] Types)[] kinds,
+        int shift)
     {
-        Dictionary<Type, int> kindByType = [];
         for (int i = 0; i < kinds.Length; i++)
         {
             foreach (Type type in kinds[i].Types)
             {
-                kindByType.Add(type, i);
+                traitsByType.TryGetValue(type, out int traits);
+                if (((traits >> shift) & KindMask) != 0)
+                {
+                    throw new ArgumentException($"{type.Name} is listed under two clause kinds.");
+                }
+
+                traitsByType[type] = traits | ((i + 1) << shift);
             }
         }
-
-        return kindByType;
     }
+
+    private static PartRole RoleOf(int traits) => (PartRole)(traits & RoleMask);
 
     // Per kind, the kinds it cannot share a block with: the walk reads the pair table
     // only once a part meets one of them.
@@ -436,19 +441,6 @@ internal abstract class SqlBuilderBase
         ConditionFreeJoin,
     }
 
-    // A kind is held one past its index, so the default a failed lookup leaves reads as no kind.
-    private readonly struct PartTraits(PartRole role, int blockKind, int branchKind)
-    {
-        private readonly byte _blockKindOrdinal = (byte)(blockKind + 1);
-        private readonly byte _branchKindOrdinal = (byte)(branchKind + 1);
-
-        internal PartRole Role { get; } = role;
-
-        internal int BlockKind => _blockKindOrdinal - 1;
-
-        internal int BranchKind => _branchKindOrdinal - 1;
-    }
-
     // A stage repeated on a held builder appends a duplicate clause (#225); most are valid
     // on no dialect, and those some engine runs are rejected by decision (ADR 0011). A set
     // operator and a conditioned join open what they must also receive (ADR 0017).
@@ -463,8 +455,8 @@ internal abstract class SqlBuilderBase
         bool insertSourceSeen = false;
         foreach (SqlPart part in CollectionsMarshal.AsSpan(_parts))
         {
-            TraitsByType.TryGetValue(part.GetType(), out PartTraits traits);
-            PartRole role = traits.Role;
+            TraitsByType.TryGetValue(part.GetType(), out int traits);
+            PartRole role = RoleOf(traits);
 
             if (joinConditionPending && role != PartRole.JoinCondition)
             {
@@ -539,7 +531,7 @@ internal abstract class SqlBuilderBase
                 joinConditionPending = false;
             }
 
-            int kind = traits.BlockKind;
+            int kind = ((traits >> BlockKindShift) & KindMask) - 1;
             if (kind >= 0)
             {
                 ulong bit = 1UL << kind;
@@ -558,7 +550,7 @@ internal abstract class SqlBuilderBase
                 seen |= bit;
             }
 
-            int branchKind = traits.BranchKind;
+            int branchKind = (traits >> BranchKindShift) - 1;
             if (branchKind >= 0)
             {
                 ulong bit = 1UL << branchKind;

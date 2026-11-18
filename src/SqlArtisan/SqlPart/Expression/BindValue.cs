@@ -84,9 +84,9 @@ public class BindValue : SqlExpression
 
     private static bool IsSqlArtisanObject(object value)
     {
-        // No directly bindable type is one, and missing the interface tests below costs an
-        // int or a string most of its bind; any other value pays this check on top (ADR 0006).
-        if (ExpressionResolver.IsDirectlyBindable(value))
+        // No directly bindable type is one, nor BindNull's DBNull; missing the interface tests
+        // below costs an int or a string most of its bind (ADR 0006).
+        if (value is DBNull || ExpressionResolver.IsDirectlyBindable(value))
         {
             return false;
         }

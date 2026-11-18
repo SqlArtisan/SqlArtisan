@@ -53,13 +53,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   for a clause written twice, instead of scanning every clause kind's types,
   allocating nothing more. The check runs for every statement and every nested
   query block.
-- A bound number, string, date or other value SqlArtisan binds directly is no
-  longer tested against the SqlArtisan types `new BindValue(...)` rejects, which
-  none of them can be, so a statement spends less time on each such value. Any
-  other value, such as a `byte[]` or a `BindArray(...)` array, is tested as
-  before and pays the added check on top.
+- A bound number, string, date or other value SqlArtisan binds directly, and the
+  NULL `BindNull()` binds, is no longer tested against the SqlArtisan types
+  `new BindValue(...)` rejects, which none of them can be, so a statement spends
+  less time on each such value. Any other value, such as a `byte[]` or a
+  `BindArray(...)` array, is tested as before and pays the added check on top. On
+  .NET 8 an enum value can bind more slowly too, as it did in a process that also
+  bound numbers and strings.
 - Each query builder, a subquery's included, allocates one array less: 32
-  bytes, or 40 for one opened by `With(...)`.
+  bytes, or 40 for one opened by `With(...)`. The builder a set operator returns
+  never allocated it, so a `UNION` chain saves it once, not once per branch.
 
 ### Fixed
 - `SqlArtisan.Dapper`'s `SqlMapper.AddTypeHandler` decides whether to register

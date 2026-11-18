@@ -52,17 +52,16 @@ public class DuplicateClauseWalkTests
         const BindingFlags NonPublic =
             BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
 
-        object table = Core.GetType("SqlArtisan.Internal.SqlBuilderBase", throwOnError: true)!
-            .GetField("TraitsByType", NonPublic)!
-            .GetValue(null)!;
+        Type builder = Core.GetType("SqlArtisan.Internal.SqlBuilderBase", throwOnError: true)!;
+        object table = builder.GetField("TraitsByType", NonPublic)!.GetValue(null)!;
+        MethodInfo roleOf = builder.GetMethod("RoleOf", NonPublic)!;
 
         Dictionary<Type, string> roles = [];
         foreach (object entry in (IEnumerable)table)
         {
             Type type = (Type)entry.GetType().GetProperty("Key")!.GetValue(entry)!;
             object traits = entry.GetType().GetProperty("Value")!.GetValue(entry)!;
-            roles[type] = traits.GetType().GetProperty("Role", NonPublic)!.GetValue(traits)!
-                .ToString()!;
+            roles[type] = roleOf.Invoke(null, [traits])!.ToString()!;
         }
 
         return roles;
