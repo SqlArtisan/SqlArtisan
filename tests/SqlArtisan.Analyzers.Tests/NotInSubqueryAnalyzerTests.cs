@@ -190,9 +190,9 @@ public class NotInSubqueryAnalyzerTests
                 + ".Where(Col.IsNotNull))).Build();",
             members: "static DbColumn Col => new S().Ref;");
 
-    // Accepted false negative: COALESCE does not propagate NULL, so this filter
-    // does not exclude the NULLs — but a function-wrapped receiver is opaque
-    // regardless of what the wrapper does, so the rule stays silent, IsNull too.
+    // A function-wrapped receiver is opaque, so the rule stays silent: an accepted false
+    // negative for IsNotNull, which COALESCE makes always true so the NULLs stay, but right
+    // for IsNull, which is never true, so the subquery is empty and NOT IN has no hazard.
     [Theory]
     [InlineData("IsNotNull")]
     [InlineData("IsNull")]
