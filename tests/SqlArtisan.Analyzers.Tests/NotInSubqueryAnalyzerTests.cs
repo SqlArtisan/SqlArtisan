@@ -192,12 +192,14 @@ public class NotInSubqueryAnalyzerTests
 
     // Accepted false negative: COALESCE does not propagate NULL, so this filter
     // does not exclude the NULLs — but a function-wrapped receiver is opaque
-    // regardless of what the wrapper does, so the rule stays silent.
-    [Fact]
-    public Task NotIn_IsNotNullOnCoalesceWrappedColumn_Silent() =>
+    // regardless of what the wrapper does, so the rule stays silent, IsNull too.
+    [Theory]
+    [InlineData("IsNotNull")]
+    [InlineData("IsNull")]
+    public Task NotIn_NullCheckOnCoalesceWrappedColumn_Silent(string nullCheck) =>
         RunSilent(
             "var sql = Select(t.Id).From(t).Where(t.Id.NotIn(Select(s.Ref).From(s)"
-                + ".Where(Coalesce(s.Ref, \"x\").IsNotNull))).Build();");
+                + $".Where(Coalesce(s.Ref, \"x\").{nullCheck}))).Build();");
 
     // Only a condition it cannot read silences the rule; a bound value does not.
     [Fact]

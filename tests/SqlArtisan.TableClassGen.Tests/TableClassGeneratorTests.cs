@@ -158,6 +158,32 @@ public class TableClassGeneratorTests : IDisposable
         Assert.DoesNotContain(Run(db, RunMode.Check), r => r.Status == TableStatus.Removed);
     }
 
+    // The generated header, not the DbTableBase base, marks a file as the tool's: a
+    // hand-written table class for a view or another schema is not an orphan.
+    [Fact]
+    public void Run_Check_HandWrittenTableClassWithoutHeader_IsNotReportedAsRemoved()
+    {
+        using TempSqliteDatabase db = TempSqliteDatabase.Create(Schema);
+        Run(db, RunMode.Generate);
+
+        File.WriteAllText(
+            Path.Combine(_outputDirectory, "ViewTable.cs"),
+            """
+            using SqlArtisan;
+
+            namespace Generated.Tables;
+
+            internal sealed class ViewTable : DbTableBase
+            {
+                public ViewTable(string tableAlias = "") : base("item_view", tableAlias)
+                {
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(Run(db, RunMode.Check), r => r.Status == TableStatus.Removed);
+    }
+
     [Fact]
     public void Run_Fix_RewritesTheDriftedFileOnly()
     {
