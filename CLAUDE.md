@@ -279,7 +279,11 @@ Bumping the shipped version (e.g. `0.8.0-beta.1` → `1.0.0`) is a user decision
 never made unprompted. Once approved, do it in one commit:
 
 1. `Directory.Build.props`: set `<VersionPrefix>`; delete `<VersionSuffix>` for
-   a non-prerelease version.
+   a non-prerelease version. Set `<PackageValidationBaselineVersion>` to the
+   release this one replaces (the latest on nuget.org; a version not yet
+   published fails the pack), and delete `src/*/CompatibilitySuppressions.xml`:
+   its entries record breaks against the old baseline. A break the pack reports
+   after 1.0 is resolved, never suppressed.
 2. If leaving prerelease: remove the `--prerelease` install instructions and
    any "pre-release" notes from `README.md`, `docs/guides/dapper-quickstart.md`,
    `docs/guides/oracle-array-bind.md`, and `src/SqlArtisan.TableClassGen/README.md`.
