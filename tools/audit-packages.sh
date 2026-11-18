@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Fails when a src/ project resolves a package with a known advisory, one
-# ::error:: line per hit. release.yml's verify job runs it, and so does step 5 of
-# CLAUDE.md's release procedure, so a hit surfaces before the tag. Kept out of
-# ci.yml: an advisory published upstream would otherwise turn unrelated PRs red.
+# ::error:: line per hit. release.yml's verify job runs it, and so does the
+# gate set of CLAUDE.md's release procedure, so a hit surfaces before the tag.
+# Kept out of ci.yml: an advisory published upstream would otherwise turn
+# unrelated PRs red.
 # Scoped to src/, whose packages build or ship in what reaches nuget.org.
 # Run from the repository root.
 set -euo pipefail
