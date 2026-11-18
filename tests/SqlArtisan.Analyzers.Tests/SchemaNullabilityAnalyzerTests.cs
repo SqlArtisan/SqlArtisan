@@ -430,4 +430,33 @@ public class SchemaNullabilityAnalyzerTests
             "var s = InsertInto(t, t.Code).Select(t.Code).From(t)"
                 + ".Where({|#0:t.Code.IsNull|}).Build();",
             Expected("Code", "IsNull", "false"));
+
+    // Each statement head is matched by name, so each needs its own row.
+    [Theory]
+    [InlineData("var s = Update(t).Set(t.Note == 1).Where({|#0:t.Code.IsNull|}).Build();")]
+    [InlineData("var s = DeleteFrom(t).Where({|#0:t.Code.IsNull|}).Build();")]
+    [InlineData("""Cte c = new("c"); var s = With(c.As(Select(t.Code).From(t))).Select(t.Code).From(t).Where({|#0:t.Code.IsNull|}).Build();""")]
+    [InlineData("""Cte c = new("c"); var s = WithRecursive(c.As(Select(t.Code).From(t))).Select(t.Code).From(t).Where({|#0:t.Code.IsNull|}).Build();""")]
+    public Task IsNull_UnderNonSelectStatementHead_Warns(string statement) =>
+        RunReporting(statement, Expected("Code", "IsNull", "false"));
+
+    // Oracle, as PostgreSQL rejects a MERGE action filter (SQLA0102).
+    [Fact]
+    public Task IsNull_Oracle_InMergeActionFilter_Warns() =>
+        RunAsync(
+            Usage(
+                "T r = new T(\"r\"); T m = new T(\"m\"); var s = MergeInto(m).Using(r)"
+                    + ".On(m.Code == r.Code).WhenMatched().ThenUpdateSet(m.Note == r.Note)"
+                    + ".Where({|#0:r.Code.IsNull|}).Build();"),
+            AnalyzerVerifier.EditorConfig("oracle"),
+            [Expected("Code", "IsNull", "false")]);
+
+    [Fact]
+    public Task IsNull_MySql_InInsertIgnoreSelectFeed_Warns() =>
+        RunAsync(
+            Usage(
+                "T r = new T(\"r\"); var s = InsertIgnoreInto(t, t.Code).Select(r.Code).From(r)"
+                    + ".Where({|#0:r.Code.IsNull|}).Build();"),
+            AnalyzerVerifier.EditorConfig("mysql"),
+            [Expected("Code", "IsNull", "false")]);
 }

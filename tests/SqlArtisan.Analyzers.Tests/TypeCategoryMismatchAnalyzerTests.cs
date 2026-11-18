@@ -20,6 +20,7 @@ public class TypeCategoryMismatchAnalyzerTests
                 CreatedAt = new DbColumn(this, "created_at");
                 Active = new DbColumn(this, "active");
                 Legacy = new DbColumn(this, "legacy");
+                Unclassified = new DbColumn(this, "unclassified");
             }
 
             [DbColumnMetadata(TypeCategory = DbTypeCategory.Text)]
@@ -36,6 +37,9 @@ public class TypeCategoryMismatchAnalyzerTests
 
             [DbColumnMetadata(Nullable = true)]
             public DbColumn Legacy { get; }
+
+            [DbColumnMetadata(TypeCategory = DbTypeCategory.Unknown)]
+            public DbColumn Unclassified { get; }
         }
 
         class Dto
@@ -137,13 +141,31 @@ public class TypeCategoryMismatchAnalyzerTests
             "text",
             "numeric");
 
-    [Fact]
-    public Task Where_OrderingComparison_Warns() =>
+    [Theory]
+    [InlineData("!=")]
+    [InlineData("<")]
+    [InlineData(">")]
+    [InlineData("<=")]
+    [InlineData(">=")]
+    public Task Where_NonEqualityComparison_Warns(string op) =>
         RunReporting(
-            "var s = Select(t.Code).From(t).Where({|#0:t.Code > 5|}).Build();",
+            $"var s = Select(t.Code).From(t).Where({{|#0:t.Code {op} 5|}}).Build();",
             "Code",
             "text",
             "numeric");
+
+    // DateTime is a SpecialType; these are matched by name, so each needs its own row.
+    [Theory]
+    [InlineData("DateTimeOffset.UtcNow")]
+    [InlineData("TimeSpan.Zero")]
+    [InlineData("new DateOnly(2024, 1, 1)")]
+    [InlineData("new TimeOnly(1, 0)")]
+    public Task Where_NumericColumnComparedToTemporalValue_Warns(string value) =>
+        RunReporting(
+            $"var s = Select(t.Code).From(t).Where({{|#0:t.Amount == {value}|}}).Build();",
+            "Amount",
+            "numeric",
+            "temporal");
 
     [Fact]
     public Task Where_TwoColumnsOfDifferentCategories_Warns() =>
@@ -166,6 +188,11 @@ public class TypeCategoryMismatchAnalyzerTests
     [Fact]
     public Task Where_ColumnWithNoRecordedType_Silent() =>
         RunSilent("var s = Select(t.Code).From(t).Where(t.Legacy == 1).Build();");
+
+    // Unknown is the generator's "no claim", so written out it reads as no category.
+    [Fact]
+    public Task Where_ColumnDeclaredUnknown_Silent() =>
+        RunSilent("var s = Select(t.Code).From(t).Where(t.Unclassified == 1).Build();");
 
     [Fact]
     public Task Where_OperandTypeNotDecidable_Silent() =>

@@ -92,6 +92,28 @@ public class ReporterTests
         Assert.Contains("Drift detected against . (2 tables):", report, StringComparison.Ordinal);
     }
 
+    // The re-run line is copied as-is, so it names exactly the writable tables.
+    [Fact]
+    public void Report_Check_ModifiedAddedAndRemovedDrift_NextStepNamesTheFixableTables()
+    {
+        TableResult modified = new("item", "ItemTable.cs", TableStatus.Modified, ["+ note"]);
+        TableResult added = new("tag", "TagTable.cs", TableStatus.Added, []);
+        TableResult removed = new("gone", "GoneTable.cs", TableStatus.Removed, []);
+
+        string report = Capture(
+            () => new Reporter(Options(RunMode.Check)).Report([modified, added, removed]));
+
+        Assert.Contains(
+            "Regenerate the affected tables by re-running with:" + Environment.NewLine
+                + "  --fix --tables item,tag" + Environment.NewLine
+                + Environment.NewLine
+                + "These files have no table in the database and are left untouched:"
+                + Environment.NewLine
+                + "  GoneTable.cs",
+            report,
+            StringComparison.Ordinal);
+    }
+
     // The regression this guards: with orphans beside regenerated tables, NextStep
     // dropped the one instruction a --fix --dry-run run exists to lead into.
     [Fact]

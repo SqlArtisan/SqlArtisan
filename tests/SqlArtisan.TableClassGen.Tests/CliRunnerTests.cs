@@ -106,6 +106,48 @@ public class CliRunnerTests
         }
     }
 
+    // Any one drifted table fails the gate, not only a tree where every table drifted.
+    [Fact]
+    public void Run_OneOfTwoTablesDrifted_CheckAndDryRunFixExitOne()
+    {
+        using TempSqliteDatabase db = TempSqliteDatabase.Create(TwoTables);
+        using TempOutputDirectory output = new();
+
+        Assert.Equal(0, CliRunner.Run(output.Args(db)));
+
+        db.Execute("ALTER TABLE item ADD COLUMN note TEXT");
+
+        Assert.Equal(1, CliRunner.Run([.. output.Args(db), "--check"]));
+        Assert.Equal(1, CliRunner.Run([.. output.Args(db), "--fix", "--dry-run"]));
+    }
+
+    // --fix leaves a removed table's file in place, so that drift still stands.
+    [Fact]
+    public void Run_FixWithDroppedTable_ExitsOne()
+    {
+        using TempSqliteDatabase db = TempSqliteDatabase.Create(TwoTables);
+        using TempOutputDirectory output = new();
+
+        Assert.Equal(0, CliRunner.Run(output.Args(db)));
+
+        db.Execute("DROP TABLE tag");
+
+        Assert.Equal(1, CliRunner.Run([.. output.Args(db), "--fix"]));
+    }
+
+    // The legal twin of Run_FixDryRunWithDrift_ExitsOne: a dry run over an in-sync
+    // tree has nothing to fix.
+    [Fact]
+    public void Run_FixDryRunInSync_ExitsZero()
+    {
+        using TempSqliteDatabase db = TempSqliteDatabase.Create(TwoTables);
+        using TempOutputDirectory output = new();
+
+        Assert.Equal(0, CliRunner.Run(output.Args(db)));
+
+        Assert.Equal(0, CliRunner.Run([.. output.Args(db), "--fix", "--dry-run"]));
+    }
+
     // Returns stdout; a non-zero exit fails here rather than surfacing later as a
     // puzzling assertion on missing text. Redirecting Console is safe because every
     // redirecting class serializes through ConsoleRedirectionCollection.
