@@ -59,6 +59,13 @@ dotnet format SqlArtisan.sln --verify-no-changes   # .editorconfig style gate (C
 bash tools/regen-pict.sh                # regenerate every model's combinatorial cases after editing a .pict
 ```
 
+Mutation testing (Stryker.NET) is occasional — before a release or a large
+Analyzers change — not a CI gate: `dotnet tool restore`, then `dotnet stryker`
+from `tests/SqlArtisan.Tests`, `tests/SqlArtisan.Analyzers.Tests` or
+`tests/SqlArtisan.TableClassGen.Tests`, the three projects whose
+`stryker-config.json` fixes the scope; the Analyzers one is narrowed because a
+whole-project run exceeds two hours.
+
 Always run `dotnet test` after changing `src/`. Tests assert the **exact** SQL
 string, so any output change will surface here. Also run
 `dotnet format SqlArtisan.sln` before pushing — CI fails on any `.editorconfig`
@@ -293,7 +300,10 @@ never made unprompted. Once approved, do it in one commit:
 5. Regenerate `llms-full.txt` (`bash tools/regen-llms-full.sh`).
 6. Run the full gate set (`dotnet test` ×3, `dotnet format --verify-no-changes`,
    `bash tools/audit-packages.sh`).
-7. Merge to `main`, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+7. Optional, not a gate: run mutation testing (`dotnet stryker` in each of the
+   three projects, see Build & test). A test a surviving mutant calls for lands
+   in its own PR, not in this commit.
+8. Merge to `main`, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
    — `release.yml` reads the version from `Directory.Build.props`, not the tag,
    so they must already agree before pushing it. Tag push is user-performed.
 
