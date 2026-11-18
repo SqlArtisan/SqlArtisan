@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Build
+- `dotnet pack` validates each of the four packages against the last published
+  release, now `1.0.0-rc.1`, and fails on a removed or reshaped public member,
+  such as an optional parameter added to an existing method, which keeps the
+  method's name but breaks every caller compiled against the old signature. CI
+  packs, so a pull request shows the failure. (#490)
 
 ## [1.0.0-rc.1] - 2026-11-18
 ### Added
