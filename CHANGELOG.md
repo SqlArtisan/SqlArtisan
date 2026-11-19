@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   latest release for .NET 10, among them Dapper 2.1.89, linq2db 6.6.0 and EF
   Core 10. SqlArtisan still allocates the least among the builders. Its build
   time still sits among the lightweight builders, but Sqlify was not the only one
-  faster: across three runs Sqlify beat it in two and Dapper.SqlBuilder in one.
+  faster: across three runs Sqlify beat both of its entrants in two and
+  Dapper.SqlBuilder in one.
   The README and `docs/comparison.md` said only Sqlify was faster, in every
   run. (#852)
 
