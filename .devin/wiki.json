@@ -2,11 +2,133 @@
   "repo_notes": [
     { "content": "SqlArtisan is a type-safe SQL query builder for C# (.NET 8): you write SQL-like C# and it produces the SQL string plus its bind parameters." },
     { "content": "Core principle: 'The SQL you write is the SQL that runs.' SqlArtisan emits SQL faithfully with NO cross-dialect rewriting or translation. Cross-database portability is a deliberate non-goal — never describe SqlArtisan as a portability or abstraction layer over databases." },
-    { "content": "Supported dialects: MySQL, Oracle, PostgreSQL, SQLite, SQL Server (default: PostgreSQL). Dialect differences are confined to a small dialect layer (alias quoting, parameter markers); function nodes never branch on the target DBMS." },
-    { "content": "Mission: a deterministic guard rail for SQL written alongside generative AI, built as four layers — (1) types: invalid builder chains fail to compile; (2) a bundled Roslyn analyzer (SQLA0001–SQLA0304) that flags configuration errors, unsupported constructs, version shortfalls, context-restricted positions, unaliased correlated DML targets, C# operator fallbacks that bind a value instead of SQL, comparisons with NULL that are never true, nameof aliases no Dapper model member takes, over-long identifiers, and schema contradictions read from the generated table classes at build time; (3) exact-SQL unit tests that pin the emitted SQL; (4) an integration-test matrix verified against live database engines." },
+    { "content": "Supported dialects: MySQL, Oracle, PostgreSQL, SQLite, SQL Server (default: PostgreSQL). A construct one dialect lacks is exposed as its own dialect-named API rather than rewritten into another construct." },
+    { "content": "Mission: a deterministic guard rail for SQL written alongside generative AI, built in four layers — types that make an invalid builder chain fail to compile, a Roslyn analyzer bundled in the SqlArtisan package (docs/analyzer.md lists its rules), exact-SQL unit tests that pin the emitted SQL, and an integration-test matrix run against live database engines." },
     { "content": "Opinions live in docs and the analyzer, never in API holes: no legitimate SQL spelling is omitted to steer users." },
-    { "content": "Four NuGet packages: SqlArtisan (the builder, with the analyzer bundled inside — not shipped separately), SqlArtisan.ArrayBind (Oracle array-bind execution — one round trip per batch, not per row), SqlArtisan.Dapper (sync/async Dapper execution extensions), SqlArtisan.TableClassGen (console tool that generates table classes from a live database)." },
+    { "content": "Four NuGet packages: SqlArtisan (the builder, with the analyzer bundled inside — not shipped separately), SqlArtisan.ArrayBind (Oracle array-bind execution — one round trip per batch, not per row), SqlArtisan.Dapper (sync and async Dapper execution extensions), SqlArtisan.TableClassGen (console tool that generates table classes from a live database)." },
     { "content": "Terminology: 'table class' (a DbTableBase subclass), never 'table schema class'; 'query builder', not 'SQL builder'. Public factory names mirror SQL tokens with underscores as the only word boundaries (ADD_MONTHS → AddMonths, DATEADD → Dateadd)." },
-    { "content": "Canonical documentation is llms.txt and docs/ in the repository; if this wiki and those files disagree, the repository documentation is authoritative." }
+    { "content": "Canonical documentation is llms.txt and docs/ in the repository; if this wiki and those files disagree, the repository documentation is authoritative." },
+    { "content": "Each page's purpose names only its scope: the source folders it covers and the documents to follow. Every fact on a page comes from that code and those documents, and the page links them rather than copying per-dialect support tables, version floors or analyzer rule lists, which change between releases." }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "What SqlArtisan is, who it is for, and how it compares with other .NET data-access libraries. Documents: README.md, docs/README.md and docs/comparison.md."
+    },
+    {
+      "title": "Design Principles and ADRs",
+      "purpose": "The architecture decisions that shape the code and what each one rules out. Documents: docs/adr/, starting from docs/adr/README.md, which groups the decisions into clusters to read together.",
+      "parent": "Overview"
+    },
+    {
+      "title": "Getting Started",
+      "purpose": "The first steps for a new user, with and without an AI coding assistant. Documents: docs/guides/dapper-quickstart.md, docs/guides/ai-assistants.md, llms.txt and the Getting Started section of README.md.",
+      "parent": "Overview"
+    },
+    {
+      "title": "Building Statements",
+      "purpose": "How a statement is assembled, from the public entry point through the builder stages to the built statement. Source: src/SqlArtisan/Sql, src/SqlArtisan/SqlBuilder and src/SqlArtisan/Internal/SqlBuilder. Documents: docs/query-statements.md and docs/cookbook.md."
+    },
+    {
+      "title": "SELECT Queries",
+      "purpose": "How SELECT statements are built. Source: src/SqlArtisan/Internal/SqlBuilder/Select, src/SqlArtisan/SqlBuilder and the clause folders under src/SqlArtisan/Internal/SqlPart/Clause and src/SqlArtisan/SqlPart/Clause. Documents: the SELECT Query section of docs/query-statements.md.",
+      "parent": "Building Statements"
+    },
+    {
+      "title": "INSERT, UPDATE, DELETE and MERGE",
+      "purpose": "How the data-modifying statements are built. Source: src/SqlArtisan/Internal/SqlBuilder/Insert, src/SqlArtisan/Internal/SqlBuilder/Update, src/SqlArtisan/Internal/SqlBuilder/Delete and src/SqlArtisan/Internal/SqlBuilder/Merge, with the clause folders under src/SqlArtisan/Internal/SqlPart/Clause. Documents: the DELETE, UPDATE, INSERT, RETURNING and OUTPUT sections of docs/query-statements.md.",
+      "parent": "Building Statements"
+    },
+    {
+      "title": "Common Table Expressions",
+      "purpose": "How WITH clauses are built. Source: src/SqlArtisan/Internal/SqlBuilder/With, src/SqlArtisan/SqlPart/Clause/With and src/SqlArtisan/Internal/SqlPart/Clause/With. Documents: the WITH section of docs/query-statements.md.",
+      "parent": "Building Statements"
+    },
+    {
+      "title": "Rendering and Bind Parameters",
+      "purpose": "How a built statement becomes SQL text and bind parameters. Source: src/SqlArtisan/Internal/SqlBuilder and src/SqlArtisan/SqlBuilder. Documents: the Bind Parameter Types section of docs/functions.md and the Performance section of README.md.",
+      "parent": "Building Statements"
+    },
+    {
+      "title": "Build-Time Validation",
+      "purpose": "What building a statement rejects, and when. Source: src/SqlArtisan/Internal/SqlBuilder, including src/SqlArtisan/Internal/SqlBuilder/Validation. Documents: .claude/rules/guards-and-empty-states.md and the Boundary cluster in docs/adr/README.md.",
+      "parent": "Building Statements"
+    },
+    {
+      "title": "Dialect Layer",
+      "purpose": "How the target database affects what is built. Source: src/SqlArtisan/Internal/SqlBuilder/DbmsDialect and src/SqlArtisan/SqlBuilder. Documents: .claude/rules/dbms-differences.md and docs/adr/README.md.",
+      "parent": "Building Statements"
+    },
+    {
+      "title": "Expressions and Functions",
+      "purpose": "How values, conditions, expressions and table references are modeled. Source: src/SqlArtisan/SqlPart and src/SqlArtisan/Internal/SqlPart. Documents: docs/expressions.md and docs/functions.md."
+    },
+    {
+      "title": "Operators, Conditions and Subqueries",
+      "purpose": "Operators, conditions and subqueries. Source: src/SqlArtisan/Internal/SqlPart/Expression, src/SqlArtisan/Internal/SqlPart/Condition, src/SqlArtisan/SqlPart/Expression and src/SqlArtisan/SqlPart/Condition. Documents: every section of docs/expressions.md except those the Window Functions and Aggregates page follows.",
+      "parent": "Expressions and Functions"
+    },
+    {
+      "title": "Function Catalog",
+      "purpose": "The built-in SQL functions and how a new one is added. Source: src/SqlArtisan/Sql, src/SqlArtisan/Internal/SqlPart/Expression/Function and src/SqlArtisan/SqlPart/Expression/Function. Documents: docs/functions.md and .claude/skills/sa-add-sql-function.",
+      "parent": "Expressions and Functions"
+    },
+    {
+      "title": "Window Functions and Aggregates",
+      "purpose": "Window functions, aggregates and their clauses. Source: src/SqlArtisan/Internal/SqlPart/Clause/Over, src/SqlArtisan/Internal/SqlPart/Clause/WithinGroup, src/SqlArtisan/SqlPart/Clause/Over and the function folders for aggregates and window functions. Documents: the Window Functions, Conditional Aggregation (FILTER) and String Aggregation sections of docs/expressions.md.",
+      "parent": "Expressions and Functions"
+    },
+    {
+      "title": "The Analyzer",
+      "purpose": "The Roslyn analyzer bundled in the SqlArtisan package: how it is enabled, how its rules are organized and how it reports. Source: src/SqlArtisan.Analyzers. Documents: docs/analyzer.md and the Analyzer cluster in docs/adr/README.md."
+    },
+    {
+      "title": "Dialect Rules",
+      "purpose": "The analyzer's Dialect category. Source: src/SqlArtisan.Analyzers. Documents: the rules of the Dialect band in docs/analyzer.md (its Bands and categories section gives each band's ID range) and the sections that explain them.",
+      "parent": "The Analyzer"
+    },
+    {
+      "title": "Schema-Aware and Validity Rules",
+      "purpose": "The analyzer's Schema and Validity categories, and the schema metadata on generated table classes that the Schema rules read. Source: src/SqlArtisan.Analyzers and src/SqlArtisan/Metadata. Documents: the rules of the Schema and Validity bands in docs/analyzer.md and the sections that explain them.",
+      "parent": "The Analyzer"
+    },
+    {
+      "title": "Analyzer Configuration",
+      "purpose": "How a project tells the analyzer which dialects and engine versions to check, and the analyzer's compatibility contract. Source: src/SqlArtisan.Analyzers. Documents: docs/analyzer.md and docs/versioning.md.",
+      "parent": "The Analyzer"
+    },
+    {
+      "title": "Execution and Tooling",
+      "purpose": "The packages beside the core builder. Source: src/SqlArtisan.Dapper, src/SqlArtisan.ArrayBind and src/SqlArtisan.TableClassGen."
+    },
+    {
+      "title": "Dapper Integration",
+      "purpose": "Running built statements through Dapper. Source: src/SqlArtisan.Dapper. Documents: docs/guides/dapper-quickstart.md.",
+      "parent": "Execution and Tooling"
+    },
+    {
+      "title": "Oracle Array Bind",
+      "purpose": "Running one statement for many rows through Oracle array binding. Source: src/SqlArtisan.ArrayBind. Documents: docs/guides/oracle-array-bind.md.",
+      "parent": "Execution and Tooling"
+    },
+    {
+      "title": "TableClassGen",
+      "purpose": "Generating table classes from a live database and detecting drift between them and the schema. Source: src/SqlArtisan.TableClassGen and tests/SqlArtisan.TableClassGen.Tests. Documents: src/SqlArtisan.TableClassGen/README.md and docs/versioning.md.",
+      "parent": "Execution and Tooling"
+    },
+    {
+      "title": "Verification and Quality",
+      "purpose": "How correctness is tested. Source: tests/SqlArtisan.Tests, tests/SqlArtisan.Analyzers.Tests, tests/SqlArtisan.TableClassGen.Tests, tests/SqlArtisan.IntegrationTests and .github/workflows. Documents: the Build & test and CI sections of CLAUDE.md."
+    },
+    {
+      "title": "Performance and Benchmarks",
+      "purpose": "How build-path performance is measured against other .NET query builders. Source: tests/SqlArtisan.Benchmark. Documents: tests/SqlArtisan.Benchmark/README.md, the Performance section of README.md and docs/comparison.md.",
+      "parent": "Verification and Quality"
+    },
+    {
+      "title": "Versioning and Releases",
+      "purpose": "Versioning, compatibility and the release process. Source: Directory.Build.props, src/SqlArtisan.Analyzers/AnalyzerReleases.Shipped.md, src/SqlArtisan.Analyzers/AnalyzerReleases.Unshipped.md and tools. Documents: docs/versioning.md, CHANGELOG.md and the Release procedure section of CLAUDE.md.",
+      "parent": "Verification and Quality"
+    }
   ]
 }
