@@ -13,7 +13,7 @@
   "pages": [
     {
       "title": "Overview",
-      "purpose": "What SqlArtisan is and is not: a type-safe C# query builder that emits the SQL you write plus its bind parameters, with cross-database portability as a deliberate non-goal. Introduce the four packages, the five dialects and the guard-rail mission of ADR 0010, and map the repository layout (src/, tests/, docs/, docs/adr/)."
+      "purpose": "What SqlArtisan is and is not: a type-safe C# query builder that emits the SQL you write plus its bind parameters, with cross-database portability as a deliberate non-goal. Introduce the four packages, the five dialects and the guard-rail mission of ADR 0010, map the repository layout (src/, tests/, docs/, docs/adr/), and say where SqlArtisan sits among other .NET query builders and when not to choose it, following README.md and docs/comparison.md."
     },
     {
       "title": "Design Principles and ADRs",
@@ -22,12 +22,12 @@
     },
     {
       "title": "Getting Started",
-      "purpose": "The path a new user takes: install the packages, generate table classes with TableClassGen, build a first statement and run it through SqlArtisan.Dapper. Follow docs/guides/dapper-quickstart.md and the README.",
+      "purpose": "The path a new user takes: install the packages, generate table classes with TableClassGen, build a first statement and run it through SqlArtisan.Dapper (docs/guides/dapper-quickstart.md and README.md). Then the path for writing SqlArtisan with an AI coding assistant (docs/guides/ai-assistants.md): the llms.txt and llms-full.txt feed, setting the analyzer's target dialect, keeping table classes in step with the database, pinning each query with an exact-SQL test, and the rules snippet for an agent file.",
       "parent": "Overview"
     },
     {
       "title": "Building Statements",
-      "purpose": "How a statement is assembled: the static partial class Sql (src/SqlArtisan/Sql/Sql.{A..Y}.cs) as the entry point, builder stages under src/SqlArtisan/Internal/SqlBuilder, and the stage interfaces under src/SqlArtisan/SqlBuilder that make an invalid fluent chain fail to compile through its return type."
+      "purpose": "How a statement is assembled: the static partial class Sql (src/SqlArtisan/Sql/Sql.{A..Y}.cs) as the entry point, builder stages under src/SqlArtisan/Internal/SqlBuilder, and the stage interfaces under src/SqlArtisan/SqlBuilder that make an invalid fluent chain fail to compile through its return type. docs/query-statements.md is the per-statement reference, and docs/cookbook.md shows realistic end-to-end queries, each pinned by an exact-SQL unit test."
     },
     {
       "title": "SELECT Queries",
@@ -36,17 +36,17 @@
     },
     {
       "title": "INSERT, UPDATE, DELETE and MERGE",
-      "purpose": "The DML builders: INSERT (VALUES, multiple rows, SET-like, INSERT ... SELECT), UPSERT forms, MERGE, correlated and joined UPDATE / DELETE, RETURNING, RETURNING INTO and OUTPUT. Cover InsertBuilder, UpdateBuilder, DeleteBuilder, MergeBuilder and DmlJoinState.",
+      "purpose": "The DML builders under src/SqlArtisan/Internal/SqlBuilder (Insert/, Update/, Delete/, Merge/): INSERT (VALUES, multiple rows, SET-like, INSERT ... SELECT), UPSERT forms, MERGE, correlated and joined UPDATE / DELETE, RETURNING, RETURNING INTO and OUTPUT. Cover InsertBuilder, UpdateBuilder, DeleteBuilder, MergeBuilder and DmlJoinState, and link the DELETE, UPDATE and INSERT sections of docs/query-statements.md.",
       "parent": "Building Statements"
     },
     {
       "title": "Common Table Expressions",
-      "purpose": "WITH and WITH RECURSIVE through WithBuilder and CommonTableExpression, and how a CTE body is rendered as its own query block.",
+      "purpose": "WITH and WITH RECURSIVE through WithBuilder (src/SqlArtisan/Internal/SqlBuilder/With) and CommonTableExpression (src/SqlArtisan/Internal/SqlPart/Clause/With), how a CTE body is rendered as its own query block, and the WITH section of docs/query-statements.md.",
       "parent": "Building Statements"
     },
     {
       "title": "Rendering and Bind Parameters",
-      "purpose": "How Build() turns parts into SQL text: SqlBuilderBase.BuildCore, SqlBuildingBuffer (pooled char buffer, parameter list, marker reuse for the same BindValue instance), BindValue and implicit binding, SqlStatement and SqlParameters. Note the allocation-light constraints of ADR 0006.",
+      "purpose": "How Build() turns parts into SQL text: SqlBuilderBase.BuildCore, SqlBuildingBuffer (pooled char buffer, parameter list, marker reuse for the same BindValue instance), BindValue and implicit binding, SqlStatement and SqlParameters. Note the allocation-light constraints of ADR 0006 and link the Bind Parameter Types section of docs/functions.md.",
       "parent": "Building Statements"
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "title": "Expressions and Functions",
-      "purpose": "How values and expressions are modeled: SqlPart, SqlExpression and SqlCondition, operator overloads, ExpressionResolver, and the public types under src/SqlArtisan/SqlPart."
+      "purpose": "How values and expressions are modeled: SqlPart, SqlExpression and SqlCondition, operator overloads, ExpressionResolver, and the public types under src/SqlArtisan/SqlPart, including the table references under SqlPart/TableReference (table classes, CTEs, derived, VALUES and UNNEST tables). docs/expressions.md and docs/functions.md are the user-facing reference."
     },
     {
       "title": "Operators, Conditions and Subqueries",
@@ -70,40 +70,40 @@
     },
     {
       "title": "Function Catalog",
-      "purpose": "Function node classes under src/SqlArtisan/Internal/SqlPart/Expression/Function, grouped by category (numeric, character, date/time, conversion, JSON, aggregate, window/analytic, string aggregation, sequence), how a function is added (the sa-add-sql-function skill's six touch points), and docs/functions.md.",
+      "purpose": "Function node classes, grouped by category folder under src/SqlArtisan/Internal/SqlPart/Expression/Function and, for the nodes ADR 0027 keeps public, under src/SqlArtisan/SqlPart/Expression/Function; list the categories as those folders name them rather than from memory. Cover the uncategorized nodes too, including NamedFunction, the Function(name, ...) form for a function SqlArtisan has no factory for, how a function is added (the sa-add-sql-function skill's six touch points), and every section of docs/functions.md.",
       "parent": "Expressions and Functions"
     },
     {
       "title": "Window Functions and Aggregates",
-      "purpose": "OVER, PARTITION BY, frames, FILTER (WHERE ...), WITHIN GROUP and string aggregation, and how the type system requires .Over() on an analytic function.",
+      "purpose": "OVER, PARTITION BY, frames, FILTER (WHERE ...), WITHIN GROUP and string aggregation: the AnalyticFunction, AggregateFunction, StringAggregateFunction and OrderedSetAggregateFunction folders under src/SqlArtisan/Internal/SqlPart/Expression/Function and src/SqlArtisan/SqlPart/Expression/Function, and the Window Functions, Conditional Aggregation and String Aggregation sections of docs/expressions.md. A bare analytic function is no SqlExpression until .Over() completes it, so a position typed SqlExpression rejects it at compile time; a position typed object (the select list, a function argument, a comparison operand) compiles, and the call that receives it throws an ArgumentException.",
       "parent": "Expressions and Functions"
     },
     {
       "title": "The Analyzer",
-      "purpose": "The Roslyn analyzer in src/SqlArtisan.Analyzers, bundled inside the SqlArtisan package: how it is enabled through .editorconfig, its four ID bands (Configuration, Dialect, Schema, Validity, ADR 0018) and how a diagnostic is raised. Link docs/analyzer.md for the rule list."
+      "purpose": "The Roslyn analyzer in src/SqlArtisan.Analyzers, bundled inside the SqlArtisan package: how it is enabled through .editorconfig, its four ID bands (Configuration, Dialect, Schema, Validity; ADR 0018) and how a diagnostic is raised. docs/analyzer.md is the user-facing reference and holds the rule list."
     },
     {
       "title": "Dialect Matrix and Version Bounds",
-      "purpose": "DialectMatrix.cs, MatrixKey, VersionBounds, ContextRules and DialectUsageAnalyzer: how a construct is resolved to a support verdict per dialect and version, and how the sweep tests in tests/SqlArtisan.IntegrationTests/Tests/MatrixSweepTests.cs verify the matrix against live engines.",
+      "purpose": "DialectMatrix.cs, MatrixKey, VersionBounds, ContextRules and DialectUsageAnalyzer in src/SqlArtisan.Analyzers: how a construct is resolved to a support verdict per dialect and version (ADR 0013, 0015, 0021), how the sweep tests in tests/SqlArtisan.IntegrationTests/Tests/MatrixSweepTests.cs verify the matrix against live engines, and the version-aware and context-rule sections of docs/analyzer.md.",
       "parent": "The Analyzer"
     },
     {
       "title": "Schema-Aware and Validity Rules",
-      "purpose": "The rules that read the DbColumnMetadata attributes TableClassGen emits (the SQLA02xx band) and the validity rules (SQLA03xx): what each collects from the code, and ADR 0010's limits on what a schema rule may conclude.",
+      "purpose": "The rules in src/SqlArtisan.Analyzers that read the DbColumnMetadata attributes TableClassGen emits (the SQLA02xx band) and the validity rules (SQLA03xx): what each collects from the code, ADR 0010's limits on what a schema rule may conclude, and the matching sections of docs/analyzer.md.",
       "parent": "The Analyzer"
     },
     {
       "title": "Analyzer Configuration",
-      "purpose": "AnalyzerConfigResolver, DialectTargetSet and the .editorconfig keys (sqlartisan_syntax_*, override keys), configuration errors (SQLA0001), and the stability contract of ADR 0025 and 0026.",
+      "purpose": "AnalyzerConfigResolver and DialectTargetSet in src/SqlArtisan.Analyzers: the sqlartisan_syntax_* keys (ADR 0019) and the override keys (ADR 0008), configuration errors reported as SQLA0001 (ADR 0025), the stability contract of ADR 0026, and the Enabling It and override-key sections of docs/analyzer.md.",
       "parent": "The Analyzer"
     },
     {
       "title": "Execution and Tooling",
-      "purpose": "The packages beside the core builder: how a built SqlStatement is executed and how table classes are kept in step with the database."
+      "purpose": "The packages beside the core builder (src/SqlArtisan.Dapper, src/SqlArtisan.ArrayBind, src/SqlArtisan.TableClassGen): how a built SqlStatement is executed and how table classes are kept in step with the database."
     },
     {
       "title": "Dapper Integration",
-      "purpose": "SqlArtisan.Dapper: the SqlMapper sync and async extensions, SqlParametersExtensions.ToDynamicParameters, type handlers and value converters.",
+      "purpose": "src/SqlArtisan.Dapper: the SqlMapper sync and async extensions, SqlParametersExtensions.ToDynamicParameters, type handlers and value converters. Follow docs/guides/dapper-quickstart.md.",
       "parent": "Execution and Tooling"
     },
     {
@@ -113,16 +113,16 @@
     },
     {
       "title": "TableClassGen",
-      "purpose": "src/SqlArtisan.TableClassGen: reading each engine's catalog (Catalog/), emitting table classes with schema metadata (Generation/), the argument-driven CLI (Cli/), and drift detection with --check and --fix.",
+      "purpose": "src/SqlArtisan.TableClassGen: reading each engine's catalog (Catalog/), emitting table classes with schema metadata (Generation/), the argument-driven CLI (Cli/), and drift detection with --check and --fix. Follow src/SqlArtisan.TableClassGen/README.md and the command-line section of docs/versioning.md.",
       "parent": "Execution and Tooling"
     },
     {
       "title": "Verification and Quality",
-      "purpose": "How correctness is pinned: exact-SQL unit tests in tests/SqlArtisan.Tests, analyzer tests, the integration matrix against live engines via Testcontainers, the combinatorial PICT and CsCheck tests under tests/SqlArtisan.IntegrationTests/Randomized, mutation testing, and the CI workflows in .github/workflows."
+      "purpose": "How correctness is pinned: exact-SQL unit tests in tests/SqlArtisan.Tests, analyzer tests in tests/SqlArtisan.Analyzers.Tests, the integration matrix against live engines via Testcontainers in tests/SqlArtisan.IntegrationTests, the combinatorial PICT and CsCheck tests under tests/SqlArtisan.IntegrationTests/Randomized, mutation testing, and the CI workflows in .github/workflows."
     },
     {
       "title": "Performance and Benchmarks",
-      "purpose": "tests/SqlArtisan.Benchmark: the BenchmarkDotNet comparison against other .NET query builders, what it measures, why the allocation column is the firm one, and the build-path techniques ADR 0006 allows.",
+      "purpose": "tests/SqlArtisan.Benchmark: the BenchmarkDotNet comparison against other .NET query builders, what it measures, why the allocation column is the firm one, and the build-path techniques ADR 0006 allows. Follow tests/SqlArtisan.Benchmark/README.md, the performance section of README.md and docs/comparison.md.",
       "parent": "Verification and Quality"
     },
     {
