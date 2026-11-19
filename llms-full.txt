@@ -85,25 +85,25 @@ All the convenience, minimal overhead: an **allocation-light, fast** builder [be
 
 ## Performance
 
-SqlArtisan minimizes heap allocations — string buffers are recycled from a pooled `ArrayPool<T>` — so it adds little GC pressure on hot paths. On a **fair, like-for-like** [BenchmarkDotNet](https://benchmarkdotnet.org/) workload, where every entrant builds the *same* query's SQL string **and** its bind parameters, it is the **lowest-allocation** builder; only a hand-written `StringBuilder` (no type safety, no dialect handling) is lighter. Its build time sits among the other lightweight builders — across three runs only Sqlify was faster, each time — and an order of magnitude ahead of linq2db and SqlKata.
+SqlArtisan minimizes heap allocations — string buffers are recycled from a pooled `ArrayPool<T>` — so it adds little GC pressure on hot paths. On a **fair, like-for-like** [BenchmarkDotNet](https://benchmarkdotnet.org/) workload, where every entrant builds the *same* query's SQL string **and** its bind parameters, it is the **lowest-allocation** builder; only a hand-written `StringBuilder` (no type safety, no dialect handling) is lighter. Its build time sits among the other lightweight builders — across three runs Sqlify beat both SqlArtisan entrants in two, Dapper.SqlBuilder in one, and no builder in the third — and an order of magnitude ahead of linq2db and SqlKata.
 
 | Method | Category | Mean | Allocated |
 | :--- | :--- | ---: | ---: |
-| StringBuilder_DapperDynamicParams | Baseline¹ | 394.7 ns | 1.87 KB |
-| **SqlArtisan_SpecificParams** | Builders | 1,418.7 ns | **2.23 KB** |
-| **SqlArtisan_DapperDynamicParams** | Builders | 1,545.0 ns | 2.85 KB |
-| Sqlify_SpecificParams | Builders | 1,278.5 ns | 3.13 KB |
-| DapperSqlBuilder_DapperDynamicParams | Builders | 1,560.2 ns | 4.71 KB |
-| InterpolatedSql_SpecificParams | Builders | 2,128.9 ns | 4.95 KB |
-| Linq2db_TypedParams | Builders | 31,677.6 ns | 19.52 KB |
-| SqlKata_SpecificParams | Builders | 48,325.8 ns | 53.94 KB |
-| EfCore_Reference | ORM reference² | 39,175.6 ns | 12.65 KB |
+| StringBuilder_DapperDynamicParams | Baseline¹ | 305.2 ns | 1.87 KB |
+| **SqlArtisan_SpecificParams** | Builders | 1,227.1 ns | **2.23 KB** |
+| **SqlArtisan_DapperDynamicParams** | Builders | 1,100.4 ns | 2.85 KB |
+| Sqlify_SpecificParams | Builders | 975.4 ns | 3.13 KB |
+| DapperSqlBuilder_DapperDynamicParams | Builders | 1,261.6 ns | 4.80 KB |
+| InterpolatedSql_SpecificParams | Builders | 1,386.7 ns | 4.95 KB |
+| Linq2db_TypedParams | Builders | 21,070.9 ns | 14.92 KB |
+| SqlKata_SpecificParams | Builders | 38,031.3 ns | 54.01 KB |
+| EfCore_Reference | ORM reference² | 25,648.2 ns | 15.71 KB |
 
-Builders are sorted by allocation. The **allocation lead is firm** (lightweight builders allocate the same bytes every run); treat the times as directional — across three runs on this machine an entrant's time varied by up to about 25%.
+Builders are sorted by allocation. The **allocation lead is firm** (lightweight builders allocate the same bytes every run); treat the times as directional — across three runs on this machine an entrant's time varied by up to about 40%, and the table shows one run.
 
 ¹ Raw `StringBuilder` + Dapper `DynamicParameters` — the floor, with no type safety or dialect handling. ² EF Core is a full-ORM **reference** (different work, caches compiled queries), shown only for scale.
 
-*Measured on .NET 10.0.15 (SDK 10.0.109) with BenchmarkDotNet 0.15.8, i5-1135G7 / 16 GB / Windows 11 25H2, PostgreSQL dialect. Query shape, library versions, and re-run instructions are in the [benchmark project's README](https://github.com/h-tacayama/SqlArtisan/blob/main/tests/SqlArtisan.Benchmark/README.md).*
+*Measured 2026-11-20 on .NET 10.0.15 (SDK 10.0.109) with BenchmarkDotNet 0.15.8, i5-1135G7 / 16 GB / Windows 11 25H2, PostgreSQL dialect. Query shape, library versions, and re-run instructions are in the [benchmark project's README](https://github.com/h-tacayama/SqlArtisan/blob/main/tests/SqlArtisan.Benchmark/README.md).*
 
 ---
 
@@ -6830,8 +6830,9 @@ pooled `ArrayPool<T>`. In the project's
 it allocated the least among the query builders tested — a firm lead; only a
 hand-written `StringBuilder` (no compile-checked names, no dialect handling)
 was lighter. Its build time was in the range of the other lightweight
-builders — across three runs only Sqlify was faster, each time — and an order
-of magnitude below linq2db's and SqlKata's.
+builders — across three runs Sqlify beat both SqlArtisan entrants in two,
+Dapper.SqlBuilder in one, and no builder in the third — and an order of
+magnitude below linq2db's and SqlKata's.
 See the
 [benchmark table in the README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#performance)
 for the numbers, the machine and runtime they were measured on, and re-run

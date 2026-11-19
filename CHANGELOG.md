@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Docs
+- The README's performance table is re-measured against each compared library's
+  latest release for .NET 10, among them Dapper 2.1.89, linq2db 6.6.0 and EF
+  Core 10. SqlArtisan still allocates the least among the builders. Its build
+  time still sits among the lightweight builders, but Sqlify was not the only one
+  faster: across three runs Sqlify beat both of its entrants in two and
+  Dapper.SqlBuilder in one.
+  The README and `docs/comparison.md` said only Sqlify was faster, in every
+  run. (#852)
+
 ### Build
 - `dotnet pack` validates each of the four packages against the last published
   release, now `1.0.0-rc.1`, and fails on a removed or reshaped public member,

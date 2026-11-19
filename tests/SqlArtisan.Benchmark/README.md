@@ -79,28 +79,31 @@ The comparison is only meaningful against the versions it was run with. The
 direct ones are pinned in `SqlArtisan.Benchmark.csproj`; update this table when
 they move. The last two rows are transitive — listed because their versions
 float free of any direct pin, so a restore can move them without touching the
-csproj. Other transitive packages in the measured path (EF Core's `Relational`
-and caching assemblies) move in lockstep with the direct pin above them.
+csproj. Other transitive packages in the measured path (EF Core's caching
+assemblies) move in lockstep with the direct pin above them. EF Core's
+`Relational` assembly is pinned directly: left to the PostgreSQL provider, it
+resolves an older 10.0 patch than EF Core's own.
 
 | Package | Version | |
 |---|---|---|
 | BenchmarkDotNet | 0.15.8 | |
-| Dapper.SqlBuilder | 2.1.66 | |
+| Dapper.SqlBuilder | 2.1.89 | |
 | InterpolatedSql | 2.5.1 | |
-| linq2db | 6.3.0 | |
-| Microsoft.EntityFrameworkCore | 8.0.11 | |
-| Npgsql.EntityFrameworkCore.PostgreSQL | 8.0.11 | |
+| linq2db | 6.6.0 | |
+| Microsoft.EntityFrameworkCore | 10.0.15 | |
+| Microsoft.EntityFrameworkCore.Relational | 10.0.15 | |
+| Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.3 | |
 | Sqlify | 0.3.14 | |
 | SqlKata | 4.0.1 | |
-| Dapper | 2.1.66 | transitive; `DynamicParameters` is measured by the baseline, Dapper.SqlBuilder and `SqlArtisan+Dapper` |
-| Npgsql | 8.0.6 | transitive; under the EF Core reference |
+| Dapper | 2.1.89 | transitive; `DynamicParameters` is measured by the baseline, Dapper.SqlBuilder and `SqlArtisan+Dapper` |
+| Npgsql | 10.0.3 | transitive; under the EF Core reference |
 
 The runtime is part of this list too: the project targets `net10.0`, and the
 root README's figures were taken on .NET 10.0.15 with SDK 10.0.109. The
 lightweight entrants allocate the same bytes on every run, so on the same
 runtime a fresh run reproduces the *Allocated* column. Times do not travel:
 across three runs on the measuring machine an entrant's time varied by up to
-about 25%, enough to reorder entrants whose times are close. Compare a fresh
+about 40%, enough to reorder entrants whose times are close. Compare a fresh
 run's times against another fresh run on the same machine, not against the
 published table.
 
