@@ -2,7 +2,7 @@
   "repo_notes": [
     { "content": "SqlArtisan is a type-safe SQL query builder for C# (.NET 8): you write SQL-like C# and it produces the SQL string plus its bind parameters." },
     { "content": "Core principle: 'The SQL you write is the SQL that runs.' SqlArtisan emits SQL faithfully with NO cross-dialect rewriting or translation. Cross-database portability is a deliberate non-goal — never describe SqlArtisan as a portability or abstraction layer over databases." },
-    { "content": "Supported dialects: MySQL, Oracle, PostgreSQL, SQLite, SQL Server (default: PostgreSQL). Dialect differences are confined to the dialect layer (IDbmsDialect under src/SqlArtisan/Internal/SqlBuilder/DbmsDialect: alias quoting, parameter markers, string-literal escaping and a few statement-shape tokens); function nodes never branch on the target DBMS. A construct a dialect lacks is a separate, dialect-named API, never a rewrite." },
+    { "content": "Supported dialects: MySQL, Oracle, PostgreSQL, SQLite, SQL Server (default: PostgreSQL). Differences in how the SQL is spelled (alias quoting, parameter markers, string-literal escaping and a few statement-shape tokens) are confined to the dialect layer (IDbmsDialect under src/SqlArtisan/Internal/SqlBuilder/DbmsDialect); function nodes never branch on the target DBMS. Apart from that, Build(Dbms) refuses a few statements one dialect rejects or would run with another meaning, through each builder's Validate(Dbms) hook and DmlTargetGuard (ADR 0011's bounded exceptions). A construct a dialect lacks is a separate, dialect-named API, never a rewrite." },
     { "content": "Mission: a deterministic guard rail for SQL written alongside generative AI, built as four layers — (1) types: invalid builder chains fail to compile; (2) a bundled Roslyn analyzer (SQLA0001–SQLA0304) that flags configuration errors, unsupported constructs, version shortfalls, context-restricted positions, unaliased correlated DML targets, C# operator fallbacks that bind a value instead of SQL, comparisons with NULL that are never true, nameof aliases no Dapper model member takes, over-long identifiers, and schema contradictions read from the generated table classes at build time; (3) exact-SQL unit tests that pin the emitted SQL; (4) an integration-test matrix verified against live database engines." },
     { "content": "Opinions live in docs and the analyzer, never in API holes: no legitimate SQL spelling is omitted to steer users." },
     { "content": "Four NuGet packages: SqlArtisan (the builder, with the analyzer bundled inside — not shipped separately), SqlArtisan.ArrayBind (Oracle array-bind execution — one round trip per batch, not per row), SqlArtisan.Dapper (sync/async Dapper execution extensions), SqlArtisan.TableClassGen (console tool that generates table classes from a live database)." },
@@ -13,7 +13,7 @@
   "pages": [
     {
       "title": "Overview",
-      "purpose": "What SqlArtisan is and is not: a type-safe C# query builder that emits the SQL you write plus its bind parameters, with cross-database portability as a deliberate non-goal. Introduce the four packages, the five dialects and the guard-rail mission of ADR 0010, map the repository layout (src/, tests/, docs/, docs/adr/), and say where SqlArtisan sits among other .NET query builders and when not to choose it, following README.md and docs/comparison.md."
+      "purpose": "What SqlArtisan is and is not: a type-safe C# query builder that emits the SQL you write plus its bind parameters, with cross-database portability as a deliberate non-goal. Introduce the four packages, the five dialects and the guard-rail mission of ADR 0010, map the repository layout (src/, tests/, docs/, docs/adr/), and say where SqlArtisan sits among other .NET query builders and when not to choose it, following README.md, docs/comparison.md and docs/README.md, the index of the reference pages."
     },
     {
       "title": "Design Principles and ADRs",
@@ -31,7 +31,7 @@
     },
     {
       "title": "SELECT Queries",
-      "purpose": "SELECT, FROM, JOIN (including ON/USING pairing), WHERE, GROUP BY / HAVING, ORDER BY, set operators, FOR UPDATE and pagination, as SelectBuilder implements them. Use docs/query-statements.md for the user-facing shape.",
+      "purpose": "SELECT, FROM, JOIN (including ON/USING pairing), WHERE, GROUP BY / HAVING, ORDER BY, set operators, FOR UPDATE and pagination, as SelectBuilder (src/SqlArtisan/Internal/SqlBuilder/Select) implements them. Use docs/query-statements.md for the user-facing shape.",
       "parent": "Building Statements"
     },
     {
@@ -41,22 +41,22 @@
     },
     {
       "title": "Common Table Expressions",
-      "purpose": "WITH and WITH RECURSIVE through WithBuilder (src/SqlArtisan/Internal/SqlBuilder/With) and CommonTableExpression (src/SqlArtisan/Internal/SqlPart/Clause/With), how a CTE body is rendered as its own query block, and the WITH section of docs/query-statements.md.",
+      "purpose": "WITH and WITH RECURSIVE through WithBuilder (src/SqlArtisan/Internal/SqlBuilder/With), the public CommonTableExpression (src/SqlArtisan/SqlPart/Clause/With) and the internal WITH clause nodes (src/SqlArtisan/Internal/SqlPart/Clause/With), how a CTE body is rendered as its own query block, and the WITH section of docs/query-statements.md.",
       "parent": "Building Statements"
     },
     {
       "title": "Rendering and Bind Parameters",
-      "purpose": "How Build() turns parts into SQL text: SqlBuilderBase.BuildCore, SqlBuildingBuffer (pooled char buffer, parameter list, marker reuse for the same BindValue instance), BindValue and implicit binding, SqlStatement and SqlParameters. Note the allocation-light constraints of ADR 0006 and link the Bind Parameter Types section of docs/functions.md.",
+      "purpose": "How Build() turns parts into SQL text: SqlBuilderBase.BuildCore and SqlBuildingBuffer (src/SqlArtisan/Internal/SqlBuilder; the buffer's pooled char array, parameter list and marker reuse for the same BindValue instance), BindValue and implicit binding, SqlStatement and SqlParameters. Note the allocation-light constraints of ADR 0006 and link the Bind Parameter Types section of docs/functions.md.",
       "parent": "Building Statements"
     },
     {
       "title": "Build-Time Validation",
-      "purpose": "What Build() and the stage methods reject and why: the duplicate-clause walk in SqlBuilderBase, the guards under src/SqlArtisan/Internal/SqlBuilder/Validation, the correlated-DML target guard, and the eager-versus-Build() timing rule in .claude/rules/guards-and-empty-states.md.",
+      "purpose": "What Build() and the stage methods reject and why (ADR 0007, 0011, 0012): the duplicate-clause walk in SqlBuilderBase, each builder's Validate(Dbms) hook that refuses a statement on the dialects that reject it, the guards under src/SqlArtisan/Internal/SqlBuilder/Validation (DmlTargetGuard among them), the empty-state policy (a written clause whose conditions are all empty throws rather than being dropped), and the eager-versus-Build() timing rule in .claude/rules/guards-and-empty-states.md.",
       "parent": "Building Statements"
     },
     {
       "title": "Dialect Layer",
-      "purpose": "IDbmsDialect and its five implementations under src/SqlArtisan/Internal/SqlBuilder/DbmsDialect, DbmsResolver and SqlArtisanConfig.DefaultDbms, and how a construct one dialect lacks is exposed as its own API rather than rewritten (ADR 0001, 0002).",
+      "purpose": "IDbmsDialect and its five implementations under src/SqlArtisan/Internal/SqlBuilder/DbmsDialect, DbmsResolver and SqlArtisanConfig.DefaultDbms, and how a construct one dialect lacks is exposed as its own API rather than rewritten (ADR 0001, 0002). The dialect-scoped rejections Build(Dbms) makes belong to Build-Time Validation, not to this layer.",
       "parent": "Building Statements"
     },
     {
@@ -65,7 +65,7 @@
     },
     {
       "title": "Operators, Conditions and Subqueries",
-      "purpose": "Arithmetic, comparison, logical AND/OR, IN, BETWEEN, LIKE, NULL handling, CASE, CAST, scalar subqueries, ALL/ANY/SOME, JSON, array, vector and full-text operators, as docs/expressions.md describes them.",
+      "purpose": "The operator and condition nodes under src/SqlArtisan/Internal/SqlPart/Expression and src/SqlArtisan/Internal/SqlPart/Condition, and their public bases under src/SqlArtisan/SqlPart: NULL, arithmetic, interval expressions, string concatenation, comparisons, logical AND/OR, IN, BETWEEN, LIKE, EXISTS, dynamic conditions (ConditionIf and EmptyCondition, which drop out of an AND/OR group), JSON, array, vector and full-text operators, scalar subqueries, ALL/ANY/SOME, CASE and CAST. Cover every section of docs/expressions.md except the three the Window Functions and Aggregates page covers.",
       "parent": "Expressions and Functions"
     },
     {
@@ -83,8 +83,8 @@
       "purpose": "The Roslyn analyzer in src/SqlArtisan.Analyzers, bundled inside the SqlArtisan package: how it is enabled through .editorconfig, its four ID bands (Configuration, Dialect, Schema, Validity; ADR 0018) and how a diagnostic is raised. docs/analyzer.md is the user-facing reference and holds the rule list."
     },
     {
-      "title": "Dialect Matrix and Version Bounds",
-      "purpose": "DialectMatrix.cs, MatrixKey, VersionBounds, ContextRules and DialectUsageAnalyzer in src/SqlArtisan.Analyzers: how a construct is resolved to a support verdict per dialect and version (ADR 0013, 0015, 0021), how the sweep tests in tests/SqlArtisan.IntegrationTests/Tests/MatrixSweepTests.cs verify the matrix against live engines, and the version-aware and context-rule sections of docs/analyzer.md.",
+      "title": "Dialect Rules",
+      "purpose": "The analyzer's Dialect band (SQLA0100–SQLA0104) in src/SqlArtisan.Analyzers: DialectMatrix.cs, MatrixKey, VersionBounds, ContextRules and DialectUsageAnalyzer resolve a construct to a support verdict per dialect and version (SQLA0100–SQLA0102; ADR 0013, 0015, 0021); IdentifierLengthRule and IdentifierLengthLimits check identifier literals against each dialect's limit (SQLA0103); ArgumentValueValidity, DatepartValidity and ValueDomainScope check literal argument values (SQLA0104; ADR 0022). Explain how the sweep tests in tests/SqlArtisan.IntegrationTests/Tests/MatrixSweepTests.cs verify the matrix against live engines, and link the rule, version-aware, context-rule and argument-value sections of docs/analyzer.md.",
       "parent": "The Analyzer"
     },
     {
@@ -108,7 +108,7 @@
     },
     {
       "title": "Oracle Array Bind",
-      "purpose": "SqlArtisan.ArrayBind: running one statement for N rows in one round trip through ODP.NET array binding, and its limits. Follow docs/guides/oracle-array-bind.md.",
+      "purpose": "src/SqlArtisan.ArrayBind: running one statement for N rows in one round trip through ODP.NET array binding, and its limits. Follow docs/guides/oracle-array-bind.md.",
       "parent": "Execution and Tooling"
     },
     {
@@ -118,7 +118,7 @@
     },
     {
       "title": "Verification and Quality",
-      "purpose": "How correctness is pinned: exact-SQL unit tests in tests/SqlArtisan.Tests, analyzer tests in tests/SqlArtisan.Analyzers.Tests, the integration matrix against live engines via Testcontainers in tests/SqlArtisan.IntegrationTests, the combinatorial PICT and CsCheck tests under tests/SqlArtisan.IntegrationTests/Randomized, mutation testing, and the CI workflows in .github/workflows."
+      "purpose": "How correctness is pinned: exact-SQL unit tests in tests/SqlArtisan.Tests, analyzer tests in tests/SqlArtisan.Analyzers.Tests, TableClassGen tests in tests/SqlArtisan.TableClassGen.Tests, the integration matrix in tests/SqlArtisan.IntegrationTests (MySQL, Oracle, PostgreSQL and SQL Server in Testcontainers, SQLite in-process), the combinatorial PICT and CsCheck tests under tests/SqlArtisan.IntegrationTests/Randomized, mutation testing, and the CI workflows in .github/workflows."
     },
     {
       "title": "Performance and Benchmarks",
