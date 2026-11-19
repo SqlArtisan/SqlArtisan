@@ -158,8 +158,9 @@ pooled `ArrayPool<T>`. In the project's
 it allocated the least among the query builders tested — a firm lead; only a
 hand-written `StringBuilder` (no compile-checked names, no dialect handling)
 was lighter. Its build time was in the range of the other lightweight
-builders — across three runs only Sqlify was faster, each time — and an order
-of magnitude below linq2db's and SqlKata's.
+builders — across three runs Sqlify beat both SqlArtisan entrants in two,
+Dapper.SqlBuilder in one, and no builder in the third — and an order of
+magnitude below linq2db's and SqlKata's.
 See the
 [benchmark table in the README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#performance)
 for the numbers, the machine and runtime they were measured on, and re-run

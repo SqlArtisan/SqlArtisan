@@ -301,13 +301,23 @@ never made unprompted. Once approved, do it in one commit:
    change against what shipped, and `DiagnosticOrderingTests` keeps an ID a
    Removed Rules row names from being reused. The 0.x releases left Shipped
    empty.
-5. Regenerate `llms-full.txt` (`bash tools/regen-llms-full.sh`).
-6. Run the full gate set (`dotnet test` ×3, `dotnet format --verify-no-changes`,
+5. Raise the comparison pins in `tests/SqlArtisan.Benchmark/SqlArtisan.Benchmark.csproj`
+   to each entrant's latest stable release for the project's target runtime
+   (holding one back is stated, with the reason, in the benchmark README), run
+   `validate`, then re-measure every entrant in one run on the reference machine
+   (i5-1135G7 / Windows 11) and update the benchmark README's *Pinned library
+   versions* table and runtime line, the root README's comparison table,
+   prose and *Measured on* line, and `docs/comparison.md`'s *Performance*
+   prose. Nothing else notices a pin that has fallen
+   behind, and the README's performance claims rest on it. Not doable from a
+   cloud session.
+6. Regenerate `llms-full.txt` (`bash tools/regen-llms-full.sh`).
+7. Run the full gate set (`dotnet test` ×3, `dotnet format --verify-no-changes`,
    `bash tools/audit-packages.sh`).
-7. Optional, not a gate: run mutation testing (`dotnet stryker` in each of the
+8. Optional, not a gate: run mutation testing (`dotnet stryker` in each of the
    three projects, see Build & test). A test a surviving mutant calls for lands
    in its own PR, not in this commit.
-8. Merge to `main`, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+9. Merge to `main`, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
    — `release.yml` reads the version from `Directory.Build.props`, not the tag,
    so they must already agree before pushing it. Tag push is user-performed.
 
