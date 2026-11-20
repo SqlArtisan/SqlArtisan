@@ -241,17 +241,16 @@ reused.
 No fixed schedule — releases ship when ready. Bugs causing silently wrong
 query results are the highest-priority fix class.
 
-A version that ships first as release candidates (`1.0.0-rc.1`, …) is released
-from a candidate once all of these hold:
+1.0.0 ships first as release candidates (`1.0.0-rc.1`, …), and is released from
+a candidate once all of these hold:
 
 - at least seven days have passed since the candidate was published, with no
-  bug reported against it that the release must fix;
+  bug reported against it that 1.0.0 must fix;
 - the [integration test matrix](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
   has passed every nightly run over those days;
-- the documentation has been checked as the release will publish it, including
-  the edits the release itself makes, such as dropping the `--prerelease`
-  install instructions.
+- the documentation has been checked as 1.0.0 will publish it, including the
+  edits the release itself makes, such as dropping the `--prerelease` install
+  instructions.
 
-A breaking fix found while a candidate is out ships in a new candidate, which
-waits its own seven days, so the change is out before the SemVer commitment
-starts. Any other fix ships in the release itself.
+A fix 1.0.0 must carry, breaking or not, ships in a new candidate, which waits
+its own seven days, so no fix reaches 1.0.0 without being out that long first.
