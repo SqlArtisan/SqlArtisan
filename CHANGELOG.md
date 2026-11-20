@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Docs
+- `docs/versioning.md` states when a release candidate becomes the release: at
+  least seven days out with no bug reported that the release must fix, every
+  nightly integration run passing, and the documentation checked as the release
+  will publish it. A breaking fix found meanwhile ships in a new candidate.
 - The README's performance table is re-measured against each compared library's
   latest release for .NET 10, among them Dapper 2.1.89, linq2db 6.6.0 and EF
   Core 10. SqlArtisan still allocates the least among the builders. Its build
