@@ -7698,12 +7698,15 @@ query results are the highest-priority fix class.
 a candidate once all of these hold:
 
 - at least seven days have passed since the candidate was published, with no
-  bug reported against it that 1.0.0 must fix;
+  bug in its code reported against it that 1.0.0 must fix;
 - the [integration test matrix](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
   has passed every nightly run over those days;
 - the documentation has been checked as 1.0.0 will publish it, including the
   edits the release itself makes, such as dropping the `--prerelease` install
   instructions.
 
-A fix 1.0.0 must carry, breaking or not, ships in a new candidate, which waits
-its own seven days, so no fix reaches 1.0.0 without being out that long first.
+A fix to the packages' code that 1.0.0 must carry, breaking or not, ships in a
+new candidate, which waits its own seven days, so no code fix reaches 1.0.0
+without being out that long first. A correction to the documentation alone,
+the README the packages carry included, ships in 1.0.0 without a new
+candidate: it changes nothing the packages do.

@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Docs
 - `docs/versioning.md` states when a 1.0.0 release candidate becomes 1.0.0: at
-  least seven days out with no bug reported that 1.0.0 must fix, every nightly
-  integration run passing, and the documentation checked as 1.0.0 will publish
-  it. A fix 1.0.0 must carry ships in a new candidate, which waits its own seven
-  days.
+  least seven days out with no bug in its code reported that 1.0.0 must fix,
+  every nightly integration run passing, and the documentation checked as 1.0.0
+  will publish it. A code fix 1.0.0 must carry ships in a new candidate, which
+  waits its own seven days; a documentation correction alone does not.
 - The README's performance table is re-measured against each compared library's
   latest release for .NET 10, among them Dapper 2.1.89, linq2db 6.6.0 and EF
   Core 10. SqlArtisan still allocates the least among the builders. Its build

@@ -275,8 +275,12 @@ which chunks it across single reviewers instead of tripling it.
 
 ## Release procedure
 
-Bumping the shipped version (e.g. `0.8.0-beta.1` → `1.0.0`) is a user decision,
-never made unprompted. Once approved, do it in one commit:
+Bumping the shipped version (e.g. `1.0.0-rc.1` → `1.0.0`) is a user decision,
+never made unprompted. 1.0.0 is released only from a candidate that meets the
+criteria in `docs/versioning.md` § Release cadence (seven days out, every nightly
+integration run passing, the documentation checked as the release publishes
+it, which covers what steps 2, 3 and 5 edit); confirm them before step 1. Once
+approved, do it in one commit:
 
 1. `Directory.Build.props`: set `<VersionPrefix>`; delete `<VersionSuffix>` for
    a non-prerelease version. Set `<PackageValidationBaselineVersion>` to the
