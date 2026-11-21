@@ -21,11 +21,11 @@ your code until you configure a target; only a problem in that configuration
 - [Version-aware warnings (SQLA0101)](#version-aware-warnings-sqla0101)
 - [Context rules (SQLA0102)](#context-rules-sqla0102)
 - [Argument value validity (SQLA0104)](#argument-value-validity-sqla0104)
+- [Schema-aware warnings (SQLA0200–SQLA0206)](#schema-aware-warnings-sqla0200sqla0206)
 - [Correlated DML target (SQLA0300)](#correlated-dml-target-sqla0300)
 - [C# fallbacks (SQLA0301, SQLA0302)](#c-fallbacks-sqla0301-sqla0302)
 - [Comparisons with NULL (SQLA0303)](#comparisons-with-null-sqla0303)
 - [Dapper model aliases (SQLA0304)](#dapper-model-aliases-sqla0304)
-- [Schema-aware warnings (SQLA0200)](#schema-aware-warnings-sqla0200)
 - [Mixed-dialect projects](#mixed-dialect-projects)
 - [CI gates and stricter enforcement](#ci-gates-and-stricter-enforcement)
 - [Verified-against versions](#verified-against-versions)
@@ -107,13 +107,13 @@ still needs naming by ID.
 | `SQLA0102` | Warning | A construct a configured dialect supports, used in a syntactic position where that dialect rejects it or runs it with another meaning — see [Context rules](#context-rules-sqla0102). |
 | `SQLA0103` | Warning | A compile-time identifier literal — a table or expression alias, a CTE or derived-table name, a `VALUES` or `Unnest(...).AsTable(...)` column name, or the Oracle `RETURNING` output variable — is longer than a configured dialect allows. Checking more than one dialect reports one diagnostic per dialect it's too long for. |
 | `SQLA0104` | Warning | A literal argument value a configured dialect rejects, or runs with another meaning, where the construct itself runs there: a `DateTimePart` the function's grammar does not accept or reads as another field, a `RegexpOptions` member outside that engine's match-parameter alphabet, a negative `Top`/`FetchFirst`/`FetchNext`/`Limit` count, a `GroupBy` column ordinal on an engine that has no `GROUP BY` positions, a negative integer-typed `Round` scale on SQLite, a string or `char` constant beside `+` on any engine but SQL Server, a `CurrentTimestamp` / `CurrentTime` precision above an engine's ceiling, or an Oracle `IntervalLiteral` value of three or more leading digits under a `Day()` or `Year()` with no precision — see [Argument value validity](#argument-value-validity-sqla0104). Checking more than one dialect joins every failing one into a single diagnostic. |
-| `SQLA0200` | Warning | `IS NULL` / `IS NOT NULL` on a column the generated table class declares `NOT NULL`, so the predicate's answer is fixed before the query runs. Reported only in a statement that visibly builds its own query and has no outer join or super-aggregate grouping on its own spine — past one, the anti-join or the grand-total row makes exactly this predicate meaningful; see [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
-| `SQLA0201` | Warning | `NOT IN` over a subquery whose selected column is nullable — one NULL makes the whole predicate NULL, so the query matches nothing. See [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
-| `SQLA0202` | Warning | An `INSERT` column list omits a column that is `NOT NULL` with no default, so the engine cannot construct the row. See [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
-| `SQLA0203` | Info, **off by default** | `Count(column)` on a column the generated table class declares nullable, which counts values rather than rows. Advice on correct code, so it reports nothing until you turn it on — see [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
-| `SQLA0204` | Warning | A `WHERE` or `ON` predicate wraps an indexed column in a function, or matches it with a leading-wildcard pattern, so no index on it can be used. See [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
-| `SQLA0205` | Warning | A column is compared to a value of another type category — a text column against a number, say. The engine reconciles the two its own way, which can change which rows match (a text column against a number does on MySQL, Oracle and SQL Server) or fail the query. See [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
-| `SQLA0206` | Warning | A column the generated table class declares text is an operand of `+`, which concatenates it only on SQL Server: MySQL and SQLite add it as a number with no error, and Oracle and PostgreSQL fail on two names. See [Schema-aware warnings](#schema-aware-warnings-sqla0200). |
+| `SQLA0200` | Warning | `IS NULL` / `IS NOT NULL` on a column the generated table class declares `NOT NULL`, so the predicate's answer is fixed before the query runs. Reported only in a statement that visibly builds its own query and has no outer join or super-aggregate grouping on its own spine — past one, the anti-join or the grand-total row makes exactly this predicate meaningful; see [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
+| `SQLA0201` | Warning | `NOT IN` over a subquery whose selected column is nullable — one NULL makes the whole predicate NULL, so the query matches nothing. See [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
+| `SQLA0202` | Warning | An `INSERT` column list omits a column that is `NOT NULL` with no default, so the engine cannot construct the row. See [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
+| `SQLA0203` | Info, **off by default** | `Count(column)` on a column the generated table class declares nullable, which counts values rather than rows. Advice on correct code, so it reports nothing until you turn it on — see [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
+| `SQLA0204` | Warning | A `WHERE` or `ON` predicate wraps an indexed column in a function, or matches it with a leading-wildcard pattern, so no index on it can be used. See [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
+| `SQLA0205` | Warning | A column is compared to a value of another type category — a text column against a number, say. The engine reconciles the two its own way, which can change which rows match (a text column against a number does on MySQL, Oracle and SQL Server) or fail the query. See [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
+| `SQLA0206` | Warning | A column the generated table class declares text is an operand of `+`, which concatenates it only on SQL Server: MySQL and SQLite add it as a number with no error, and Oracle and PostgreSQL fail on two names. See [Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206). |
 | `SQLA0300` | Warning | A correlated UPDATE, DELETE, or MERGE has an unaliased target — the statement `Build()` rejects at run time, surfaced early; see [Correlated DML target](#correlated-dml-target-sqla0300). |
 | `SQLA0301` | Warning | `==` or `!=` that C# resolves as reference equality, because the left operand is not a SqlArtisan expression, passed to a SqlArtisan member or operator — it binds a `bool` instead of comparing in SQL; see [C# fallbacks](#c-fallbacks-sqla0301-sqla0302). |
 | `SQLA0302` | Warning | A SqlArtisan object interpolated or concatenated into a string passed to a SqlArtisan member or operator — it binds the object's type name instead of SQL; see [C# fallbacks](#c-fallbacks-sqla0301-sqla0302). |
@@ -143,6 +143,16 @@ after an unaliased table, which MySQL reads as that table's alias `FULL` before
 an inner `JOIN` when no column the join names is ambiguous. Nothing fails
 there, so the warning is the only signal; where you mean the dialect's own
 reading, suppress it at that call.
+
+```csharp
+using static SqlArtisan.Sql;
+
+// sqlartisan_syntax_mysql = any
+var g = Rollup(t.Code, t.Name);
+// warning SQLA0100: 'Rollup' is not supported on MySQL. Set
+// 'sqlartisan_construct_rollup = supported' in .editorconfig if your
+// engine version supports it.
+```
 
 `SQLA0103` checks compile-time identifier literals — table and expression
 aliases (`.As(...)`), CTE and derived-table names, `VALUES` and
@@ -176,16 +186,6 @@ Only constant identifiers are checked; a name built at run time is left alone.
 Like `SQLA0100`, it is a per-usage diagnostic suppressible at one site
 (`#pragma warning disable SQLA0103`, a `[SuppressMessage]` attribute, or
 `dotnet_diagnostic.SQLA0103.severity`).
-
-```csharp
-using static SqlArtisan.Sql;
-
-// sqlartisan_syntax_mysql = any
-var g = Rollup(t.Code, t.Name);
-// warning SQLA0100: 'Rollup' is not supported on MySQL. Set
-// 'sqlartisan_construct_rollup = supported' in .editorconfig if your
-// engine version supports it.
-```
 
 Severity is controlled the standard Roslyn way, per rule ID or per category:
 
@@ -1326,7 +1326,7 @@ var q = Select("Dr. " + u.Name).From(u);
 Only a string or `char` constant reports here, and `+` beside `Interval(...)` is
 not checked. A string variable and two text columns (`u.FirstName + u.LastName`)
 are `SQLA0206`'s where the table class declares the column text; see
-[Schema-aware warnings](#schema-aware-warnings-sqla0200).
+[Schema-aware warnings](#schema-aware-warnings-sqla0200sqla0206).
 A numeric string meant as a number (`u.Age + "1"`) reports too: write the number
 instead (`u.Age + 1`). To concatenate, use `Concat(...)` on MySQL and `DoublePipe(...)` on
 Oracle, PostgreSQL and SQLite.
@@ -1404,257 +1404,7 @@ value does.
 
 ---
 
-## Correlated DML target (SQLA0300)
-
-An UPDATE, DELETE, or MERGE whose subquery — or, for MERGE, whose `USING`
-source — references a column of the **unaliased** target table, without
-listing the target in its own `From(...)` or join, can be silently wrong: the bare outer column can resolve to the inner table, and
-then the subquery no longer depends on the outer row and the statement acts
-on the wrong rows or, from a `SET` subquery, writes the wrong values.
-`Build()` rejects this statement at run time; `SQLA0300` is the same finding
-surfaced at compile time, where the fix is cheapest. A MERGE target with no alias
-throws earlier, at `MergeInto(...)`, whatever its subqueries read (see
-[MERGE Statement](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#merge-statement)).
-
-```csharp
-// sqlartisan_syntax_postgresql = any
-UsersTable u = new();
-OrdersTable o = new("o");
-var q = DeleteFrom(u)
-    .Where(Exists(Select(o.Id).From(o).Where(o.UserId == u.Id)));
-// warning SQLA0300: The target of a correlated UPDATE, DELETE, or MERGE must be aliased
-```
-
-The fix is the one the run-time guard demands: alias the target
-(`new UsersTable("u")`). On MySQL, Oracle, PostgreSQL, and SQLite the
-aliased target is the correlated form; on SQL Server an `UPDATE`/`DELETE`
-target cannot be aliased directly — re-list the aliased target in
-`From(...)`, which supplies T-SQL's alias, and keep the subquery. A MERGE
-target takes its alias on every dialect, and MERGE has no joined form.
-
-The diagnostic is **advisory duplication** of the `Build()` guard:
-suppressing it does not stop the exception — the statement still fails to
-build. The analyzer reads the source, not the built statement, so it can
-report a statement that builds. Known cases include:
-
-- a table class whose column members belong to another instance, when that
-  instance is aliased or the subquery lists it;
-- a correlated subquery that never renders, under `ConditionIf(false, …)`
-  or in an untaken `?:` arm;
-- a `readonly` target rewritten through `Unsafe.AsRef`.
-
-The warning is reported once per statement, on a target column read inside a
-subquery that does not list the target. A subquery that passes the target's
-own local or readonly field to its `From(...)` or a join reads the target as
-its own relation, which `Build()` accepts, so it stays silent. CTE bodies are not walked, whether the `With(...)` chain heads the
-statement or sits in a subquery or a MERGE `USING` source: a target column
-read there stays silent and is left to `Build()`, which accepts a body that
-reads the target as its own relation and rejects one that correlates; an
-unaliased MERGE target never reaches `Build()`, since `MergeInto(...)` rejects it.
-
-The warning fires on every configured dialect, because the wrong-scope
-resolution is universal, not a dialect fact.
-
-The warning reports only what is provable from the source. The target must
-be a local variable or a `readonly` field whose initializer visibly
-constructs the table class with an empty alias and which is never
-reassigned, and the correlated column reference must sit in a subquery
-written inline in the same fluent chain. Anything less certain — the table
-built by a helper, the alias passed as a variable, the builder split across
-statements, a subquery or column passed through a call into non-SqlArtisan
-code, a chain head selected by a conditional expression, a table class
-or target field declared in a referenced project or assembly — stays silent. A missing warning therefore never means the statement is safe;
-`Build()` remains the enforcement.
-
-Suppression is per rule ID, the standard Roslyn way
-(`#pragma warning disable SQLA0300`, a `[SuppressMessage]` attribute, or
-`dotnet_diagnostic.SQLA0300.severity`). The `sqlartisan_construct_*`
-override keys do not apply — the construct's dialect support is not what
-this rule reports.
-
----
-
-## C# fallbacks (SQLA0301, SQLA0302)
-
-C# uses its own built-in operator whenever no SqlArtisan one applies, and the
-result is an ordinary value — a `bool` or a type name you never meant — that
-SqlArtisan binds as a parameter.
-
-`SQLA0301` reports `==` or `!=` whose left operand is not a SqlArtisan
-expression — an `object`, a `SqlPart`, a type parameter constrained to one.
-C# compares the two references and passes the `bool` on:
-
-```csharp
-// sqlartisan_syntax_postgresql = any
-object value = 42;
-var q = Select(value == u.Id).From(u);
-// warning SQLA0301: This compares C# references and binds the bool result, not a SQL comparison; ...
-```
-
-A SQL comparison belongs in a condition position, with the column on the left:
-`.Where(u.Id == value)`. A select list takes no condition — `Select(u.Id == value)`
-throws — so if a C# `bool` is what you meant there, pass it to `Bind(...)`, which
-`SQLA0301` leaves alone.
-
-`SQLA0302` reports a SqlArtisan object formatted as text: interpolated
-(`$"%{u.Name}%"`), or concatenated with a string where no SqlArtisan `+` takes
-the operand — a subquery, a sequence, or a function still waiting for its clause
-(`Listagg(...)` before `.WithinGroup(...)`). Either way the text holds the
-object's type name:
-
-```csharp
-var q = Select(u.Id).From(u).Where(u.Name.Like($"%{u.Name}%"));
-// warning SQLA0302: 'DbColumn' formats as a type name, not as SQL; ...
-```
-
-Build the text in SQL from the value you meant — a column, or a sequence's
-`Nextval` — with `Concat(...)` for example; a table or a sequence itself is no
-SQL value. A built `SqlStatement` is not reported: its text is its SQL by
-design. Neither is an interpolated value whose type implements `IFormattable`,
-which interpolation formats its own way; concatenating one still reports.
-
-Both rules report only where the value goes straight into an argument of a
-SqlArtisan member or an operand of a SqlArtisan operator (`u.Name == $"{u.Id}"`).
-The same C# anywhere else — a log line, a reference check — is correct code,
-so a result held in a variable first stays silent, and so does a comparison
-with `object` on both sides, or an `object` beside a string's `+`: nothing
-proves a SqlArtisan object is involved. `SQLA0301` also stays silent on a null
-check (`extra != null`, `p == default`), on a comparison where either side's
-type cannot hold a SqlArtisan expression (a table or a sequence on either
-side), and on a reference check passed as
-`ConditionIf`'s `when` or to `Bind(...)` / `new BindValue(...)`, which take a C#
-value by design.
-
-`SQLA0302` reports an object only where its text is provably a type name: its
-type is sealed (a column, a sequence, a generated table class), or a SqlArtisan
-method, property, constructor or operator has just returned it
-(`Select(...).From(...)`, `Listagg(...)`, `u.Id == 1`). Any other static type
-stays silent — a subquery held in a variable, a value typed `SqlExpression`, or
-a value typed `DbTableBase`, which may hold a table class of yours that
-overrides `ToString()`. Concatenated with a string, a sealed class of yours with
-an implicit user-defined conversion to `string` converts through it and stays silent;
-interpolated, it is formatted by `ToString()` and reports. A missing warning therefore never means the operand is safe.
-
-Suppression is per rule ID, the standard Roslyn way
-(`#pragma warning disable SQLA0301`, a `[SuppressMessage]` attribute, or
-`dotnet_diagnostic.SQLA0301.severity`). The `sqlartisan_construct_*` override
-keys do not apply.
-
----
-
-## Comparisons with NULL (SQLA0303)
-
-SQL compares a value with NULL as unknown, never true, so `col = NULL`,
-`col <> NULL` and the ordering comparisons (`<`, `<=`, `>`, `>=`) match no row, and
-a simple CASE `WHEN NULL` branch is never taken (all five engines the suite runs,
-live). So do `NOT IN` over a list holding a NULL, `IN` over NULLs alone, `BETWEEN`
-with a NULL bound and `LIKE` / `NOT LIKE` against a NULL pattern (the same five,
-`NullInComparedPosition_MatchesNoRow`). `SQLA0303` reports each of these where
-the NULL is written as `Sql.Null` or an untyped `BindNull()`; the twins run
-both. A typed `BindNull(DbType)` is not read, since what it does turns on the
-type it names. A simple CASE `When(...)` reports `Sql.Null` alone: Oracle XE 21.3.0 binds an
-untyped `BindNull()` as text and rejects the CASE there rather than skipping the
-branch (`OracleTests.SimpleCaseWhenUntypedBindNull_IsRejectedByTheEngine`).
-
-```csharp
-var q = Select(u.Id).From(u).Where(u.Name == Null);
-// warning SQLA0303: '=' compares with NULL and is never true; test for NULL with IsNull
-```
-
-Test for NULL with `u.Name.IsNull` or `IsNotNull`, and in a CASE with a searched
-`When(u.Name.IsNull)`; drop the NULL from a `NotIn(...)` list, and compare a
-`Between(...)` column with `>=` or `<=` on the bound that is not NULL. A list or
-both bounds of NULL alone leave nothing to keep, so those take the NULL test. `In(1, Null)`
-stays silent, since `1` can still match, and so does a `NotBetween(...)` with one
-NULL bound, whose other bound still decides (both match rows in the same twin). A
-list is read where it is written at the call, as arguments or a collection
-expression (`NotIn([1, Null])`); one held in an array variable, or passed to the
-`In(...)` / `NotIn(...)` overload that takes a collection, is not. A C# `null` there (`u.Name == null`) throws at the call
-and names `IsNull`; `Sql.Null` is the spelling that reaches the engine.
-
-`==` also writes a `SET` assignment — `Update(u).Set(u.Name == Null)` sets the
-column to NULL — so an `==` is reported only where it converts to a
-`SqlCondition` (passed, assigned, returned or combined as one), directly or as a
-branch of a conditional (`flag ? a : b`). An `==` held in a `var` stays silent,
-since it may still be assigned; a `switch` expression arm or an explicit cast is
-not followed, so one there can stay silent too. A `SET`-style clause rejects `!=`
-when it is called and takes no ordering comparison, so neither can be an
-assignment, and both are reported wherever they are written.
-
-SQL Server's deprecated `SET ANSI_NULLS OFF` reads `= NULL` and `<> NULL` as
-NULL tests (SQL Server 2022, live); code that relies on it suppresses the rule the standard
-Roslyn way (`#pragma warning disable SQLA0303`, a `[SuppressMessage]` attribute,
-or `dotnet_diagnostic.SQLA0303.severity`).
-
----
-
-## Dapper model aliases (SQLA0304)
-
-A `nameof` alias ties a column to the member of the model Dapper reads it into,
-so renaming the member renames the alias. It compiles just as well when it names
-a member of another type, and Dapper then cannot map the column: a model it
-fills through a parameterless constructor keeps that member at its default, with
-no error, and one it builds through a constructor throws (Dapper 2.1.66 on
-SQLite, live: `SqliteTests.QueryNameOfAlias_*`).
-`SQLA0304` reports such an alias.
-
-```csharp
-// sqlartisan_syntax_postgresql = any
-IEnumerable<OrderSummary> rows = cnn.Query<OrderSummary>(
-    Select(o.OrderCode.As(nameof(CustomerSummary.Name)), Sum(o.Amount).As(nameof(OrderSummary.Total)))
-    .From(o)
-    .GroupBy(o.OrderCode));
-// warning SQLA0304: Alias 'Name' names no member of 'OrderSummary', so Dapper cannot map the column ...
-```
-
-The rule reads the query passed to `SqlArtisan.Dapper`'s typed `Query`,
-`QueryFirst`, `QueryFirstOrDefault`, `QuerySingle` or `QuerySingleOrDefault`, or
-its `Async` form: written at the call, or held in a local that is assigned once,
-where it is declared. In that query it reads the root `Select(...)` — or the
-`Select(...)` right after `With(...)` / `WithRecursive(...)` — and each item there
-aliased with a `nameof` of a member, such as `.As(nameof(Model.Member))`,
-`.As(nameof(instance.Member))` or `.As(nameof(Member))`; a `nameof` of a local, a
-parameter or a type is not read. The alias
-matches when it names a property or field of the model or of a base type,
-whatever its access, or a parameter of one of its constructors, ignoring case and
-underscores; Dapper ignores underscores only when
-`DefaultTypeMap.MatchNamesWithUnderscores` is set, so any name it could match
-stays silent.
-
-It stays silent where the alias does not decide the mapping, or where the rule
-cannot see what does:
-
-- The model is a type parameter, `dynamic`, abstract, an interface, an enum or
-  an array, or it or a base type is declared in another assembly. That covers
-  the types Dapper reads by position, such as `int`, `string` or a tuple, and a
-  model kept in another project: `dotnet build` reads such a type without its
-  private members, which Dapper fills, so the build and the IDE would disagree.
-- The project references Dapper.FluentMap, or the model, a base type or one of
-  their members carries an attribute named `ColumnAttribute`: a mapping set up
-  at run time.
-- The query is not one the rule can see whole: a local assigned again, a query
-  picked by `?:`, `??` or a `switch` expression, or one taken from a field, a
-  property, a parameter or a method of your own. A query with a set operation
-  (`UnionAll`, …) is not read either, nor an alias inside a subquery, a
-  `Returning(...)` or an `Output(...)`.
-
-Only a `nameof` alias is read. A string alias may be meant for a type map or a
-handler registered at run time, or for an extra column Dapper ignores on
-purpose; a `nameof` of a member says the alias is a member name, which is
-what lets the rule be on by default.
-
-Two shapes report on code that works. A Dapper type handler registered for the
-model, through either package's `SqlMapper.AddTypeHandler`, reads the first column
-whatever the alias (Dapper 2.1.66 on SQLite, live:
-`SqliteTests.QueryNameOfAlias_RegisteredHandler_ReadsTheFirstColumn`), and a type
-map keyed on an attribute of another name can map the column to a member the
-alias does not name. Suppress the rule there the standard Roslyn way
-(`#pragma warning disable SQLA0304`, a `[SuppressMessage]` attribute, or
-`dotnet_diagnostic.SQLA0304.severity`).
-
----
-
-## Schema-aware warnings (SQLA0200)
+## Schema-aware warnings (SQLA0200–SQLA0206)
 
 `SqlArtisan.TableClassGen` records what the catalog says about each column on
 the generated table class:
@@ -1961,9 +1711,259 @@ to read would otherwise look omitted.
 
 Like every rule here, it stays silent until a dialect is configured, even
 though its verdict is dialect-independent, as is every rule's here but
-`SQLA0206`'s. Suppression is per rule
+`SQLA0206`'s and, for MySQL's zero-date reading, `SQLA0200`'s. Suppression is per rule
 ID, the standard Roslyn way; the `sqlartisan_construct_*` override keys do not
 apply, since the construct's dialect support is not what this rule reports.
+
+---
+
+## Correlated DML target (SQLA0300)
+
+An UPDATE, DELETE, or MERGE whose subquery — or, for MERGE, whose `USING`
+source — references a column of the **unaliased** target table, without
+listing the target in its own `From(...)` or join, can be silently wrong: the bare outer column can resolve to the inner table, and
+then the subquery no longer depends on the outer row and the statement acts
+on the wrong rows or, from a `SET` subquery, writes the wrong values.
+`Build()` rejects this statement at run time; `SQLA0300` is the same finding
+surfaced at compile time, where the fix is cheapest. A MERGE target with no alias
+throws earlier, at `MergeInto(...)`, whatever its subqueries read (see
+[MERGE Statement](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#merge-statement)).
+
+```csharp
+// sqlartisan_syntax_postgresql = any
+UsersTable u = new();
+OrdersTable o = new("o");
+var q = DeleteFrom(u)
+    .Where(Exists(Select(o.Id).From(o).Where(o.UserId == u.Id)));
+// warning SQLA0300: The target of a correlated UPDATE, DELETE, or MERGE must be aliased
+```
+
+The fix is the one the run-time guard demands: alias the target
+(`new UsersTable("u")`). On MySQL, Oracle, PostgreSQL, and SQLite the
+aliased target is the correlated form; on SQL Server an `UPDATE`/`DELETE`
+target cannot be aliased directly — re-list the aliased target in
+`From(...)`, which supplies T-SQL's alias, and keep the subquery. A MERGE
+target takes its alias on every dialect, and MERGE has no joined form.
+
+The diagnostic is **advisory duplication** of the `Build()` guard:
+suppressing it does not stop the exception — the statement still fails to
+build. The analyzer reads the source, not the built statement, so it can
+report a statement that builds. Known cases include:
+
+- a table class whose column members belong to another instance, when that
+  instance is aliased or the subquery lists it;
+- a correlated subquery that never renders, under `ConditionIf(false, …)`
+  or in an untaken `?:` arm;
+- a `readonly` target rewritten through `Unsafe.AsRef`.
+
+The warning is reported once per statement, on a target column read inside a
+subquery that does not list the target. A subquery that passes the target's
+own local or readonly field to its `From(...)` or a join reads the target as
+its own relation, which `Build()` accepts, so it stays silent. CTE bodies are not walked, whether the `With(...)` chain heads the
+statement or sits in a subquery or a MERGE `USING` source: a target column
+read there stays silent and is left to `Build()`, which accepts a body that
+reads the target as its own relation and rejects one that correlates; an
+unaliased MERGE target never reaches `Build()`, since `MergeInto(...)` rejects it.
+
+The warning fires on every configured dialect, because the wrong-scope
+resolution is universal, not a dialect fact.
+
+The warning reports only what is provable from the source. The target must
+be a local variable or a `readonly` field whose initializer visibly
+constructs the table class with an empty alias and which is never
+reassigned, and the correlated column reference must sit in a subquery
+written inline in the same fluent chain. Anything less certain — the table
+built by a helper, the alias passed as a variable, the builder split across
+statements, a subquery or column passed through a call into non-SqlArtisan
+code, a chain head selected by a conditional expression, a table class
+or target field declared in a referenced project or assembly — stays silent. A missing warning therefore never means the statement is safe;
+`Build()` remains the enforcement.
+
+Suppression is per rule ID, the standard Roslyn way
+(`#pragma warning disable SQLA0300`, a `[SuppressMessage]` attribute, or
+`dotnet_diagnostic.SQLA0300.severity`). The `sqlartisan_construct_*`
+override keys do not apply — the construct's dialect support is not what
+this rule reports.
+
+---
+
+## C# fallbacks (SQLA0301, SQLA0302)
+
+C# uses its own built-in operator whenever no SqlArtisan one applies, and the
+result is an ordinary value — a `bool` or a type name you never meant — that
+SqlArtisan binds as a parameter.
+
+`SQLA0301` reports `==` or `!=` whose left operand is not a SqlArtisan
+expression — an `object`, a `SqlPart`, a type parameter constrained to one.
+C# compares the two references and passes the `bool` on:
+
+```csharp
+// sqlartisan_syntax_postgresql = any
+object value = 42;
+var q = Select(value == u.Id).From(u);
+// warning SQLA0301: This compares C# references and binds the bool result, not a SQL comparison; ...
+```
+
+A SQL comparison belongs in a condition position, with the column on the left:
+`.Where(u.Id == value)`. A select list takes no condition — `Select(u.Id == value)`
+throws — so if a C# `bool` is what you meant there, pass it to `Bind(...)`, which
+`SQLA0301` leaves alone.
+
+`SQLA0302` reports a SqlArtisan object formatted as text: interpolated
+(`$"%{u.Name}%"`), or concatenated with a string where no SqlArtisan `+` takes
+the operand — a subquery, a sequence, or a function still waiting for its clause
+(`Listagg(...)` before `.WithinGroup(...)`). Either way the text holds the
+object's type name:
+
+```csharp
+var q = Select(u.Id).From(u).Where(u.Name.Like($"%{u.Name}%"));
+// warning SQLA0302: 'DbColumn' formats as a type name, not as SQL; ...
+```
+
+Build the text in SQL from the value you meant — a column, or a sequence's
+`Nextval` — with `Concat(...)` for example; a table or a sequence itself is no
+SQL value. A built `SqlStatement` is not reported: its text is its SQL by
+design. Neither is an interpolated value whose type implements `IFormattable`,
+which interpolation formats its own way; concatenating one still reports.
+
+Both rules report only where the value goes straight into an argument of a
+SqlArtisan member or an operand of a SqlArtisan operator (`u.Name == $"{u.Id}"`).
+The same C# anywhere else — a log line, a reference check — is correct code,
+so a result held in a variable first stays silent, and so does a comparison
+with `object` on both sides, or an `object` beside a string's `+`: nothing
+proves a SqlArtisan object is involved. `SQLA0301` also stays silent on a null
+check (`extra != null`, `p == default`), on a comparison where either side's
+type cannot hold a SqlArtisan expression (a table or a sequence on either
+side), and on a reference check passed as
+`ConditionIf`'s `when` or to `Bind(...)` / `new BindValue(...)`, which take a C#
+value by design.
+
+`SQLA0302` reports an object only where its text is provably a type name: its
+type is sealed (a column, a sequence, a generated table class), or a SqlArtisan
+method, property, constructor or operator has just returned it
+(`Select(...).From(...)`, `Listagg(...)`, `u.Id == 1`). Any other static type
+stays silent — a subquery held in a variable, a value typed `SqlExpression`, or
+a value typed `DbTableBase`, which may hold a table class of yours that
+overrides `ToString()`. Concatenated with a string, a sealed class of yours with
+an implicit user-defined conversion to `string` converts through it and stays silent;
+interpolated, it is formatted by `ToString()` and reports. A missing warning therefore never means the operand is safe.
+
+Suppression is per rule ID, the standard Roslyn way
+(`#pragma warning disable SQLA0301`, a `[SuppressMessage]` attribute, or
+`dotnet_diagnostic.SQLA0301.severity`). The `sqlartisan_construct_*` override
+keys do not apply.
+
+---
+
+## Comparisons with NULL (SQLA0303)
+
+SQL compares a value with NULL as unknown, never true, so `col = NULL`,
+`col <> NULL` and the ordering comparisons (`<`, `<=`, `>`, `>=`) match no row, and
+a simple CASE `WHEN NULL` branch is never taken (all five engines the suite runs,
+live). So do `NOT IN` over a list holding a NULL, `IN` over NULLs alone, `BETWEEN`
+with a NULL bound and `LIKE` / `NOT LIKE` against a NULL pattern (the same five,
+`NullInComparedPosition_MatchesNoRow`). `SQLA0303` reports each of these where
+the NULL is written as `Sql.Null` or an untyped `BindNull()`; the twins run
+both. A typed `BindNull(DbType)` is not read, since what it does turns on the
+type it names. A simple CASE `When(...)` reports `Sql.Null` alone: Oracle XE 21.3.0 binds an
+untyped `BindNull()` as text and rejects the CASE there rather than skipping the
+branch (`OracleTests.SimpleCaseWhenUntypedBindNull_IsRejectedByTheEngine`).
+
+```csharp
+var q = Select(u.Id).From(u).Where(u.Name == Null);
+// warning SQLA0303: '=' compares with NULL and is never true; test for NULL with IsNull
+```
+
+Test for NULL with `u.Name.IsNull` or `IsNotNull`, and in a CASE with a searched
+`When(u.Name.IsNull)`; drop the NULL from a `NotIn(...)` list, and compare a
+`Between(...)` column with `>=` or `<=` on the bound that is not NULL. A list or
+both bounds of NULL alone leave nothing to keep, so those take the NULL test. `In(1, Null)`
+stays silent, since `1` can still match, and so does a `NotBetween(...)` with one
+NULL bound, whose other bound still decides (both match rows in the same twin). A
+list is read where it is written at the call, as arguments or a collection
+expression (`NotIn([1, Null])`); one held in an array variable, or passed to the
+`In(...)` / `NotIn(...)` overload that takes a collection, is not. A C# `null` there (`u.Name == null`) throws at the call
+and names `IsNull`; `Sql.Null` is the spelling that reaches the engine.
+
+`==` also writes a `SET` assignment — `Update(u).Set(u.Name == Null)` sets the
+column to NULL — so an `==` is reported only where it converts to a
+`SqlCondition` (passed, assigned, returned or combined as one), directly or as a
+branch of a conditional (`flag ? a : b`). An `==` held in a `var` stays silent,
+since it may still be assigned; a `switch` expression arm or an explicit cast is
+not followed, so one there can stay silent too. A `SET`-style clause rejects `!=`
+when it is called and takes no ordering comparison, so neither can be an
+assignment, and both are reported wherever they are written.
+
+SQL Server's deprecated `SET ANSI_NULLS OFF` reads `= NULL` and `<> NULL` as
+NULL tests (SQL Server 2022, live); code that relies on it suppresses the rule the standard
+Roslyn way (`#pragma warning disable SQLA0303`, a `[SuppressMessage]` attribute,
+or `dotnet_diagnostic.SQLA0303.severity`).
+
+---
+
+## Dapper model aliases (SQLA0304)
+
+A `nameof` alias ties a column to the member of the model Dapper reads it into,
+so renaming the member renames the alias. It compiles just as well when it names
+a member of another type, and Dapper then cannot map the column: a model it
+fills through a parameterless constructor keeps that member at its default, with
+no error, and one it builds through a constructor throws (Dapper 2.1.66 on
+SQLite, live: `SqliteTests.QueryNameOfAlias_*`).
+`SQLA0304` reports such an alias.
+
+```csharp
+// sqlartisan_syntax_postgresql = any
+IEnumerable<OrderSummary> rows = cnn.Query<OrderSummary>(
+    Select(o.OrderCode.As(nameof(CustomerSummary.Name)), Sum(o.Amount).As(nameof(OrderSummary.Total)))
+    .From(o)
+    .GroupBy(o.OrderCode));
+// warning SQLA0304: Alias 'Name' names no member of 'OrderSummary', so Dapper cannot map the column ...
+```
+
+The rule reads the query passed to `SqlArtisan.Dapper`'s typed `Query`,
+`QueryFirst`, `QueryFirstOrDefault`, `QuerySingle` or `QuerySingleOrDefault`, or
+its `Async` form: written at the call, or held in a local that is assigned once,
+where it is declared. In that query it reads the root `Select(...)` — or the
+`Select(...)` right after `With(...)` / `WithRecursive(...)` — and each item there
+aliased with a `nameof` of a member, such as `.As(nameof(Model.Member))`,
+`.As(nameof(instance.Member))` or `.As(nameof(Member))`; a `nameof` of a local, a
+parameter or a type is not read. The alias
+matches when it names a property or field of the model or of a base type,
+whatever its access, or a parameter of one of its constructors, ignoring case and
+underscores; Dapper ignores underscores only when
+`DefaultTypeMap.MatchNamesWithUnderscores` is set, so any name it could match
+stays silent.
+
+It stays silent where the alias does not decide the mapping, or where the rule
+cannot see what does:
+
+- The model is a type parameter, `dynamic`, abstract, an interface, an enum or
+  an array, or it or a base type is declared in another assembly. That covers
+  the types Dapper reads by position, such as `int`, `string` or a tuple, and a
+  model kept in another project: `dotnet build` reads such a type without its
+  private members, which Dapper fills, so the build and the IDE would disagree.
+- The project references Dapper.FluentMap, or the model, a base type or one of
+  their members carries an attribute named `ColumnAttribute`: a mapping set up
+  at run time.
+- The query is not one the rule can see whole: a local assigned again, a query
+  picked by `?:`, `??` or a `switch` expression, or one taken from a field, a
+  property, a parameter or a method of your own. A query with a set operation
+  (`UnionAll`, …) is not read either, nor an alias inside a subquery, a
+  `Returning(...)` or an `Output(...)`.
+
+Only a `nameof` alias is read. A string alias may be meant for a type map or a
+handler registered at run time, or for an extra column Dapper ignores on
+purpose; a `nameof` of a member says the alias is a member name, which is
+what lets the rule be on by default.
+
+Two shapes report on code that works. A Dapper type handler registered for the
+model, through either package's `SqlMapper.AddTypeHandler`, reads the first column
+whatever the alias (Dapper 2.1.66 on SQLite, live:
+`SqliteTests.QueryNameOfAlias_RegisteredHandler_ReadsTheFirstColumn`), and a type
+map keyed on an attribute of another name can map the column to a member the
+alias does not name. Suppress the rule there the standard Roslyn way
+(`#pragma warning disable SQLA0304`, a `[SuppressMessage]` attribute, or
+`dotnet_diagnostic.SQLA0304.severity`).
 
 ---
 
@@ -2124,8 +2124,9 @@ for, not a bug in the matrix.
   [`DialectMatrix.cs`](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.Analyzers/DialectMatrix.cs)
   for what's entered.
 - **The dialect-independent rules need a configured target too.**
-  `SQLA0300`–`SQLA0304` and the schema-aware `SQLA0200`–`SQLA0206` report
-  facts that hold on every engine, but every rule from `SQLA0100` on stays
+  `SQLA0300`–`SQLA0304` and the schema-aware `SQLA0200`–`SQLA0205` report
+  facts that hold on every engine (`SQLA0200` but for MySQL's zero-date
+  reading), and `SQLA0206` names the engines it reports on, but every rule from `SQLA0100` on stays
   silent until a dialect is configured — without one, `SQLA0300`'s `Build()`
   guard is the only report and the schema rules have none.
 - **Generated code is not analyzed.** A file the compiler treats as generated —

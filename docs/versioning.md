@@ -4,8 +4,8 @@
 [Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
 
 How version numbers, breaking changes, deprecations, and support windows work
-for the published packages — `SqlArtisan`, `SqlArtisan.ArrayBind`,
-`SqlArtisan.Dapper`, and `SqlArtisan.TableClassGen`.
+for the published packages — `SqlArtisan`, `SqlArtisan.Dapper`,
+`SqlArtisan.ArrayBind`, and `SqlArtisan.TableClassGen`.
 
 ## SemVer commitment
 
@@ -20,7 +20,7 @@ treated as a bug — please open an
 
 ## What the public API is
 
-Each package exports one namespace, and the core's carries two kinds of type
+Each library package exports one namespace, and the core's carries two kinds of type
 with different promises.
 
 - **`SqlArtisan`** — the API.

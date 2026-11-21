@@ -346,7 +346,7 @@ Select(p.Name).From(p)
 ```
 
 Over a nullable subquery column, (iii) is the shape the analyzer's
-[`SQLA0201`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#schema-aware-warnings-sqla0200)
+[`SQLA0201`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#schema-aware-warnings-sqla0200sqla0206)
 reports.
 
 ---

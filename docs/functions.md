@@ -86,7 +86,7 @@ not at the SqlArtisan layer.
 - `Substr()` for `SUBSTR` (not supported by SQL Server — use `Substring()` there)
 - `Substrb()` for `SUBSTRB` (Oracle)
 - `Substring()` for `SUBSTRING` (MySQL, PostgreSQL, SQLite, SQL Server; on Oracle use `Substr()`)
-- `Trim()` for `TRIM` (the two-argument trim-set form is not supported by SQLite)
+- `Trim()` for `TRIM` (the two-argument form is not supported by SQLite)
 - `Upper()` for `UPPER`
 
 PostgreSQL and SQL Server gained the `REGEXP_*` family in specific releases — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
@@ -130,7 +130,7 @@ On Oracle and SQLite, use `Instr()` above instead.
 - `AddMonths()` for `ADD_MONTHS` (Oracle)
 - `CurrentDate` for `CURRENT_DATE` (SQL Server gained it in a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs))
 - `CurrentTime()` for `CURRENT_TIME` (not supported by Oracle or SQL Server); `CurrentTime(precision)` for `CURRENT_TIME(precision)` (MySQL, PostgreSQL)
-- `CurrentTimestamp()` for `CURRENT_TIMESTAMP`; `CurrentTimestamp(precision)` for `CURRENT_TIMESTAMP(precision)` (MySQL, Oracle, PostgreSQL — MySQL's bare form has whole-second precision)
+- `CurrentTimestamp()` for `CURRENT_TIMESTAMP`; `CurrentTimestamp(precision)` for `CURRENT_TIMESTAMP(precision)` (MySQL, Oracle, PostgreSQL)
 - `Date(timevalue[, modifier, ...])` for `DATE` (SQLite; 1-argument form also MySQL/PostgreSQL)
 - `DateAdd()` for `DATE_ADD` (MySQL; PostgreSQL gained it in a specific release, with `IntervalLiteral(...)` only — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs); not `Dateadd()`, SQL Server's `DATEADD` below)
 - `Dateadd()` for `DATEADD` (SQL Server)
@@ -218,7 +218,7 @@ expression; for Oracle/PostgreSQL date-shift arithmetic (and MySQL's own
 
 ## JSON Functions
 
-JSON paths are emitted as inline string literals: an expression index over a JSON field matches only the literal path, and Oracle requires a literal there in any case. On SQL Server a path holding a non-ASCII character is written `N'...'`, which keeps the character whatever the database's code page.
+JSON paths are emitted as inline string literals: an expression index over a JSON field matches only the literal path, and the path position takes a constant. On SQL Server a path holding a non-ASCII character is written `N'...'`, which keeps the character whatever the database's code page.
 
 - `JsonExtract(jsonDoc, path)` for `JSON_EXTRACT(jsonDoc, 'path')` (MySQL, SQLite)
 - `JsonValue(jsonDoc, path)` for `JSON_VALUE(jsonDoc, 'path')` (MySQL, Oracle, PostgreSQL, SQL Server)
@@ -302,7 +302,7 @@ Exposed per dialect (no unified rewrite); each emits its dialect-native syntax v
 - `Listagg(expr, sep).WithinGroup(OrderBy(...))` for `LISTAGG(expr, sep) WITHIN GROUP (ORDER BY ...)` (Oracle)
 - `GroupConcat(expr)` for `GROUP_CONCAT(expr)` (MySQL/SQLite)
 - `GroupConcat(expr, sep)` for `GROUP_CONCAT(expr, sep)` (SQLite, positional separator)
-- `GroupConcat(expr, Separator(sep))` for `GROUP_CONCAT(expr SEPARATOR 'sep')` (MySQL); `sep` is emitted as an inline escaped string literal (MySQL requires a literal here). Pass an `OrderBy(...)` argument to order the values — `GroupConcat(expr, OrderBy(...), Separator(sep))` (MySQL)
+- `GroupConcat(expr, Separator(sep))` for `GROUP_CONCAT(expr SEPARATOR 'sep')` (MySQL); `sep` is emitted as an inline escaped string literal, since the position takes a constant. Pass an `OrderBy(...)` argument to order the values — `GroupConcat(expr, OrderBy(...), Separator(sep))` (MySQL)
 - `GroupConcat(Distinct, expr)` / `GroupConcat(Distinct, expr, Separator(sep))` for `GROUP_CONCAT(DISTINCT ...)`; `DISTINCT` works on both (SQLite only in the single-argument form)
 
 > [!WARNING]
@@ -312,7 +312,10 @@ Exposed per dialect (no unified rewrite); each emits its dialect-native syntax v
 > **On SQL Server, a `StringAgg` separator character the database's code page lacks arrives as `?`.** The separator is a plain literal, which SQL Server converts to the code page; `N'...'` would keep the character but is rejected over a `varchar` input, so it is not emitted. Under `SQL_Latin1_General_CP1_CI_AS`, `StringAgg(name, "、")` joins `a` and `b` as `a?b`. Use a separator the code page holds.
 
 > [!NOTE]
-> MySQL silently truncates `GROUP_CONCAT` output at `group_concat_max_len` (1024 bytes by default). Raise that session/global variable for large groups.
+> MySQL silently truncates `GROUP_CONCAT` output at `group_concat_max_len`.
+
+Raise that variable when a group can exceed it — see MySQL's
+[`group_concat_max_len`](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_group_concat_max_len).
 
 ---
 

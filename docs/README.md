@@ -125,12 +125,24 @@ value instead of building SQL, a comparison with NULL that is never true, or a
 [Version-Aware Warnings (SQLA0101)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-aware-warnings-sqla0101) ·
 [Context Rules (SQLA0102)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102) ·
 [Argument Value Validity (SQLA0104)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#argument-value-validity-sqla0104) ·
+[Schema-Aware Warnings (SQLA0200–SQLA0206)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#schema-aware-warnings-sqla0200sqla0206) ·
 [Correlated DML Target (SQLA0300)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#correlated-dml-target-sqla0300) ·
 [C# Fallbacks (SQLA0301, SQLA0302)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#c-fallbacks-sqla0301-sqla0302) ·
 [Comparisons with NULL (SQLA0303)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#comparisons-with-null-sqla0303) ·
 [Dapper Model Aliases (SQLA0304)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#dapper-model-aliases-sqla0304) ·
-[Schema-Aware Warnings (SQLA0200)](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#schema-aware-warnings-sqla0200) ·
 [Mixed-Dialect Projects](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#mixed-dialect-projects) ·
 [CI Gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement) ·
 [Verified-Against Versions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#verified-against-versions) ·
 [Known Limitations](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#known-limitations)
+
+## [Versioning & Support](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md)
+
+How version numbers, breaking changes, deprecations and support windows work for
+the published packages — the [SemVer commitment](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#semver-commitment)
+· [what the public API is](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#what-the-public-api-is)
+· [what counts as breaking](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#what-counts-as-breaking)
+· [the analyzer's IDs and configuration](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#the-analyzers-ids-and-configuration)
+· [TableClassGen's command-line surface](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)
+· [deprecation](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#deprecation)
+· [support statement](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#support-statement)
+· [release cadence](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#release-cadence).
