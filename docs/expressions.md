@@ -456,6 +456,32 @@ Select(u.Name)
 
 To read every row on purpose, omit `.Where(...)` entirely. Any condition clause you write follows the same rule — it must carry a real condition, or it throws.
 
+#### Case 4: A Value That May Be Null
+
+`ConditionIf` is an ordinary method, so C# builds its condition argument before the call, even when the flag is `false`.
+
+> [!NOTE]
+> **`ConditionIf(since.HasValue, u.CreatedAt >= since)` throws `ArgumentNullException` when `since` is `null`**: the comparison is built, and rejects the C# `null`, before `ConditionIf` can drop it. Compare against a non-null stand-in instead — `since.GetValueOrDefault()`, or `name ?? ""` for a `string`.
+
+The stand-in is never bound: when the flag is `false`, the condition holding it drops out.
+
+```csharp
+DateTime? since = null; // e.g. an empty search-form field
+
+UsersTable u = new();
+SqlStatement sql =
+    Select(u.Name)
+    .From(u)
+    .Where(
+        u.Name.Like("A%")
+        & ConditionIf(since.HasValue, u.CreatedAt >= since.GetValueOrDefault()))
+    .Build();
+
+// SELECT name
+// FROM users
+// WHERE (name LIKE :0)
+```
+
 ---
 
 ## JSON Operators
