@@ -204,8 +204,8 @@ public static partial class Sql
     /// <param name="others">Any further grouping-extension columns.</param>
     /// <returns>An expression emitting <c>GROUPING(a, b, ...)</c>.</returns>
     /// <remarks>MySQL (8.0+) and PostgreSQL only; Oracle accepts only the single-argument
-    /// form (use <see cref="GroupingId(object, object[])"/> there instead), and
-    /// neither SQLite nor SQL Server support it.</remarks>
+    /// form, and neither SQLite nor SQL Server supports it. On Oracle and SQL Server use
+    /// <see cref="GroupingId(object, object[])"/>.</remarks>
     public static SqlExpression Grouping(object expr1, object expr2, params object[] others) =>
         new GroupingFunction(ResolveVariadic(
             expr1,
@@ -224,8 +224,8 @@ public static partial class Sql
     /// <param name="others">Any further grouping-extension columns.</param>
     /// <returns>An expression emitting
     /// <c>GROUPING_ID(a, ...)</c>.</returns>
-    /// <remarks>Oracle and SQL Server syntax; on MySQL and PostgreSQL the multi-column form
-    /// is <see cref="Grouping(object, object, object[])"/> instead.</remarks>
+    /// <remarks>Oracle and SQL Server syntax; on MySQL and PostgreSQL use
+    /// <see cref="Grouping(object, object, object[])"/>.</remarks>
     public static SqlExpression GroupingId(object expr, params object[] others) =>
         new GroupingIdFunction(ResolveVariadic(expr, nameof(expr), others, nameof(others)));
 
