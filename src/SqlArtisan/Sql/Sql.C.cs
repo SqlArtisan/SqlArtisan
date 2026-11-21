@@ -772,9 +772,7 @@ public static partial class Sql
     /// <param name="precision">The fractional-second digits; zero or more.</param>
     /// <returns>An expression emitting
     /// <c>CURRENT_TIMESTAMP(precision)</c>.</returns>
-    /// <remarks>MySQL, Oracle, and PostgreSQL syntax. MySQL's bare
-    /// <c>CURRENT_TIMESTAMP</c> has whole-second precision; pass one for fractional
-    /// seconds there.</remarks>
+    /// <remarks>MySQL, Oracle, and PostgreSQL syntax.</remarks>
     public static SqlExpression CurrentTimestamp(int precision) =>
         new CurrentTimestampFunction(precision);
 

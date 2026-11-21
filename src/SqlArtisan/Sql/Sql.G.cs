@@ -225,8 +225,8 @@ public static partial class Sql
     /// <param name="others">Any further grouping-extension columns.</param>
     /// <returns>An expression emitting
     /// <c>GROUPING_ID(a, ...)</c>.</returns>
-    /// <remarks>Oracle and SQL Server syntax; for MySQL/PostgreSQL's equivalent
-    /// bitmask use <see cref="Grouping(object, object, object[])"/> instead.</remarks>
+    /// <remarks>Oracle and SQL Server syntax; on MySQL and PostgreSQL the multi-column form
+    /// is <see cref="Grouping(object, object, object[])"/> instead.</remarks>
     public static SqlExpression GroupingId(object expr, params object[] others) =>
         new GroupingIdFunction(ResolveVariadic(expr, nameof(expr), others, nameof(others)));
 
