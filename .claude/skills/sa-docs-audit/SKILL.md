@@ -1,6 +1,6 @@
 ---
 name: sa-docs-audit
-description: Audit SqlArtisan's user-facing documentation corpus (README, docs/, llms.txt, CHANGELOG) for structure, completeness, accuracy, consistency, links, persuasiveness, and conciseness. Corpus-wide by design, not diff-scoped — its bundled scripts sweep every page regardless of what changed, so it catches the coverage and link defects a diff review structurally cannot. Use when asked to review/audit the docs, check the README, validate a docs change before pushing, or confirm docs match the code; for docs changes inside a branch diff, sa-diff-review already covers them. Bundles scripts that verify links, API coverage, terminology, and emitted SQL empirically. Ends with an adversarial verification pass (one independent subagent, not skippable) that attempts to refute the docs' factual claims against primary sources.
+description: Audit SqlArtisan's user-facing documentation corpus (README, docs/, llms.txt, CHANGELOG) for structure, completeness, accuracy, consistency, links, persuasiveness, conciseness, example integrity, whether a reader can finish from the page, placement, and release readiness, each page held to its page type's bar. Corpus-wide by design, not diff-scoped — its bundled scripts sweep every page regardless of what changed, so it catches the coverage and link defects a diff review structurally cannot. Use when asked to review/audit the docs, check the README, validate a docs change before pushing, or confirm docs match the code; for docs changes inside a branch diff, sa-diff-review already covers them. Bundles scripts that verify links, API coverage, terminology, and emitted SQL empirically. Ends with an adversarial verification pass (one independent subagent, not skippable) that attempts to refute the docs' factual claims against primary sources.
 ---
 
 # Audit the SqlArtisan documentation corpus
@@ -31,6 +31,20 @@ Each exits non-zero on findings. They are heuristics — read each hit and judge
 do not blind-fix. `verify_sql_examples.py` embeds the table classes the examples
 use; if a new example needs a new table/column, extend `SCAFFOLD` there.
 
+## Page types set the bar
+
+Each page is held to its own type's standard. A candidate that holds only
+under another type's bar is dropped, not reported:
+
+| Type | Pages | Examples must |
+|---|---|---|
+| Landing | `README.md` | model a query someone would write; lead a reader to a first run in as few words as the facts allow |
+| Index | `docs/README.md` | carry no example; link every page with its main sections |
+| Guide / cookbook | `docs/guides/*`, `docs/cookbook.md`, `docs/comparison.md` | model a query someone would write, and complete the task the page names from the page alone |
+| Reference | `docs/query-statements.md`, `docs/expressions.md`, `docs/functions.md`, `docs/analyzer.md` | isolate one construct with minimal operands (`u.Id < 10`); a realistic filter beside it hides what the construct changes |
+| Policy | `docs/versioning.md` | carry no example; every rule it states matches the release procedure and the gates |
+| ADR | `docs/adr/*` | — ADRs are immutable once Accepted: audit only the index, statuses and links; a decision the code has outgrown is a proposal for a superseding ADR, never an edit |
+
 ## Review dimensions
 
 Score the docs against these. The scripts cover 2–5 and parts of 6/10.
@@ -52,8 +66,9 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
    source — no phantom names. Prose mentions and every code block must resolve
    to real APIs. (`check_api_coverage.py` + `verify_sql_examples.py`, which
    compiles the three reference pages' examples — `docs/cookbook.md` is pinned
-   separately by the hand-maintained `CookbookTests`, and the guides' snippets
-   are unswept; compile those by hand when they change.)
+   separately by the hand-maintained `CookbookTests`, the root README by
+   `ReadmeExampleTests`, and the guides' snippets are unswept; compile those by
+   hand when they change.)
 
 4. **Accuracy — output matches the code.** Documented emitted SQL equals the
    real `sql.Text`. Run it. (`verify_sql_examples.py`.) Remember `sql.Text` is a
@@ -117,6 +132,45 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
     true. A substitution names a sibling SqlArtisan API or nothing at all; a
     hazard in SqlArtisan's own emitted SQL is in boundary and stays.
 
+12. **Example integrity across a page.** Snippets that share a fixture (a table
+    class, a local) agree on it: every member any snippet uses is declared
+    where the page declares the fixture — the README's opening example once
+    filtered on a `StatusId` its Quick Start class lacked. Two examples that
+    are nearly the same are made identical or made visibly different in
+    purpose; a stray difference (a dropped filter, an added `ORDER BY`) reads
+    as deliberate and sends the reader looking for the reason. Every changed
+    example runs as shown on an engine (`docs-style.md`), and meets its page
+    type's realism bar (above).
+
+13. **The variant a reader writes next.** For each example, write the
+    neighbouring form a reader would reach for — a nullable or empty input, the
+    excluded branch of a flag, a second call on the same builder, another
+    dialect — and run it. A variant that throws or changes meaning while the
+    page is silent about it is an omission: `ConditionIf(x.HasValue, col >= x)`
+    throws for a null `x` although the flag excludes it (#859), because C#
+    builds the argument first.
+
+14. **The reader can finish from the page.** Every tool or package the page
+    tells the reader to use has its install step on the page or one link away;
+    an opt-in feature the page advertises shows how to turn it on — the
+    analyzer reports nothing until a dialect is configured, so a page that
+    sells it without the enabling line sells a feature that stays off; a
+    "prerequisite" is something the reader must have before starting, not a
+    usage tip.
+
+15. **Placement.** Content sits where its reader looks for it. Flag a
+    version-specific operational note on a landing page, an index that mirrors
+    another index, and a section whose every item restates another surface.
+    Before proposing a cut, list what *only* that content says and give each
+    such fact a new home in the proposal. A list that appears on two surfaces
+    keeps one order, chosen by how many readers need each item, not alphabet
+    (`docs-style.md` § Package order).
+
+16. **Release readiness** (a pre-release audit). Prerelease wording,
+    `--prerelease` flags, `nuget/vpre` badges and version strings match the
+    release about to ship, and each one the release must change is named by a
+    step of CLAUDE.md's release procedure.
+
 ## Process safeguards (hard-won)
 
 - **Verify, don't recall.** Emitted SQL, dialect behaviour, and allocations come
@@ -127,6 +181,26 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
 - **Lossless moves.** When relocating content, byte-compare the code-fence
   bodies before/after (`git show OLD:file` vs new) so no example is dropped or
   altered; only headings/links should change.
+- **Measure, don't estimate.** Word counts, link counts and "words before
+  installation" come from the file, counted by a script, and a measurement
+  that contradicts an earlier estimate in the conversation corrects it in the
+  report.
+- **Find the record before proposing a change.** A section, an index or a
+  sentence may be there on purpose: a release-procedure step that requires it,
+  an issue or ADR that chose it (#340 mirrored the README map), a
+  `.claude/rules/` clause, a gate. A proposal that reverses one names it and is
+  put as a decision for the author, never as a plain fix. A proposal is also
+  checked against the page-type table above before it is made.
+- **Land the class, and gate the real text.** A fix covers every surface the
+  finding's wording appears on: grep the docs, the rules, the CHANGELOG and
+  test comments for the same overclaim ("full index" sat in four places). A
+  test that pins an example reads the page's own code, not a copy typed into
+  the test, and is mutation-probed: break the page in each way the finding
+  implies and confirm the test fails. `ReadmeExampleTests` first passed with a
+  stale `// SELECT` comment because it built from a copy.
+- **Say what was not verified.** A claim the environment cannot check (an
+  external badge's rendering, a vendor page behind a blocked host) is reported
+  as unverified, and any wording written for it claims only what was checked.
 - **Report by severity; confirm editorial calls.** Group findings
   (broken/inaccurate > inconsistent > stylistic). Apply clear mechanical fixes;
   for wording/ordering/trims that are judgment calls, propose options and
@@ -152,6 +226,9 @@ targets in docs:
   turns the sentence into an OVERREACH.
 - **Superlatives and rankings** — fastest / lowest-allocation; the benchmark
   suite output is the primary source, not the README's own table.
+- **The audit's own proposals** — for each structural or editorial proposal,
+  try to show it conflicts with a deliberate decision, a required fact, or the
+  page type's bar; a proposal that survives only by ignoring one falls.
 - **Counts, version bounds, capability claims** — "verified against live
   engines", "N engines", "SQLite 3.44+"; the primary source is the test
   catalog (e.g. `MatrixSweepCatalog.cs`), the pinned image list, or a live
