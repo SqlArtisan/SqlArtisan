@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The README's first example filtered on a `StatusId` column the Quick Start
   table class does not declare; it now filters on the class's own columns, so
   the two compile together, and neither example carries an always-true
-  `id > 0` filter. Installation adds the
+  `id > 0` filter. Quick Start runs that same query rather than a near-copy
+  that dropped its date filter and added an `ORDER BY`. Installation adds the
   `SqlArtisan.TableClassGen` local-tool commands and names its `--check` drift
   report. Configuration shows the one `.editorconfig` line that turns the
   analyzer on, which reports nothing until a target dialect is set, and Why

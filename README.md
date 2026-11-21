@@ -132,7 +132,7 @@ dotnet tool install SqlArtisan.TableClassGen --prerelease
 
 3. Build and Execute your Query
 
-    Add `using static SqlArtisan.Sql;` for the entry-point methods (`Select`, `InsertInto`, …), build the query, and execute it — here with Dapper:
+    Add `using static SqlArtisan.Sql;` for the entry-point methods (`Select`, `InsertInto`, …), build the query — the one at the top of this page — and execute it, here with Dapper:
 
     ```csharp
     using SqlArtisan;
@@ -140,13 +140,15 @@ dotnet tool install SqlArtisan.TableClassGen --prerelease
     using static SqlArtisan.Sql;
     // ...
 
+    bool filterByDate = true; // e.g. a search-form checkbox
     UsersTable u = new();
 
     ISqlBuilder sql =
         Select(u.Id, u.Name, u.CreatedAt)
         .From(u)
-        .Where(u.Name.Like("A%"))
-        .OrderBy(u.Id);
+        .Where(
+            u.Name.Like("A%")
+            & ConditionIf(filterByDate, u.CreatedAt >= new DateTime(2026, 1, 1)));
 
     // Dapper: Set true to map snake_case columns to PascalCase/camelCase C# members.
     Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;

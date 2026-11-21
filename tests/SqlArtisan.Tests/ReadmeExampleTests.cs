@@ -83,6 +83,18 @@ public class ReadmeExampleTests
         Assert.Contains($"// {sql.Text}\n", ReadReadme(), StringComparison.Ordinal);
     }
 
+    // Quick Start runs the query Why SqlArtisan? shows; two near-copies read as differing on
+    // purpose, and they drifted apart once already.
+    [Fact]
+    public void ReadmeQuickStartQuery_MatchesTheWhyExample()
+    {
+        string readme = ReadReadme();
+        string why = Chain(readme, "SqlStatement sql =", ".Build();");
+        string quickStart = Chain(readme, "ISqlBuilder sql =", ";");
+
+        Assert.Equal(why, quickStart);
+    }
+
     [Fact]
     public void ReadmeManualExecutionExample_CorrectSql()
     {
@@ -96,6 +108,18 @@ public class ReadmeExampleTests
             $"// sql.Text       => \"{sql.Text}\"",
             ReadReadme(),
             StringComparison.Ordinal);
+    }
+
+    // The first multi-line chain after `declaration`, whitespace collapsed, up to `end`.
+    private static string Chain(string readme, string declaration, string end)
+    {
+        int start = readme.IndexOf(declaration + "\n", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"README.md has no `{declaration}` chain.");
+        start += declaration.Length;
+        int stop = readme.IndexOf(end, start, StringComparison.Ordinal);
+        Assert.True(stop > start, $"README.md's `{declaration}` chain has no `{end}`.");
+
+        return Regex.Replace(readme[start..stop], @"\s+", "");
     }
 
     private static string ReadReadme() =>
