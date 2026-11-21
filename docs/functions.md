@@ -218,7 +218,7 @@ expression; for Oracle/PostgreSQL date-shift arithmetic (and MySQL's own
 
 ## JSON Functions
 
-JSON paths are emitted as inline string literals: an expression index over a JSON field matches only the literal path, and the path position takes a constant. On SQL Server a path holding a non-ASCII character is written `N'...'`, which keeps the character whatever the database's code page.
+JSON paths are emitted as inline string literals: an expression index over a JSON field matches only the literal path, and Oracle's `JSON_VALUE` / `JSON_QUERY` take a constant path. On SQL Server a path holding a non-ASCII character is written `N'...'`, which keeps the character whatever the database's code page.
 
 - `JsonExtract(jsonDoc, path)` for `JSON_EXTRACT(jsonDoc, 'path')` (MySQL, SQLite)
 - `JsonValue(jsonDoc, path)` for `JSON_VALUE(jsonDoc, 'path')` (MySQL, Oracle, PostgreSQL, SQL Server)
