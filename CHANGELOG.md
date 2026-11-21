@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the pitch. The Documentation map links each reference page's highlights
   rather than its every section, pointing to the reference home for each
   page's main sections, and Performance states each benchmark fact once.
+- The README, `docs/comparison.md` and the AI-assistants guide said analyzer
+  entries are verified against live engines; the sweep excludes a few by name
+  and skips some engines for a recorded reason, so each now says so and links
+  the list in `docs/analyzer.md`. The README's Prerequisites trade a usage tip
+  for the supported databases.
 
 ### Build
 - `dotnet pack` validates each of the four packages against the last published
