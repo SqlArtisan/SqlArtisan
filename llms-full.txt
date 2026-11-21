@@ -2702,7 +2702,7 @@ SqlStatement sql =
 // WHERE id IN (:0, :1, ...) — one bind per element
 ```
 
-The overload takes `IReadOnlyCollection<T>` rather than `IEnumerable<T>` deliberately: a `string` is an `IEnumerable<char>` but *not* an `IReadOnlyCollection<char>`, so `col.In("abc")` stays a single-value predicate (`IN (:0)`) instead of silently expanding into one bind per character. An empty collection throws at the call site: SQLite runs `IN ()` and `NOT IN ()` without an error, so a list computed empty would change the query there unnoticed, where MySQL, Oracle, PostgreSQL and SQL Server reject both (observed on MySQL 8.0, Oracle XE 21.3.0, PostgreSQL 16.15, SQLite 3.50.4 and SQL Server 2022). Build the chain with or without the predicate keyed on whether the list has any elements, with a branch in C#: `ConditionIf(ids.Count > 0, u.Id.In(ids))` throws on an empty list too, because C# builds `In(ids)` before `ConditionIf` can drop it (see [Dynamic Condition](#dynamic-condition)). Where one chain must carry the predicate, pass a non-empty stand-in the flag never binds — `ConditionIf(ids.Count > 0, u.Id.In(ids.Count > 0 ? ids : [0]))`; the stand-in alone, without `ConditionIf`, would filter on it.
+The overload takes `IReadOnlyCollection<T>` rather than `IEnumerable<T>` deliberately: a `string` is an `IEnumerable<char>` but *not* an `IReadOnlyCollection<char>`, so `col.In("abc")` stays a single-value predicate (`IN (:0)`) instead of silently expanding into one bind per character. An empty collection throws at the call site: SQLite runs `IN ()` and `NOT IN ()` without an error, so a list computed empty would change the query there unnoticed, where MySQL, Oracle, PostgreSQL and SQL Server reject both (observed on MySQL 8.0, Oracle XE 21.3.0, PostgreSQL 16.15, SQLite 3.50.4 and SQL Server 2022). Build the chain with or without the predicate keyed on whether the list has any elements, with a branch in C#: `ConditionIf(ids.Count > 0, u.Id.In(ids))` throws on an empty list too, because C# builds `In(ids)` before `ConditionIf` can drop it (see [Dynamic Condition](#dynamic-condition)). Where one chain must carry the predicate beside another condition, pass a non-empty stand-in the flag never binds — `ConditionIf(ids.Count > 0, u.Id.In(ids.Count > 0 ? ids : [0]))`; the stand-in alone, without `ConditionIf`, would filter on it.
 
 Each element is a **separate** bind parameter, so the parameter count grows with the list, and a very large `IN` list runs into per-engine bind-parameter ceilings — see your engine's manual for its limit. On PostgreSQL, an equality-against-array — `col = ANY(:param)`, a single array-valued bind whose plan is stable across list sizes — sidesteps both the parameter count and the ceiling; SqlArtisan's `In(...)` emits the per-element list form on every dialect, so reach for the bound-array form (`Any(BindArray(...))` — see [ANY / ALL with a Bound Array](#any--all-with-a-bound-array-postgresql)) when the list is both large and size-varying on PostgreSQL.
 
@@ -3304,7 +3304,7 @@ SqlStatement sql =
 // FROM users
 ```
 
-Both require an `OrderBy(...)` (optionally with `PartitionBy(...)`). The offset is emitted as an integer literal, since the position takes a constant, while the default value is parameterized.
+Both require an `OrderBy(...)` (optionally with `PartitionBy(...)`). The offset is emitted as an integer literal, while the default value is parameterized.
 
 ### Example using FIRST_VALUE / LAST_VALUE / NTH_VALUE
 
@@ -4153,6 +4153,17 @@ Absent your own `unsupported` override, `SQLA0100` only ever fires for a
 construct the matrix has confirmed — one without a matrix entry stays silent
 rather than guessed at, so an incomplete matrix can under-warn but never
 produce a false positive.
+
+```csharp
+using static SqlArtisan.Sql;
+
+// sqlartisan_syntax_mysql = any
+var g = Rollup(t.Code, t.Name);
+// warning SQLA0100: 'Rollup' is not supported on MySQL. Set
+// 'sqlartisan_construct_rollup = supported' in .editorconfig if your
+// engine version supports it.
+```
+
 `Sql.Function(name, ...)` names a function the matrix cannot know, so its entry
 marks every dialect supported and only your own `sqlartisan_construct_function`
 override makes `SQLA0100` report it; whether the function exists on the target is
@@ -4166,16 +4177,6 @@ after an unaliased table, which MySQL reads as that table's alias `FULL` before
 an inner `JOIN` when no column the join names is ambiguous. Nothing fails
 there, so the warning is the only signal; where you mean the dialect's own
 reading, suppress it at that call.
-
-```csharp
-using static SqlArtisan.Sql;
-
-// sqlartisan_syntax_mysql = any
-var g = Rollup(t.Code, t.Name);
-// warning SQLA0100: 'Rollup' is not supported on MySQL. Set
-// 'sqlartisan_construct_rollup = supported' in .editorconfig if your
-// engine version supports it.
-```
 
 `SQLA0103` checks compile-time identifier literals — table and expression
 aliases (`.As(...)`), CTE and derived-table names, `VALUES` and

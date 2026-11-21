@@ -130,6 +130,17 @@ Absent your own `unsupported` override, `SQLA0100` only ever fires for a
 construct the matrix has confirmed — one without a matrix entry stays silent
 rather than guessed at, so an incomplete matrix can under-warn but never
 produce a false positive.
+
+```csharp
+using static SqlArtisan.Sql;
+
+// sqlartisan_syntax_mysql = any
+var g = Rollup(t.Code, t.Name);
+// warning SQLA0100: 'Rollup' is not supported on MySQL. Set
+// 'sqlartisan_construct_rollup = supported' in .editorconfig if your
+// engine version supports it.
+```
+
 `Sql.Function(name, ...)` names a function the matrix cannot know, so its entry
 marks every dialect supported and only your own `sqlartisan_construct_function`
 override makes `SQLA0100` report it; whether the function exists on the target is
@@ -143,16 +154,6 @@ after an unaliased table, which MySQL reads as that table's alias `FULL` before
 an inner `JOIN` when no column the join names is ambiguous. Nothing fails
 there, so the warning is the only signal; where you mean the dialect's own
 reading, suppress it at that call.
-
-```csharp
-using static SqlArtisan.Sql;
-
-// sqlartisan_syntax_mysql = any
-var g = Rollup(t.Code, t.Name);
-// warning SQLA0100: 'Rollup' is not supported on MySQL. Set
-// 'sqlartisan_construct_rollup = supported' in .editorconfig if your
-// engine version supports it.
-```
 
 `SQLA0103` checks compile-time identifier literals — table and expression
 aliases (`.As(...)`), CTE and derived-table names, `VALUES` and
