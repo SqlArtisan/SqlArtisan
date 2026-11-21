@@ -241,19 +241,25 @@ reused.
 No fixed schedule — releases ship when ready. Bugs causing silently wrong
 query results are the highest-priority fix class.
 
-1.0.0 ships first as release candidates (`1.0.0-rc.1`, …), and is released from
-a candidate once all of these hold:
+1.0.0 ships first as release candidates (`1.0.0-rc.1`, …), and ships one
+candidate's source unchanged: every file under `src/` other than a README
+matches that candidate's tag, apart from the release's own edits there to
+package validation and the analyzer release notes. A change there after the
+candidate, a fix or not, ships in a new candidate.
 
-- at least seven days have passed since the candidate was published, with no
-  bug in its code reported against it that 1.0.0 must fix;
+A candidate becomes 1.0.0 once all of these hold:
+
+- at least seven days have passed since it was published, with no bug in its
+  code reported against it that 1.0.0 must fix;
 - the [integration test matrix](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
-  has passed every nightly run over those days;
+  has passed every nightly run over those days. A failure traced to something
+  other than the packages' code, such as an engine container that did not
+  start or a defect in a test, is fixed and the run repeated, without
+  restarting the seven days; any other failure is a bug in the code;
 - the documentation has been checked as 1.0.0 will publish it, including the
-  edits the release itself makes, such as dropping the `--prerelease` install
+  release's own edits, such as dropping the `--prerelease` install
   instructions.
 
-A fix to the packages' code that 1.0.0 must carry, breaking or not, ships in a
-new candidate, which waits its own seven days, so no code fix reaches 1.0.0
-without being out that long first. A correction to the documentation alone,
-the README the packages carry included, ships in 1.0.0 without a new
-candidate: it changes nothing the packages do.
+A new candidate waits its own seven days. A correction to the documentation
+alone (`docs/` or a README, the one the packages carry included) ships in 1.0.0
+without one.
