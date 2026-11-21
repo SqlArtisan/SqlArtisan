@@ -71,4 +71,37 @@ public class ConditionIfTests
             "The WHERE clause requires a condition; omit it for an unfiltered statement.",
             ex.Message);
     }
+
+    [Fact]
+    public void ConditionIf_ExcludedNullComparison_ThrowsArgumentNullException()
+    {
+        // C# builds the argument before ConditionIf can drop it, so the flag cannot shield it.
+        DateTime? since = null;
+
+        ArgumentNullException ex = Assert.Throws<ArgumentNullException>(() =>
+            ConditionIf(since.HasValue, _t.CreatedAt >= since!));
+
+        Assert.Equal(
+            ">= cannot compare a C# null; test for NULL with .IsNull or .IsNotNull. "
+                + "(Parameter 'rightSide')",
+            ex.Message);
+    }
+
+    [Fact]
+    public void ConditionIf_ExcludedDefaultStandIn_CorrectSql()
+    {
+        DateTime? since = null;
+
+        SqlStatement sql =
+            Select(_t.Code)
+            .From(_t)
+            .Where(
+                (_t.Code > 0)
+                & ConditionIf(since.HasValue, _t.CreatedAt >= since.GetValueOrDefault()))
+            .Build();
+
+        Assert.Equal("SELECT \"t\".code FROM test_table \"t\" WHERE (\"t\".code > :0)", sql.Text);
+        Assert.Equal(1, sql.Parameters.Count);
+        Assert.Equal(0, sql.Parameters.Get<int>(":0"));
+    }
 }

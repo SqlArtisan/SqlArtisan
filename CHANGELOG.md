@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Docs
+- `docs/expressions.md`'s Dynamic Condition section notes that C# builds
+  `ConditionIf`'s condition before the call, so comparing against a value that
+  may be `null` throws `ArgumentNullException` even when the flag excludes it,
+  and shows a non-null stand-in such as `GetValueOrDefault()` instead.
+- `docs/versioning.md` states when a 1.0.0 release candidate becomes 1.0.0.
+  1.0.0 ships a candidate's source unchanged, so any later change to it ships
+  in a new candidate. A candidate becomes 1.0.0 after seven days out with no bug in
+  its code reported that 1.0.0 must fix, every nightly integration run passing,
+  and the documentation checked as 1.0.0 will publish it. A documentation
+  correction alone needs no new candidate.
 - The README's performance table is re-measured against each compared library's
   latest release for .NET 10, among them Dapper 2.1.89, linq2db 6.6.0 and EF
   Core 10. SqlArtisan still allocates the least among the builders. Its build
@@ -29,6 +39,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the pitch. The Documentation map links each reference page's highlights
   rather than its every section, pointing to the reference home for each
   page's main sections, and Performance states each benchmark fact once.
+- The README, `docs/comparison.md` and the AI-assistants guide said analyzer
+  entries are verified against live engines; the sweep excludes a few by name
+  and skips some engines for a recorded reason, so each now says so and links
+  the list in `docs/analyzer.md`. The README's Prerequisites trade a usage tip
+  for the supported databases.
 
 ### Build
 - `dotnet pack` validates each of the four packages against the last published

@@ -35,7 +35,7 @@ When an AI coding assistant writes your SQL, a new failure mode appears: plausib
 1. **Types** — column names and statement structure are compile-checked; a wrong name fails the build.
 2. **Analyzer** — the opt-in Roslyn analyzer, shipped inside the `SqlArtisan` package, flags constructs your target dialect does not support, catching a common AI failure mode (mixing dialects from training data). With generated table classes it also flags schema hazards, such as `IS NULL` on a `NOT NULL` column or a text column compared to a number.
 3. **Exact-SQL tests** — `Build()` is deterministic, so a unit test pins the reviewed SQL as a regression contract.
-4. **Integration matrix** — analyzer entries are verified against live engines.
+4. **Integration matrix** — analyzer entries are run against live engines, apart from a few named exceptions ([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)).
 
 ```csharp
 bool filterByDate = true; // e.g. a search-form checkbox
@@ -75,7 +75,7 @@ Building a statement costs little — see [Performance](#performance).
 ### Prerequisites
 
 - **.NET 8.0 or later.**
-- **Choose the API for your target DBMS** (e.g. `Systimestamp` for Oracle vs `CurrentTimestamp` for PostgreSQL). Bind-parameter prefixes (`:` / `@` / `?`) are then handled for you — verified for **MySQL, Oracle, PostgreSQL, SQLite, and SQL Server**.
+- **A supported database**: MySQL, Oracle, PostgreSQL, SQLite, or SQL Server.
 
 ### Packages
 
@@ -206,7 +206,7 @@ SqlStatement sql = Select(u.Name).From(u).Build();
 
 ### Enabling the Analyzer
 
-The analyzer bundled in `SqlArtisan` reports nothing until you name a target dialect. Add one line to `.editorconfig`:
+The analyzer bundled in `SqlArtisan` reports nothing on your code until you name a target dialect. Add one line to `.editorconfig`:
 
 ```ini
 [*.cs]
@@ -261,7 +261,7 @@ The lightweight builders allocate the same bytes every run; times do not repeat.
 
 ## Documentation
 
-Each example shows the C# you write and the SQL it produces, for **MySQL, Oracle, PostgreSQL, SQLite, and SQL Server**; signatures and emitted SQL are also visible inline via IntelliSense. The highlights below link into the reference; the [reference home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md) lists every page with its main sections.
+The reference covers **MySQL, Oracle, PostgreSQL, SQLite, and SQL Server**. Each example shows the C# you write and the SQL it produces, and signatures and emitted SQL are also visible inline via IntelliSense. The highlights below link into the reference; the [reference home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md) lists every page with its main sections.
 
 | Reference | Covers |
 |---|---|
@@ -2797,6 +2797,32 @@ Select(u.Name)
 ```
 
 To read every row on purpose, omit `.Where(...)` entirely. Any condition clause you write follows the same rule — it must carry a real condition, or it throws.
+
+#### Case 4: A Value That May Be Null
+
+`ConditionIf` is an ordinary method, so C# builds its condition argument before the call, even when the flag is `false`.
+
+> [!NOTE]
+> **`ConditionIf(since.HasValue, u.CreatedAt >= since)` throws `ArgumentNullException` when `since` is `null`**: the comparison is built, and rejects the C# `null`, before `ConditionIf` can drop it. Compare against a non-null stand-in instead — `since.GetValueOrDefault()`, or `name ?? ""` for a `string`.
+
+The stand-in is never bound: when the flag is `false`, the condition holding it drops out.
+
+```csharp
+DateTime? since = null; // e.g. an empty search-form field
+
+UsersTable u = new();
+SqlStatement sql =
+    Select(u.Name)
+    .From(u)
+    .Where(
+        u.Name.Like("A%")
+        & ConditionIf(since.HasValue, u.CreatedAt >= since.GetValueOrDefault()))
+    .Build();
+
+// SELECT name
+// FROM users
+// WHERE (name LIKE :0)
+```
 
 ---
 
@@ -6761,8 +6787,9 @@ between generation and production:
    failure mode (mixing dialects from training data).
 3. **Exact-SQL tests** — `Build()` is deterministic, so a unit test
    freezes the reviewed SQL as a regression contract.
-4. **Integration matrix** — analyzer entries are verified against live
-   engines.
+4. **Integration matrix** — analyzer entries are run against live engines,
+   apart from a few named exceptions
+   ([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)).
 
 Raw SQL strings verify nothing until the database rejects them.
 String-keyed builders type the statement's structure but leave a column typo
@@ -7263,8 +7290,9 @@ checks it until it hits the database. SqlArtisan is a deterministic guard
 rail — writing it instead of raw strings puts four verification layers
 between generation and production: column names and statement structure are
 compile-checked, the analyzer flags wrong-dialect constructs at build time,
-exact-SQL tests freeze what was reviewed, and analyzer entries are verified
-against live engines. Wrong output becomes a red build instead of
+exact-SQL tests freeze what was reviewed, and analyzer entries are run against
+live engines, apart from a few named exceptions
+([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)). Wrong output becomes a red build instead of
 a runtime surprise.
 
 This page is the setup that makes those checks bite.
@@ -7693,3 +7721,26 @@ reused.
 
 No fixed schedule — releases ship when ready. Bugs causing silently wrong
 query results are the highest-priority fix class.
+
+1.0.0 ships first as release candidates (`1.0.0-rc.1`, …), and ships one
+candidate's source unchanged: every file under `src/` other than a README
+matches that candidate's tag, apart from the release's own edits there to
+package validation and the analyzer release notes. A change there after the
+candidate, a fix or not, ships in a new candidate.
+
+A candidate becomes 1.0.0 once all of these hold:
+
+- at least seven days have passed since it was published, with no bug in its
+  code reported against it that 1.0.0 must fix;
+- the [integration test matrix](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
+  has passed every nightly run over those days. A failure traced to something
+  other than the packages' code, such as an engine container that did not
+  start or a defect in a test, is fixed and the run repeated, without
+  restarting the seven days; any other failure is a bug in the code;
+- the documentation has been checked as 1.0.0 will publish it, including the
+  release's own edits, such as dropping the `--prerelease` install
+  instructions.
+
+A new candidate waits its own seven days. A correction to the documentation
+alone (`docs/` or a README, the one the packages carry included) ships in 1.0.0
+without one.
