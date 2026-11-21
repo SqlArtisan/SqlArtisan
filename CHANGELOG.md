@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   misled. The negative-offset warning names `OffsetRows` for Oracle and SQL
   Server, which have no `Offset`. The MERGE fragments use a real column and the
   branch order SQL Server accepts. An aliased SQL Server `UPDATE` or `DELETE`
-  target throws only when `From(...)` does not re-list it. `WithRollup()` also runs on SQL Server,
+  target builds once the statement re-lists it, in `From(...)` or through a
+  join after it. `WithRollup()` also runs on SQL Server,
   and `NullsFirst`/`NullsLast` link SQLite's version bound. `ConditionIf` cannot
   shield an empty `In` list either. `Trim`'s two-argument form is no longer
   called a trim set. Claims of portability, engine result semantics and

@@ -939,7 +939,7 @@ SqlStatement sql =
 // WHERE id = :0
 ```
 
-**Dialect note:** On SQL Server the `DELETE` target cannot be aliased — pass an unaliased table (`DeleteFrom(new UsersTable())`), since T-SQL introduces the alias through a `FROM` clause instead; building an aliased target for SQL Server throws unless the statement re-lists it in `From(...)` ([Joined UPDATE / DELETE](#joined-update--delete)). MySQL, Oracle, PostgreSQL, and SQLite accept an aliased target. When the statement contains a subquery that references the target, the target **must** be aliased — see [Correlated UPDATE / DELETE](#correlated-update--delete).
+**Dialect note:** On SQL Server the `DELETE` target cannot be aliased — pass an unaliased table (`DeleteFrom(new UsersTable())`), since T-SQL introduces the alias through a `FROM` clause instead; building an aliased target for SQL Server throws unless the statement re-lists it, in `From(...)` or through a join after it ([Joined UPDATE / DELETE](#joined-update--delete)). MySQL, Oracle, PostgreSQL, and SQLite accept an aliased target. When the statement contains a subquery that references the target, the target **must** be aliased — see [Correlated UPDATE / DELETE](#correlated-update--delete).
 
 ---
 
@@ -984,7 +984,7 @@ column must belong to an aliased table.` instead.
 >
 > Write the target's column on the left of `==`; across schemas, name the schema on both handles.
 
-**Dialect note:** As with `DELETE`, on SQL Server the `UPDATE` target cannot be aliased — pass an unaliased table; building an aliased target for SQL Server throws unless the statement re-lists it in `From(...)` ([Joined UPDATE / DELETE](#joined-update--delete)).
+**Dialect note:** As with `DELETE`, on SQL Server the `UPDATE` target cannot be aliased — pass an unaliased table; building an aliased target for SQL Server throws unless the statement re-lists it, in `From(...)` or through a join after it ([Joined UPDATE / DELETE](#joined-update--delete)).
 
 ### Correlated UPDATE / DELETE
 
