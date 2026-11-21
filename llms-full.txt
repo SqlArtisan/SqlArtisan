@@ -3665,7 +3665,7 @@ not at the SqlArtisan layer.
 - `Substr()` for `SUBSTR` (not supported by SQL Server — use `Substring()` there)
 - `Substrb()` for `SUBSTRB` (Oracle)
 - `Substring()` for `SUBSTRING` (MySQL, PostgreSQL, SQLite, SQL Server; on Oracle use `Substr()`)
-- `Trim()` for `TRIM` (the two-argument form is not supported by SQLite)
+- `Trim()` for `TRIM` (the two-argument `TRIM(trimChar FROM source)` form is not supported by SQLite)
 - `Upper()` for `UPPER`
 
 PostgreSQL and SQL Server gained the `REGEXP_*` family in specific releases — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).

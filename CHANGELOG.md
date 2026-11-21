@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Docs
 - A `sa-docs-audit` pass over `docs/` corrected the reference pages where they
-  misled. The negative-offset warning names `OffsetRows` for Oracle and SQL
-  Server. The MERGE fragments use a real column and put the conditional
+  misled. The negative-offset warning shows `OffsetRows(...)` beside
+  `Offset(...)`. The MERGE fragments use a real column and put the conditional
   `WhenNotMatchedBySource` branch first. An aliased SQL Server `UPDATE` or `DELETE`
   target builds once the statement re-lists it, in `From(...)` or through a
   join after it. `WithRollup()` also runs on SQL Server,
