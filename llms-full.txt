@@ -5735,7 +5735,7 @@ to read would otherwise look omitted.
 
 Like every rule here, it stays silent until a dialect is configured, even
 though its verdict is dialect-independent, as is every rule's here but
-`SQLA0206`'s and, for MySQL's zero-date reading, `SQLA0200`'s. Suppression is per rule
+`SQLA0206`'s. Suppression is per rule
 ID, the standard Roslyn way; the `sqlartisan_construct_*` override keys do not
 apply, since the construct's dialect support is not what this rule reports.
 

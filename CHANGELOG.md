@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Docs
 - A `sa-docs-audit` pass over `docs/` corrected the reference pages where they
   misled. The negative-offset warning names `OffsetRows` for Oracle and SQL
-  Server, which have no `Offset`. The MERGE fragments use a real column and the
-  branch order SQL Server accepts. An aliased SQL Server `UPDATE` or `DELETE`
+  Server. The MERGE fragments use a real column and put the conditional
+  `WhenNotMatchedBySource` branch first. An aliased SQL Server `UPDATE` or `DELETE`
   target builds once the statement re-lists it, in `From(...)` or through a
   join after it. `WithRollup()` also runs on SQL Server,
   and `NullsFirst`/`NullsLast` link SQLite's version bound. `ConditionIf` cannot
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   equivalent: `Greatest`/`Least` drop the pointer to SQLite's `MAX`/`MIN`, and
   the others name the API that emits the other spelling. `Grouping`'s
   multi-column form points SQL Server to `GroupingId` as well as Oracle, and
-  `CharLength` no longer names SQL Server's `LEN`, which no API emits.
+  `CharLength` no longer names SQL Server's `LEN`.
   `CurrentTimestamp(precision)` no longer restates MySQL's bare-form precision.
 - `docs/expressions.md`'s Dynamic Condition section notes that C# builds
   `ConditionIf`'s condition before the call, so comparing against a value that
