@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Docs
+- `docs/expressions.md`'s Dynamic Condition section notes that C# builds
+  `ConditionIf`'s condition before the call, so comparing against a value that
+  may be `null` throws `ArgumentNullException` even when the flag excludes it,
+  and shows a non-null stand-in such as `GetValueOrDefault()` instead.
 - `docs/versioning.md` states when a 1.0.0 release candidate becomes 1.0.0.
   1.0.0 ships a candidate's source unchanged, so any later change to it ships
   in a new candidate. A candidate becomes 1.0.0 after seven days out with no bug in
