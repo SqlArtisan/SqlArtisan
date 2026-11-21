@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A `sa-docs-audit` pass over `docs/` corrected the reference pages where they
   misled. The negative-offset warning names `OffsetRows` for Oracle and SQL
   Server, which have no `Offset`. The MERGE fragments use a real column and the
-  branch order SQL Server accepts. An aliased SQL Server DML target throws only
-  when `From(...)` does not re-list it. `WithRollup()` also runs on SQL Server,
+  branch order SQL Server accepts. An aliased SQL Server `UPDATE` or `DELETE`
+  target throws only when `From(...)` does not re-list it. `WithRollup()` also runs on SQL Server,
   and `NullsFirst`/`NullsLast` link SQLite's version bound. `ConditionIf` cannot
   shield an empty `In` list either. `Trim`'s two-argument form is no longer
   called a trim set. Claims of portability, engine result semantics and
@@ -19,11 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   usings, the SqlKata comparison stops naming another library's output, and
   `analyzer.md`'s schema section covers `SQLA0200`–`SQLA0206` under one heading
   in band order. In IntelliSense, `GroupingId`, `Greatest`, `Least`, `Ifnull`,
-  `Isnull`, `Nvl` and `Extract` no longer call another construct their
-  equivalent: SQLite's multi-argument `MAX`/`MIN` returns NULL for a NULL
-  argument where PostgreSQL and SQL Server's `GREATEST`/`LEAST` skip it, so
-  `Greatest`/`Least` say only that SQLite lacks them, and the others name the
-  API that emits `COALESCE` or SQL Server's `DATEPART` instead.
+  `Isnull`, `Nvl`, `Extract`, `Grouping` and `Some` no longer call another
+  construct their equivalent: `Greatest`/`Least` say only that SQLite lacks
+  them, and the others name the API that emits the other spelling.
   `CurrentTimestamp(precision)` no longer restates MySQL's bare-form precision.
 - `docs/expressions.md`'s Dynamic Condition section notes that C# builds
   `ConditionIf`'s condition before the call, so comparing against a value that

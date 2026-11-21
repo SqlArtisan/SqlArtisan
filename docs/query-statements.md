@@ -529,7 +529,7 @@ SqlStatement sql =
 // GROUP BY ROLLUP(region)
 ```
 
-`Grouping(a, b, ...)` also takes multiple columns, returning a combined bitmask (MySQL, PostgreSQL); on Oracle and SQL Server the multi-column form is `GroupingId(a, ...)` instead. MySQL accepts `Grouping(...)` only inside a `WITH ROLLUP` query (its own grouping syntax, above) — using it with an ordinary `GroupBy(...)` is rejected there, a context requirement no dialect matrix key can express, which the analyzer reports as `SQLA0102`.
+`Grouping(a, b, ...)` also takes multiple columns, returning a combined bitmask (MySQL, PostgreSQL); on Oracle and SQL Server use `GroupingId(a, ...)`. MySQL accepts `Grouping(...)` only inside a `WITH ROLLUP` query (its own grouping syntax, above) — using it with an ordinary `GroupBy(...)` is rejected there, a context requirement no dialect matrix key can express, which the analyzer reports as `SQLA0102`.
 
 ---
 
