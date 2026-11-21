@@ -40,7 +40,13 @@ into the SQL text (changing it row to row), and anywhere else throws, while
 `BindNull()` reserves a real parameter, so a null row binds the same marker a
 non-null row does.
 
+`UsersTable` is a [table class](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start).
+
 ```csharp
+using System.Data; // for Sql.BindNull(DbType.Int32) below
+using SqlArtisan;
+using static SqlArtisan.Sql;
+
 UsersTable users = new();
 UserRow[] rows = LoadRows(); // thousands of rows
 

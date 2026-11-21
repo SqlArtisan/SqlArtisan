@@ -496,7 +496,7 @@ public static partial class Sql
     /// <param name="source">The string expression to measure.</param>
     /// <returns>An expression emitting <c>CHAR_LENGTH(source)</c>.</returns>
     /// <remarks>MySQL and PostgreSQL syntax. Oracle and SQLite count characters with
-    /// <see cref="Length(object)"/>; SQL Server spells it <c>LEN</c>.</remarks>
+    /// <see cref="Length(object)"/>; not available on SQL Server.</remarks>
     public static SqlExpression CharLength(object source) =>
         new CharLengthFunction(Resolve(source, nameof(source)));
 
@@ -772,9 +772,7 @@ public static partial class Sql
     /// <param name="precision">The fractional-second digits; zero or more.</param>
     /// <returns>An expression emitting
     /// <c>CURRENT_TIMESTAMP(precision)</c>.</returns>
-    /// <remarks>MySQL, Oracle, and PostgreSQL syntax. MySQL's bare
-    /// <c>CURRENT_TIMESTAMP</c> has whole-second precision; pass one for fractional
-    /// seconds there.</remarks>
+    /// <remarks>MySQL, Oracle, and PostgreSQL syntax.</remarks>
     public static SqlExpression CurrentTimestamp(int precision) =>
         new CurrentTimestampFunction(precision);
 

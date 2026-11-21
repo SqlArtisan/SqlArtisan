@@ -142,8 +142,8 @@ public static partial class Sql
     public static LockBehaviorBase SkipLocked => new SkipLockedBehavior();
 
     /// <summary>
-    /// The <c>SOME (subquery)</c> quantified comparison operator: equivalent to
-    /// <see cref="Any(ISubquery)"/> — the comparison must hold for at least one row. Valid only
+    /// The <c>SOME (subquery)</c> quantified comparison operator, spelled <c>ANY</c> by
+    /// <see cref="Any(ISubquery)"/>: the comparison must hold for at least one row. Valid only
     /// in the slots <see cref="QuantifiedExpression"/> lists, as in <c>col == Some(subquery)</c>.
     /// </summary>
     /// <param name="subquery">A <c>SELECT</c> builder returning a single column.</param>
@@ -153,8 +153,8 @@ public static partial class Sql
         new(Keywords.Some, subquery);
 
     /// <summary>
-    /// The <c>SOME (array)</c> quantified comparison operator: equivalent to
-    /// <see cref="Any(SqlExpression)"/> — the comparison must hold for at least one element of the
+    /// The <c>SOME (array)</c> quantified comparison operator, spelled <c>ANY</c> by
+    /// <see cref="Any(SqlExpression)"/>: the comparison must hold for at least one element of the
     /// array expression (PostgreSQL). Valid only in the slots <see cref="QuantifiedExpression"/>
     /// lists, as in <c>col == Some(BindArray(values))</c>.
     /// </summary>

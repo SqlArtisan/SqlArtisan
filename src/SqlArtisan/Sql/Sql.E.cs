@@ -52,7 +52,7 @@ public static partial class Sql
     /// <param name="datepart">The field of <paramref name="source"/> to return.</param>
     /// <param name="source">The date/time value to read the field from.</param>
     /// <returns>The <c>EXTRACT</c> function expression.</returns>
-    /// <remarks>MySQL, Oracle, and PostgreSQL syntax; SQL Server's equivalent is
+    /// <remarks>MySQL, Oracle, and PostgreSQL syntax; on SQL Server use
     /// <see cref="Datepart(DateTimePart, object)"/>.</remarks>
     public static SqlExpression Extract(DateTimePart datepart, object source) =>
         new ExtractFunction(datepart, Resolve(source, nameof(source)));

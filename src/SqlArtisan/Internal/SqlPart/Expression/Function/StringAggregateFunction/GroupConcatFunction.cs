@@ -6,8 +6,7 @@ namespace SqlArtisan.Internal;
 /// (MySQL and SQLite) is passed as an <c>Sql.OrderBy(...)</c> argument.
 /// </summary>
 /// <remarks>
-/// MySQL silently truncates the result at <c>group_concat_max_len</c> (1024
-/// bytes by default); raise that session/global variable for large groups.
+/// MySQL silently truncates the result at <c>group_concat_max_len</c>.
 /// </remarks>
 internal sealed class GroupConcatFunction : SqlExpression
 {

@@ -32,18 +32,18 @@ only part of a cluster produces incomplete (and potentially wrong) conclusions.
 | [0005](0005-public-api-in-sql-partial-class.md) | Public API location | | Accepted (criteria superseded by 0027) |
 | [0006](0006-performance-allocation-light.md) | Performance is a feature: allocation-light building | | Accepted |
 | [0007](0007-validity-enforcement-boundary.md) | What the library rejects: grammatical completeness vs dialect availability | Boundary | Accepted |
-| [0008](0008-analyzer-override-configuration.md) | Analyzer override configuration: keys, precedence, and what's out of scope | Analyzer | Accepted |
+| [0008](0008-analyzer-override-configuration.md) | Analyzer override configuration: keys, precedence, and what's out of scope | Analyzer | Accepted (two claims superseded by 0025) |
 | [0009](0009-analyzer-distribution-bundled.md) | Analyzer distribution: bundled in the core package, coupled only by contract | Analyzer | Accepted |
 | [0010](0010-deterministic-guard-mission.md) | The mission: deterministic guard rails for AI-assisted SQL | | Accepted |
 | [0011](0011-bounded-exception-validity-boundary.md) | Bounded exceptions to the validity-enforcement boundary: when a construct valid on some dialect may still be rejected | Boundary | Accepted |
 | [0012](0012-value-domain-guards.md) | Value-domain guards: rejecting an argument value no engine accepts | Boundary | Accepted |
 | [0013](0013-analyzer-context-rules.md) | Analyzer context rules: position-dependent verdicts under their own diagnostic | Analyzer | Accepted |
-| [0014](0014-analyzer-correlated-dml-rule.md) | Analyzer advisory duplication of a runtime guard: the correlated-DML rule | Analyzer | Accepted |
+| [0014](0014-analyzer-correlated-dml-rule.md) | Analyzer advisory duplication of a runtime guard: the correlated-DML rule | Analyzer | Accepted (category decision superseded by 0018) |
 | [0015](0015-analyzer-version-bounds.md) | Analyzer version bounds: interval annotations on the dialect matrix, evaluated against a declared engine version | Analyzer | Accepted |
 | [0016](0016-text-position-policy.md) | Text positions: what is bound, what is escaped, and what is emitted verbatim | | Accepted |
 | [0017](0017-join-predicate-completeness.md) | Join predicate completeness: rejecting an omitted `ON`/`USING` that some dialects silently reinterpret as `CROSS JOIN` | Boundary | Accepted |
 | [0018](0018-analyzer-diagnostic-id-bands.md) | Analyzer diagnostic ID bands: one numbered range per category | Analyzer | Accepted |
-| [0019](0019-analyzer-multi-dialect-syntax-set.md) | Analyzer multi-dialect syntax set: `sqlartisan_syntax_*`, one key per DBMS | Analyzer | Accepted |
+| [0019](0019-analyzer-multi-dialect-syntax-set.md) | Analyzer multi-dialect syntax set: `sqlartisan_syntax_*`, one key per DBMS | Analyzer | Accepted (legacy-pair decisions superseded by 0024) |
 | [0020](0020-documentation-precision-boundary.md) | Documentation precision boundary: what the docs assert, and what they delegate to the engine | | Accepted |
 | [0021](0021-analyzer-matrix-key-granularity.md) | Dialect-matrix key granularity: member-level by default, arity as a narrowing layer | Analyzer | Accepted |
 | [0022](0022-analyzer-value-domain-argument-ids.md) | Value-domain arguments: every literal value verdict under one diagnostic ID | Analyzer | Accepted |
@@ -66,8 +66,8 @@ only part of a cluster produces incomplete (and potentially wrong) conclusions.
   name, or an `OUTPUT ... INTO` width mismatch), the joined-target alias
   requirement (#258), an alias sort key inside `OVER` or an aggregate (#672),
   the correlated guards (#253, #677), a bound sort, group, partition or
-  `DISTINCT ON` key (#678, #673), a number as an expression-position sort
-  key (#693), a function-argument enum in a value position (#667), and a value
+  `DISTINCT ON` key or a number as an expression-position sort key (#678,
+  #673, #693), a function-argument enum in a value position (#667), a value
   computed empty that an engine runs without an error (#669, #679), and a SQLite
   `RETURNING` column of a handle other than the target (#742); 0012 adds value-domain guards (a universally invalid
   embedded value also rejects); 0017 adds a second enumerated exception (an omitted

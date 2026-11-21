@@ -125,8 +125,8 @@ internal static class DialectMatrix
         [new MatrixKey("Timestampadd")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: false, sqlite: false, sqlServer: false),
         [new MatrixKey("Timestampdiff")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: false, sqlite: false, sqlServer: false),
         // Date/Datetime/Julianday/Strftime: SQLite's date/time family (Sql.D.cs/Sql.J.cs/
-        // Sql.S.cs XML docs, #439) — STRFTIME/DATETIME/JULIANDAY have no equivalent on any
-        // other supported dialect. The 1-arg DATE(timevalue) form is split from the
+        // Sql.S.cs XML docs, #439) — STRFTIME/DATETIME/JULIANDAY exist on no other
+        // supported dialect. The 1-arg DATE(timevalue) form is split from the
         // 3+-arg SQLite modifier form because MySQL (date-part extraction) and PostgreSQL
         // (cast to date) both accept the bare 1-arg call too, per each engine's own DATE()
         // docs; the sweep case added alongside this entry live-verifies both going forward.
@@ -244,7 +244,7 @@ internal static class DialectMatrix
         // version-3.48.0), so its sqlite cell carries a Bounds row like Iif's below.
         [new MatrixKey("If")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: false, sqlite: true, sqlServer: false),
         // IIF: SQL Server and SQLite (3.32+, live-verified by the dialect sweep) both
-        // spell it IIF; MySQL/Oracle/PostgreSQL have no equivalent single-call form.
+        // spell it IIF; MySQL, Oracle and PostgreSQL have no IIF (MySQL's IF is its own entry).
         [new MatrixKey("Iif")] = new DbmsSupport(mySql: false, oracle: false, postgreSql: false, sqlite: true, sqlServer: true),
         // NUMTOYMINTERVAL/NUMTODSINTERVAL: Oracle-only conversion functions (Sql.N.cs XML
         // remarks, docs/functions.md); no other engine defines either (#448).
@@ -563,8 +563,8 @@ internal static class DialectMatrix
         // Substr: T-SQL spells this SUBSTRING(); no SUBSTR.
         [new MatrixKey("Substr")] = new DbmsSupport(mySql: true, oracle: true, postgreSql: true, sqlite: true, sqlServer: false),
         // Substring: SQL Server's spelling, but MySQL/PostgreSQL/SQLite accept it too (SQLite
-        // carries a Bounds row below). Oracle has no SUBSTRING() (ORA-00904); SUBSTR is the
-        // documented equivalent there.
+        // carries a Bounds row below). Oracle has no SUBSTRING() (ORA-00904); its function is
+        // SUBSTR.
         [new MatrixKey("Substring")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: true, sqlite: true, sqlServer: true),
         // Lpad/Rpad: no native LPAD/RPAD on SQLite or SQL Server (even 2022). MySQL's
         // LPAD/RPAD require the pad argument (smoke-catalog note), so the 2-arg
@@ -600,9 +600,8 @@ internal static class DialectMatrix
         // CharLength: MySQL/PostgreSQL only (SQL99 CHARACTER_LENGTH synonym). Oracle spells
         // this LENGTH(), SQL Server LEN(), SQLite has no CHAR_LENGTH at all (only length()).
         [new MatrixKey("CharLength")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: true, sqlite: false, sqlServer: false),
-        // Left/Right: MySQL/PostgreSQL/SQL Server native. Oracle has neither (SUBSTR is the
-        // documented equivalent); SQLite has neither either (learn.microsoft.com, sqlite.org
-        // core function list).
+        // Left/Right: MySQL/PostgreSQL/SQL Server native. Oracle has neither, and SQLite has
+        // neither either (learn.microsoft.com, sqlite.org core function list).
         [new MatrixKey("Left")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: true, sqlite: false, sqlServer: true),
         [new MatrixKey("Right")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: true, sqlite: false, sqlServer: true),
         // Position: only MySQL and PostgreSQL support the ANSI POSITION(x IN y) syntax.
@@ -612,7 +611,7 @@ internal static class DialectMatrix
         // Strpos: PostgreSQL syntax only. MySQL has no STRPOS (POSITION/LOCATE instead);
         // Oracle, SQLite, and SQL Server have no STRPOS at all.
         [new MatrixKey("Strpos")] = new DbmsSupport(mySql: false, oracle: false, postgreSql: true, sqlite: false, sqlServer: false),
-        // Greatest/Least: no SQLite equivalent (it uses multi-argument scalar MAX/MIN instead);
+        // Greatest/Least: SQLite has no GREATEST/LEAST;
         // SQL Server added GREATEST/LEAST in 2022 (the baseline).
         [new MatrixKey("Greatest")] = new DbmsSupport(mySql: true, oracle: true, postgreSql: true, sqlite: false, sqlServer: true),
         [new MatrixKey("Least")] = new DbmsSupport(mySql: true, oracle: true, postgreSql: true, sqlite: false, sqlServer: true),

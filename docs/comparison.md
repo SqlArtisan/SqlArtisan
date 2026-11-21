@@ -109,8 +109,7 @@ The full setup for AI-assisted workflows is in the
 
 **Dialect compiler** (SqlKata, linq2db) — one API, output varies by
 engine. The library maintains a grammar mapping; you call `Limit(10)` and
-it emits `LIMIT 10`, `FETCH FIRST 10 ROWS ONLY`, or `TOP (10)` depending
-on the target. This is convenient when the same query must run on multiple
+it emits the target engine's own row-limit syntax. This is convenient when the same query must run on multiple
 engines.
 
 **Per-dialect API** (SqlArtisan) — where dialects diverge, distinct methods

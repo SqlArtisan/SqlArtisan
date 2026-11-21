@@ -144,8 +144,8 @@ its *leading* precision, so use `ToSecond(n)` as a sole field for that form.
 - **PostgreSQL** — the same two forms as Oracle (with a precision on
   `ToSecond(n)` only; `SQLA0100` reports one on a leading field), plus the bare `IntervalLiteral(text)` overload with the unit folded into
   the text (`INTERVAL '30 days'`).
-- **SQLite, SQL Server** — no `INTERVAL` construct; use `Dateadd(...)` on SQL
-  Server instead.
+- **SQLite, SQL Server** — no `INTERVAL` construct; use a `Date(...)` /
+  `Datetime(...)` modifier on SQLite and `Dateadd(...)` on SQL Server instead.
 
 ---
 
@@ -347,7 +347,7 @@ SqlStatement sql =
 // WHERE id IN (:0, :1, ...) — one bind per element
 ```
 
-The overload takes `IReadOnlyCollection<T>` rather than `IEnumerable<T>` deliberately: a `string` is an `IEnumerable<char>` but *not* an `IReadOnlyCollection<char>`, so `col.In("abc")` stays a single-value predicate (`IN (:0)`) instead of silently expanding into one bind per character. An empty collection throws at the call site: SQLite runs `IN ()` and `NOT IN ()` without an error, so a list computed empty would change the query there unnoticed, where MySQL, Oracle, PostgreSQL and SQL Server reject both (observed on MySQL 8.0, Oracle XE 21.3.0, PostgreSQL 16.15, SQLite 3.50.4 and SQL Server 2022). Build the chain with or without the predicate keyed on whether the list has any elements.
+The overload takes `IReadOnlyCollection<T>` rather than `IEnumerable<T>` deliberately: a `string` is an `IEnumerable<char>` but *not* an `IReadOnlyCollection<char>`, so `col.In("abc")` stays a single-value predicate (`IN (:0)`) instead of silently expanding into one bind per character. An empty collection throws at the call site: SQLite runs `IN ()` and `NOT IN ()` without an error, so a list computed empty would change the query there unnoticed, where MySQL, Oracle, PostgreSQL and SQL Server reject both (observed on MySQL 8.0, Oracle XE 21.3.0, PostgreSQL 16.15, SQLite 3.50.4 and SQL Server 2022). Build the chain with or without the predicate keyed on whether the list has any elements, with a branch in C#: `ConditionIf(ids.Count > 0, u.Id.In(ids))` throws on an empty list too, because C# builds `In(ids)` before `ConditionIf` can drop it (see [Dynamic Condition](#dynamic-condition)). Where one chain must carry the predicate beside another condition, pass a non-empty stand-in the flag never binds — `ConditionIf(ids.Count > 0, u.Id.In(ids.Count > 0 ? ids : [0]))`; the stand-in alone, without `ConditionIf`, would filter on it.
 
 Each element is a **separate** bind parameter, so the parameter count grows with the list, and a very large `IN` list runs into per-engine bind-parameter ceilings — see your engine's manual for its limit. On PostgreSQL, an equality-against-array — `col = ANY(:param)`, a single array-valued bind whose plan is stable across list sizes — sidesteps both the parameter count and the ceiling; SqlArtisan's `In(...)` emits the per-element list form on every dialect, so reach for the bound-array form (`Any(BindArray(...))` — see [ANY / ALL with a Bound Array](#any--all-with-a-bound-array-postgresql)) when the list is both large and size-varying on PostgreSQL.
 
@@ -949,7 +949,7 @@ SqlStatement sql =
 // FROM users
 ```
 
-Both require an `OrderBy(...)` (optionally with `PartitionBy(...)`). The offset is emitted as a literal so the SQL stays portable (MySQL requires a literal here), while the default value is parameterized.
+Both require an `OrderBy(...)` (optionally with `PartitionBy(...)`). The offset is emitted as an integer literal, while the default value is parameterized.
 
 ### Example using FIRST_VALUE / LAST_VALUE / NTH_VALUE
 
@@ -1059,7 +1059,7 @@ SqlStatement sql =
 - Bounds: `UnboundedPreceding`, `CurrentRow`, `UnboundedFollowing`, `Preceding(n)`, `Following(n)`; the offset is non-negative.
 - A single bound uses `Rows(bound)` / `Range(bound)` (e.g. `Rows(UnboundedPreceding)`); `RowsBetween(start, end)` / `RangeBetween(start, end)` produce `ROWS/RANGE BETWEEN ... AND ...`.
 - A mis-ordered frame throws `ArgumentException` — no engine accepts a single bound past `CurrentRow` (use the `BETWEEN` form for `Following(n)` / `UnboundedFollowing`) or a `BETWEEN` start ranking later than its end.
-- A frame requires `ORDER BY`, so `Rows(...)` / `Range(...)` are available only after `OrderBy(...)` (optionally with `PartitionBy(...)`).
+- `Rows(...)` / `Range(...)` are available only after `OrderBy(...)` (optionally with `PartitionBy(...)`).
 
 ### Example using PERCENTILE_CONT / PERCENTILE_DISC
 

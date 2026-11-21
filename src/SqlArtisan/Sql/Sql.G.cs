@@ -11,8 +11,7 @@ public static partial class Sql
     /// </summary>
     /// <param name="expressions">The values to compare.</param>
     /// <returns>The <c>GREATEST</c> function expression.</returns>
-    /// <remarks>Not supported by SQLite — its multi-argument
-    /// <c>MAX(a, b, ...)</c> is the equivalent; SQL Server (2022+).</remarks>
+    /// <remarks>Not supported by SQLite; SQL Server (2022+).</remarks>
     public static SqlExpression Greatest(params object[] expressions) =>
         new GreatestFunction(Resolve(expressions, nameof(expressions)));
 
@@ -204,9 +203,9 @@ public static partial class Sql
     /// <param name="expr2">The second grouping-extension column.</param>
     /// <param name="others">Any further grouping-extension columns.</param>
     /// <returns>An expression emitting <c>GROUPING(a, b, ...)</c>.</returns>
-    /// <remarks>MySQL (8.0+) and PostgreSQL only; Oracle accepts only the single-argument
-    /// form (use <see cref="GroupingId(object, object[])"/> there instead), and
-    /// neither SQLite nor SQL Server support it.</remarks>
+    /// <remarks>MySQL (8.0+) and PostgreSQL only; Oracle and SQL Server accept only the
+    /// single-argument form, and SQLite has no <c>GROUPING</c>. On Oracle and SQL Server
+    /// use <see cref="GroupingId(object, object[])"/>.</remarks>
     public static SqlExpression Grouping(object expr1, object expr2, params object[] others) =>
         new GroupingFunction(ResolveVariadic(
             expr1,
@@ -225,8 +224,8 @@ public static partial class Sql
     /// <param name="others">Any further grouping-extension columns.</param>
     /// <returns>An expression emitting
     /// <c>GROUPING_ID(a, ...)</c>.</returns>
-    /// <remarks>Oracle and SQL Server syntax; for MySQL/PostgreSQL's equivalent
-    /// bitmask use <see cref="Grouping(object, object, object[])"/> instead.</remarks>
+    /// <remarks>Oracle and SQL Server syntax; on MySQL and PostgreSQL use
+    /// <see cref="Grouping(object, object, object[])"/>.</remarks>
     public static SqlExpression GroupingId(object expr, params object[] others) =>
         new GroupingIdFunction(ResolveVariadic(expr, nameof(expr), others, nameof(others)));
 

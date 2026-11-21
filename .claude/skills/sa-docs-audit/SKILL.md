@@ -198,6 +198,27 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
   the test, and is mutation-probed: break the page in each way the finding
   implies and confirm the test fails. `ReadmeExampleTests` first passed with a
   stale `// SELECT` comment because it built from a copy.
+- **Fix by narrowing, and verify the fix before it lands.** A fix deletes the
+  false part, or narrows it to what a primary source shows; it does not replace
+  one generalization with another. Before committing, hold each sentence the
+  fix writes to its primary source, to the dialects and quantifiers it now
+  names, and to every other statement on the page about the same subject (grep
+  the subject). Six re-review rounds of one docs-fix branch each found Low
+  claims the previous round's fixes had written — "the position takes a
+  constant", "the rules that read no dialect matrix", "throws unless re-listed
+  in `From(...)`" — each catchable this way. A cut is a rewrite too: re-read
+  what is left, since dropping a clause can turn the rest into a restriction
+  ("names `OffsetRows` for Oracle and SQL Server" read as Oracle and SQL Server
+  only once ", which have no `Offset`" went) or strip the one word that said
+  which form is meant ("the two-argument form" of `Trim`, once "trim-set" went).
+- **Define a finding's class before sweeping it.** Name the pattern and its
+  edge once — which wording is in, which established vocabulary stays and why —
+  sweep every surface for every spelling of it at once, and record what stays.
+  Widening it a word at a time ("equivalent", then "form of", then "spells it")
+  handed each review round new instances.
+- **Keep the CHANGELOG and commit messages to what changed.** A rationale that
+  restates engine behaviour is one more claim to verify; the fact lives in the
+  record that holds it (a twin, an ADR, a docs page).
 - **Check open issues before reporting.** Search them for each surviving
   finding (`gh api -X GET search/issues -f q='repo:h-tacayama/SqlArtisan
   is:issue is:open <terms>'`). One an open issue already tracks is reported

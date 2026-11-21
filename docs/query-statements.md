@@ -147,7 +147,7 @@ SqlStatement sql =
 // SELECT "u".id, "u".name FROM users "u" WHERE "u".id > :0
 ```
 
-Columns are qualified by the alias — or rendered unqualified when the table has no alias (`new DbTable("users")` → `id`), except in an UPSERT's `DO UPDATE` or `ON DUPLICATE KEY UPDATE`, which qualifies them by the table name ([UPSERT](#upsert-insert-update-or-skip)). `DbTable` works anywhere a table class does, including `INSERT` / `UPDATE` / `DELETE`. For columns referenced repeatedly, or for IntelliSense on column names, declare a typed `DbTableBase` subclass (or generate one with SqlArtisan.TableClassGen) instead.
+Columns are qualified by the alias — or rendered unqualified when the table has no alias (`new DbTable("users")` → `id`), except in an UPSERT's `DO UPDATE` or `ON DUPLICATE KEY UPDATE`, which qualifies them by the table name ([UPSERT](#upsert-insert-update-or-skip)). `DbTable` works anywhere a table class does, including `INSERT` / `UPDATE` / `DELETE`. For columns referenced repeatedly, or for IntelliSense on column names, declare a typed `DbTableBase` subclass (or generate one with [SqlArtisan.TableClassGen](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md)) instead.
 
 #### FROM-less Queries
 ```csharp
@@ -391,7 +391,7 @@ SqlStatement sql =
 // id DESC NULLS LAST
 ```
 
-**Dialect note:** `NullsFirst` / `NullsLast` emit `NULLS FIRST` / `NULLS LAST`, which MySQL and SQL Server reject — neither engine has the clause. On Oracle and SQL Server, an `OrderBy(...)` in an `IN` / `NOT IN`, `EXISTS` / `NOT EXISTS`, `ANY` / `ALL` / `SOME` or scalar subquery needs a row limit beside it — `FetchFirst(n)` or `OffsetRows(...)` on Oracle, `Top(n)` or `OffsetRows(...)` on SQL Server — and on SQL Server in a derived table, CTE body or `APPLY` source too, which Oracle XE 21.3.0, Free 23ai and SQL Server 2022 require; order the outer query instead where the order picks no rows. On SQL Server a compound's `OrderBy(...)` needs one there too, but a row limit after a compound's last branch pages that branch alone once embedded, so wrap the compound in a derived table (`.AsTable(...)`) or a CTE first and sort and page the query that reads it ([Set Operators](#set-operators)). `SQLA0102` reports those positions.
+**Dialect note:** `NullsFirst` / `NullsLast` emit `NULLS FIRST` / `NULLS LAST`, which MySQL and SQL Server reject — neither engine has the clause — and SQLite takes from a specific release (see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)). On Oracle and SQL Server, an `OrderBy(...)` in an `IN` / `NOT IN`, `EXISTS` / `NOT EXISTS`, `ANY` / `ALL` / `SOME` or scalar subquery needs a row limit beside it — `FetchFirst(n)` or `OffsetRows(...)` on Oracle, `Top(n)` or `OffsetRows(...)` on SQL Server — and on SQL Server in a derived table, CTE body or `APPLY` source too, which Oracle XE 21.3.0, Free 23ai and SQL Server 2022 require; order the outer query instead where the order picks no rows. On SQL Server a compound's `OrderBy(...)` needs one there too, but a row limit after a compound's last branch pages that branch alone once embedded, so wrap the compound in a derived table (`.AsTable(...)`) or a CTE first and sort and page the query that reads it ([Set Operators](#set-operators)). `SQLA0102` reports those positions.
 
 A `string`, `char`, `bool`, date/time, GUID or enum sort key throws `Invalid type for
 OrderByItem: ...` at the call: bound, it would be a constant that sorts
@@ -498,7 +498,7 @@ SqlStatement sql =
 //   => GROUP BY GROUPING SETS((region, product), channel, ())
 ```
 
-`Rollup(...)`, `Cube(...)`, and `GroupingSets(...)` always emit their standard function forms (`ROLLUP(...)`, `CUBE(...)`, `GROUPING SETS(...)`) on every dialect — Oracle, PostgreSQL, and SQL Server support all three. MySQL's own grouping syntax is instead the `WITH ROLLUP` suffix; chain `.WithRollup()` onto `GroupBy(...)` for it:
+`Rollup(...)`, `Cube(...)`, and `GroupingSets(...)` always emit their standard function forms (`ROLLUP(...)`, `CUBE(...)`, `GROUPING SETS(...)`) on every dialect — Oracle, PostgreSQL, and SQL Server support all three. MySQL's own grouping syntax is instead the `WITH ROLLUP` suffix, which SQL Server also accepts; chain `.WithRollup()` onto `GroupBy(...)` for it:
 
 ```csharp
 // MySQL:
@@ -529,7 +529,7 @@ SqlStatement sql =
 // GROUP BY ROLLUP(region)
 ```
 
-`Grouping(a, b, ...)` also takes multiple columns, returning a combined bitmask (MySQL, PostgreSQL); Oracle and SQL Server spell the same bitmask `GroupingId(a, ...)` instead. MySQL accepts `Grouping(...)` only inside a `WITH ROLLUP` query (its own grouping syntax, above) — using it with an ordinary `GroupBy(...)` is rejected there, a context requirement no dialect matrix key can express, which the analyzer reports as `SQLA0102`.
+`Grouping(a, b, ...)` also takes multiple columns, returning a combined bitmask (MySQL, PostgreSQL); on Oracle and SQL Server use `GroupingId(a, ...)`. MySQL accepts `Grouping(...)` only inside a `WITH ROLLUP` query (its own grouping syntax, above) — using it with an ordinary `GroupBy(...)` is rejected there, a context requirement no dialect matrix key can express, which the analyzer reports as `SQLA0102`.
 
 ---
 
@@ -824,11 +824,12 @@ The row counts are parameterized like other literals, so the bind-parameter pref
 > [!WARNING]
 > **A negative computed offset means a different thing on each target.** MySQL,
 > PostgreSQL and SQL Server reject the statement; Oracle executes it and SQLite
-> reads it as 0 — so `Offset((page - 1) * size)` with `page` at 0 is a hard
-> error on three targets and a silently wrong page on the other two. Nothing
-> diagnoses it: the offset travels as a bind parameter, so `Build(Dbms)` never
-> sees it, and the analyzer reads only call-site constants. Clamp the page
-> number before computing it.
+> reads it as 0 — so `Offset((page - 1) * size)` (MySQL, PostgreSQL, SQLite) or
+> `OffsetRows((page - 1) * size)` (Oracle, PostgreSQL, SQL Server) with `page`
+> at 0 is a hard error on three targets and a silently wrong page on the other
+> two. Nothing diagnoses it: the offset travels as a bind parameter, so
+> `Build(Dbms)` never sees it, and the analyzer reads only call-site constants.
+> Clamp the page number before computing it.
 
 #### TOP (SQL Server)
 
@@ -938,7 +939,7 @@ SqlStatement sql =
 // WHERE id = :0
 ```
 
-**Dialect note:** On SQL Server the `DELETE` target cannot be aliased — pass an unaliased table (`DeleteFrom(new UsersTable())`), since T-SQL introduces the alias through a `FROM` clause instead; building an aliased target for SQL Server throws. MySQL, Oracle, PostgreSQL, and SQLite accept an aliased target. When the statement contains a subquery that references the target, the target **must** be aliased — see [Correlated UPDATE / DELETE](#correlated-update--delete).
+**Dialect note:** On SQL Server the `DELETE` target cannot be aliased — pass an unaliased table (`DeleteFrom(new UsersTable())`), since T-SQL introduces the alias through a `FROM` clause instead; building an aliased target for SQL Server throws unless the statement re-lists it, in `From(...)` or through a join after it ([Joined UPDATE / DELETE](#joined-update--delete)). MySQL, Oracle, PostgreSQL, and SQLite accept an aliased target. When the statement contains a subquery that references the target, the target **must** be aliased — see [Correlated UPDATE / DELETE](#correlated-update--delete).
 
 ---
 
@@ -983,7 +984,7 @@ column must belong to an aliased table.` instead.
 >
 > Write the target's column on the left of `==`; across schemas, name the schema on both handles.
 
-**Dialect note:** As with `DELETE`, on SQL Server the `UPDATE` target cannot be aliased — pass an unaliased table; building an aliased target for SQL Server throws.
+**Dialect note:** As with `DELETE`, on SQL Server the `UPDATE` target cannot be aliased — pass an unaliased table; building an aliased target for SQL Server throws unless the statement re-lists it, in `From(...)` or through a join after it ([Joined UPDATE / DELETE](#joined-update--delete)).
 
 ### Correlated UPDATE / DELETE
 
@@ -1250,7 +1251,7 @@ SqlStatement sql =
 // (:0, :1, CURRENT_TIMESTAMP)
 ```
 
-**Note:** Generates standard `INSERT INTO ... (columns) VALUES (values)` SQL, not MySQL's `INSERT ... SET ...`, for broad database compatibility.
+**Note:** Generates standard `INSERT INTO ... (columns) VALUES (values)` SQL, not MySQL's `INSERT ... SET ...`.
 
 ---
 
@@ -1376,9 +1377,9 @@ SqlStatement sql =
 // INSERT IGNORE INTO users (id, name) VALUES (?0, ?1)
 ```
 
-`IGNORE` downgrades the statement's errors to warnings — not only duplicate keys
-but foreign-key violations and out-of-range values, whose rows are skipped or
-coerced. On PostgreSQL and SQLite, SqlArtisan's do-nothing insert is
+What `IGNORE` turns into a warning, beyond the duplicate key, is MySQL's to
+define — see "The Effect of IGNORE on Statement Execution" in
+[Server SQL Modes](https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html). On PostgreSQL and SQLite, SqlArtisan's do-nothing insert is
 `ON CONFLICT DO NOTHING` (above); SQLite's `INSERT OR IGNORE` is not exposed.
 
 ---
@@ -1584,10 +1585,10 @@ only, Oracle from a specific release — see the
 
 ```csharp
 // WHEN MATCHED AND <cond> THEN ...   (filtered branch: PostgreSQL / SQL Server; Oracle has no AND on WHEN)
-.WhenMatched(s.Status == "active").ThenUpdateSet(t.Name == s.Name)
+.WhenMatched(s.Name.IsNotNull).ThenUpdateSet(t.Name == s.Name)
 
 // Oracle's filtered branch: WHEN MATCHED THEN UPDATE SET ... WHERE ...
-.WhenMatched().ThenUpdateSet(t.Name == s.Name).Where(s.Status == "active")
+.WhenMatched().ThenUpdateSet(t.Name == s.Name).Where(s.Name.IsNotNull)
 
 // Oracle in-clause DELETE: WHEN MATCHED THEN UPDATE SET ... DELETE WHERE ...
 .WhenMatched().ThenUpdateSet(t.Name == s.Name).DeleteWhere(t.Name.IsNull)
@@ -1597,8 +1598,8 @@ only, Oracle from a specific release — see the
 
 // PostgreSQL (from the version in the version-bound register) / SQL Server:
 // WHEN NOT MATCHED BY SOURCE THEN UPDATE/DELETE
-.WhenNotMatchedBySource().ThenUpdateSet(t.Name == "archived")
 .WhenNotMatchedBySource(t.Name.IsNull).ThenDelete()
+.WhenNotMatchedBySource().ThenUpdateSet(t.Name == "archived")
 ```
 
 On SQL Server, `Build(Dbms.SqlServer)` appends the semicolon T-SQL requires to
@@ -1611,7 +1612,7 @@ concurrent writes, see Microsoft's
 ## WITH Clause (Common Table Expressions)
 
 For a one-off CTE you don't want to declare a typed class for, use the
-`Cte` and read its columns by name with `Column(name)`:
+`Cte` class and read its columns by name with `Column(name)`:
 
 ```csharp
 UsersTable users = new("users");
@@ -1828,7 +1829,7 @@ SqlStatement sql =
 // INTO :outId, :outName
 ```
 
-With the Dapper integration, `ExecuteReturningInto` runs the statement and returns the parameter bag, so the bound output values can be read back by name after execution:
+With the Dapper integration ([`SqlArtisan.Dapper`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md)), `ExecuteReturningInto` runs the statement and returns the parameter bag, so the bound output values can be read back by name after execution:
 
 ```csharp
 DynamicParameters outputs = connection.ExecuteReturningInto(
