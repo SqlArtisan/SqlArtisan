@@ -203,9 +203,9 @@ public static partial class Sql
     /// <param name="expr2">The second grouping-extension column.</param>
     /// <param name="others">Any further grouping-extension columns.</param>
     /// <returns>An expression emitting <c>GROUPING(a, b, ...)</c>.</returns>
-    /// <remarks>MySQL (8.0+) and PostgreSQL only; Oracle accepts only the single-argument
-    /// form, and neither SQLite nor SQL Server supports it. On Oracle and SQL Server use
-    /// <see cref="GroupingId(object, object[])"/>.</remarks>
+    /// <remarks>MySQL (8.0+) and PostgreSQL only; Oracle and SQL Server accept only the
+    /// single-argument form, and SQLite has no <c>GROUPING</c>. On Oracle and SQL Server
+    /// use <see cref="GroupingId(object, object[])"/>.</remarks>
     public static SqlExpression Grouping(object expr1, object expr2, params object[] others) =>
         new GroupingFunction(ResolveVariadic(
             expr1,

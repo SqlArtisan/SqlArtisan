@@ -19,9 +19,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   usings, the SqlKata comparison stops naming another library's output, and
   `analyzer.md`'s schema section covers `SQLA0200`–`SQLA0206` under one heading
   in band order. In IntelliSense, `GroupingId`, `Greatest`, `Least`, `Ifnull`,
-  `Isnull`, `Nvl`, `Extract`, `Grouping` and `Some` no longer call another
-  construct their equivalent: `Greatest`/`Least` say only that SQLite lacks
-  them, and the others name the API that emits the other spelling.
+  `Isnull`, `Nvl`, `Extract` and `Some` no longer call another construct their
+  equivalent: `Greatest`/`Least` drop the pointer to SQLite's `MAX`/`MIN`, and
+  the others name the API that emits the other spelling. `Grouping`'s
+  multi-column form points SQL Server to `GroupingId` as well as Oracle, and
+  `CharLength` no longer names SQL Server's `LEN`, which no API emits.
   `CurrentTimestamp(precision)` no longer restates MySQL's bare-form precision.
 - `docs/expressions.md`'s Dynamic Condition section notes that C# builds
   `ConditionIf`'s condition before the call, so comparing against a value that

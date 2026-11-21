@@ -496,7 +496,7 @@ public static partial class Sql
     /// <param name="source">The string expression to measure.</param>
     /// <returns>An expression emitting <c>CHAR_LENGTH(source)</c>.</returns>
     /// <remarks>MySQL and PostgreSQL syntax. Oracle and SQLite count characters with
-    /// <see cref="Length(object)"/>; SQL Server spells it <c>LEN</c>.</remarks>
+    /// <see cref="Length(object)"/>; not available on SQL Server.</remarks>
     public static SqlExpression CharLength(object source) =>
         new CharLengthFunction(Resolve(source, nameof(source)));
 

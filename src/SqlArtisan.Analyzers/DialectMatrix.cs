@@ -125,8 +125,8 @@ internal static class DialectMatrix
         [new MatrixKey("Timestampadd")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: false, sqlite: false, sqlServer: false),
         [new MatrixKey("Timestampdiff")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: false, sqlite: false, sqlServer: false),
         // Date/Datetime/Julianday/Strftime: SQLite's date/time family (Sql.D.cs/Sql.J.cs/
-        // Sql.S.cs XML docs, #439) — STRFTIME/DATETIME/JULIANDAY have no equivalent on any
-        // other supported dialect. The 1-arg DATE(timevalue) form is split from the
+        // Sql.S.cs XML docs, #439) — STRFTIME/DATETIME/JULIANDAY exist on no other
+        // supported dialect. The 1-arg DATE(timevalue) form is split from the
         // 3+-arg SQLite modifier form because MySQL (date-part extraction) and PostgreSQL
         // (cast to date) both accept the bare 1-arg call too, per each engine's own DATE()
         // docs; the sweep case added alongside this entry live-verifies both going forward.
@@ -244,7 +244,7 @@ internal static class DialectMatrix
         // version-3.48.0), so its sqlite cell carries a Bounds row like Iif's below.
         [new MatrixKey("If")] = new DbmsSupport(mySql: true, oracle: false, postgreSql: false, sqlite: true, sqlServer: false),
         // IIF: SQL Server and SQLite (3.32+, live-verified by the dialect sweep) both
-        // spell it IIF; MySQL/Oracle/PostgreSQL have no equivalent single-call form.
+        // spell it IIF; MySQL, Oracle and PostgreSQL have no IIF (MySQL's IF is its own entry).
         [new MatrixKey("Iif")] = new DbmsSupport(mySql: false, oracle: false, postgreSql: false, sqlite: true, sqlServer: true),
         // NUMTOYMINTERVAL/NUMTODSINTERVAL: Oracle-only conversion functions (Sql.N.cs XML
         // remarks, docs/functions.md); no other engine defines either (#448).
