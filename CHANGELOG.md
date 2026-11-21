@@ -24,6 +24,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Dapper.SqlBuilder in one.
   The README and `docs/comparison.md` said only Sqlify was faster, in every
   run. (#852)
+- The README's first example filtered on a `StatusId` column the Quick Start
+  table class does not declare; it now filters on the class's own columns, so
+  the two compile together, and neither example carries an always-true
+  `id > 0` filter. Quick Start runs that same query rather than a near-copy
+  that dropped its optional filter and added an `ORDER BY`. Installation adds the
+  `SqlArtisan.TableClassGen` local-tool commands and names its `--check` drift
+  report. Configuration shows the one `.editorconfig` line that turns the
+  analyzer on, which reports nothing until a target dialect is set, and Why
+  SqlArtisan? says the analyzer ships inside the `SqlArtisan` package and flags
+  schema hazards too. The README drops Key Features, whose bullets repeated
+  Why SqlArtisan? and the Packages table; Packages moves under Getting Started,
+  and Performance follows Design Philosophy, so installation comes right after
+  the pitch. The Documentation map links each reference page's highlights
+  rather than its every section, pointing to the reference home for each
+  page's main sections, and Performance states each benchmark fact once.
+- The README, `docs/comparison.md` and the AI-assistants guide said analyzer
+  entries are verified against live engines; the sweep excludes a few by name
+  and skips some engines for a recorded reason, so each now says so and links
+  the list in `docs/analyzer.md`. The README's Prerequisites trade a usage tip
+  for the supported databases.
 
 ### Build
 - `dotnet pack` validates each of the four packages against the last published

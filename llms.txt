@@ -11,7 +11,7 @@ be rewritten across dialects.
 
 ## Docs
 
-- [Overview & Quick Start](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/README.md): Why SqlArtisan, key features, performance, packages, getting started (prerequisites, installation, quick start), configuration, design philosophy, and pointers to the docs, versioning, contributing, the changelog and the license.
+- [Overview & Quick Start](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/README.md): Why SqlArtisan, getting started (prerequisites, packages, installation, quick start), configuration (default DBMS, enabling the analyzer), design philosophy, performance, and pointers to the docs, versioning, contributing, the changelog and the license.
 - [Reference Home](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/docs/README.md): Index of the guides, the query cookbook, and every statement, expression, function and analyzer section.
 
 ## Reference
