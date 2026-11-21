@@ -275,8 +275,15 @@ which chunks it across single reviewers instead of tripling it.
 
 ## Release procedure
 
-Bumping the shipped version (e.g. `0.8.0-beta.1` → `1.0.0`) is a user decision,
-never made unprompted. Once approved, do it in one commit:
+Bumping the shipped version (e.g. `1.0.0-rc.1` → `1.0.0`) is a user decision,
+never made unprompted. 1.0.0 is released only from a candidate that meets
+`docs/versioning.md` § Release cadence. Before step 1, confirm that the
+candidate has been out seven days with no code bug reported that 1.0.0 must
+fix, that every nightly integration run since has passed (or failed for a cause
+outside the packages' code and was re-run), and that
+`git diff v<candidate> -- src ':(exclude)**/README.md'` is empty. After steps
+2–6 and before step 9, check the documentation as the release will publish it.
+Once approved, do it in one commit:
 
 1. `Directory.Build.props`: set `<VersionPrefix>`; delete `<VersionSuffix>` for
    a non-prerelease version. Set `<PackageValidationBaselineVersion>` to the
