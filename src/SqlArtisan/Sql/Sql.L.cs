@@ -139,8 +139,7 @@ public static partial class Sql
     /// </summary>
     /// <param name="expressions">The values to compare.</param>
     /// <returns>The LEAST construct.</returns>
-    /// <remarks>Not supported by SQLite — its multi-argument
-    /// <c>MIN(a, b, ...)</c> is the equivalent; SQL Server (2022+).</remarks>
+    /// <remarks>Not supported by SQLite; SQL Server (2022+).</remarks>
     public static SqlExpression Least(params object[] expressions) =>
         new LeastFunction(Resolve(expressions, nameof(expressions)));
 

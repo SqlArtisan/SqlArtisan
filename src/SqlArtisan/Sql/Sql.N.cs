@@ -150,8 +150,8 @@ public static partial class Sql
     /// <param name="expr1">The expression returned when it is not <see langword="null"/>.</param>
     /// <param name="expr2">The fallback returned when <paramref name="expr1"/> is <see langword="null"/>.</param>
     /// <returns>An <c>NVL</c> function expression.</returns>
-    /// <remarks>Oracle syntax. For the standard equivalent use
-    /// <see cref="Coalesce(object, object, object[])"/>.</remarks>
+    /// <remarks>Oracle syntax; <see cref="Coalesce(object, object, object[])"/> emits the
+    /// standard <c>COALESCE</c>.</remarks>
     public static SqlExpression Nvl(object expr1, object expr2) =>
         new NvlFunction(Resolve(expr1, nameof(expr1)), Resolve(expr2, nameof(expr2)));
 }

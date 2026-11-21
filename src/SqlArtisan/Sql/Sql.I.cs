@@ -30,8 +30,8 @@ public static partial class Sql
     /// <param name="expr">The expression returned when it is not <see langword="null"/>.</param>
     /// <param name="alt">The fallback returned when <paramref name="expr"/> is <see langword="null"/>.</param>
     /// <returns>An <c>IFNULL</c> function expression.</returns>
-    /// <remarks>MySQL/SQLite syntax. For the standard equivalent use
-    /// <see cref="Coalesce(object, object, object[])"/>.</remarks>
+    /// <remarks>MySQL/SQLite syntax; <see cref="Coalesce(object, object, object[])"/> emits
+    /// the standard <c>COALESCE</c>.</remarks>
     public static SqlExpression Ifnull(object expr, object alt) =>
         new IfnullFunction(Resolve(expr, nameof(expr)), Resolve(alt, nameof(alt)));
 
@@ -273,8 +273,8 @@ public static partial class Sql
     /// <param name="alt">The fallback returned when <paramref name="expr"/> is <see langword="null"/>.</param>
     /// <returns>An <c>ISNULL</c> function expression.</returns>
     /// <remarks>SQL Server syntax — not <see cref="SqlExpression.IsNull"/>, the
-    /// no-argument <c>expr IS NULL</c> predicate. For the standard equivalent use
-    /// <see cref="Coalesce(object, object, object[])"/>.</remarks>
+    /// no-argument <c>expr IS NULL</c> predicate. <see cref="Coalesce(object, object, object[])"/>
+    /// emits the standard <c>COALESCE</c>.</remarks>
     public static SqlExpression Isnull(object expr, object alt) =>
         new IsnullFunction(Resolve(expr, nameof(expr)), Resolve(alt, nameof(alt)));
 }

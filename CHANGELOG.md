@@ -18,9 +18,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   `docs/README.md` links `versioning.md`, the Oracle array-bind guide shows its
   usings, the SqlKata comparison stops naming another library's output, and
   `analyzer.md`'s schema section covers `SQLA0200`–`SQLA0206` under one heading
-  in band order. In IntelliSense, `GroupingId` no longer calls `Grouping`'s
-  multi-column form an equivalent, and `CurrentTimestamp(precision)` no longer
-  restates MySQL's bare-form precision.
+  in band order. In IntelliSense, `GroupingId`, `Greatest`, `Least`, `Ifnull`,
+  `Isnull`, `Nvl` and `Extract` no longer call another construct their
+  equivalent: SQLite's multi-argument `MAX`/`MIN` returns NULL for a NULL
+  argument where PostgreSQL and SQL Server's `GREATEST`/`LEAST` skip it, so
+  `Greatest`/`Least` say only that SQLite lacks them, and the others name the
+  API that emits `COALESCE` or SQL Server's `DATEPART` instead.
+  `CurrentTimestamp(precision)` no longer restates MySQL's bare-form precision.
 - `docs/expressions.md`'s Dynamic Condition section notes that C# builds
   `ConditionIf`'s condition before the call, so comparing against a value that
   may be `null` throws `ArgumentNullException` even when the flag excludes it,
