@@ -234,6 +234,17 @@ SqlStatement sql = Select(u.Name).From(u).Build();
 
 **Note:** `SqlArtisanConfig` is not thread-safe and should be configured only once at application startup.
 
+### Enabling the Analyzer
+
+The analyzer bundled in `SqlArtisan` reports nothing until you name a target dialect. Add one line to `.editorconfig`:
+
+```ini
+[*.cs]
+sqlartisan_syntax_postgresql = 16   # engine version, or `any` for no version bound
+```
+
+This is separate from `SetDefaultDbms`: that call sets the dialect `Build()` emits at run time, while the analyzer reads only `.editorconfig` or an MSBuild property at compile time. See [Enabling it](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#enabling-it) for the other dialects' keys, the MSBuild form, and checking several dialects at once.
+
 ---
 
 ## Design Philosophy

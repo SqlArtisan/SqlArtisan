@@ -18,7 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   example filters on, so the two compile together. Installation adds the
   `SqlArtisan.TableClassGen` local-tool commands, and Key Features names its
   `--check` drift report, the analyzer's schema-aware warnings and that the
-  analyzer ships inside the `SqlArtisan` package.
+  analyzer ships inside the `SqlArtisan` package. Configuration shows the one
+  `.editorconfig` line that turns the analyzer on, which reports nothing until
+  a target dialect is set.
 
 ### Build
 - `dotnet pack` validates each of the four packages against the last published
