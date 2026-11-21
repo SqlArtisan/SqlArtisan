@@ -89,8 +89,9 @@ between generation and production:
    failure mode (mixing dialects from training data).
 3. **Exact-SQL tests** — `Build()` is deterministic, so a unit test
    freezes the reviewed SQL as a regression contract.
-4. **Integration matrix** — analyzer entries are verified against live
-   engines.
+4. **Integration matrix** — analyzer entries are run against live engines,
+   apart from a few named exceptions
+   ([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)).
 
 Raw SQL strings verify nothing until the database rejects them.
 String-keyed builders type the statement's structure but leave a column typo

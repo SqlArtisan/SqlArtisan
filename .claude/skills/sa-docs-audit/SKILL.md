@@ -198,6 +198,11 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
   the test, and is mutation-probed: break the page in each way the finding
   implies and confirm the test fails. `ReadmeExampleTests` first passed with a
   stale `// SELECT` comment because it built from a copy.
+- **Check open issues before reporting.** Search them for each surviving
+  finding (`gh api -X GET search/issues -f q='repo:h-tacayama/SqlArtisan
+  is:issue is:open <terms>'`). One an open issue already tracks is reported
+  as that issue's number in one line, not re-argued; a run kept from issue
+  history re-raised the `ConditionIf` null case #859 already holds.
 - **Say what was not verified.** A claim the environment cannot check (an
   external badge's rendering, a vendor page behind a blocked host) is reported
   as unverified, and any wording written for it claims only what was checked.
@@ -213,6 +218,11 @@ The dimensions above confirm; this pass refutes. A neutral pass accepted
 adversarial pass read `MatrixSweepCatalog.cs` and found the two excluded
 entries. Run this pass — an independent-context refutation catches
 overclaims your own drafting pass cannot see past.
+
+Run this skill from the top-level session, not inside a subagent: a
+subagent cannot spawn another, so the pass below falls to the self-run
+fallback and loses the independent context it exists for — the README run
+that tested this skill's lenses ran it that way.
 
 Spawn **one** independent subagent (`sa-reviewer`) with an explicitly
 adversarial mission — "try to refute this", never "check this is right" —
