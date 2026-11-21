@@ -73,13 +73,13 @@ All the convenience, minimal overhead: an **allocation-light, fast** builder [be
 ## Key Features
 
 - **SQL-like API**: queries read like the SQL they emit.
-- **Schema IntelliSense**: table/column completion from generated table classes — no stringly-typed names.
+- **Schema IntelliSense**: table/column completion from generated table classes — no stringly-typed names. The `SqlArtisan.TableClassGen` tool's `--check` reports where those classes have drifted from the live schema.
 - **Allocation-light & fast**: pooled buffers keep it nearly as lean as a hand-written `StringBuilder` ([benchmarks](#performance)).
 - **Automatic parameterization**: literals become bind parameters, preventing SQL injection through values.
 - **Dynamic conditions**: add or drop `WHERE` parts at runtime with helpers like `ConditionIf`.
 - **Dapper integration**: optional `SqlArtisan.Dapper` adds one-call execution.
 - **Oracle array-bind execution**: optional `SqlArtisan.ArrayBind` runs SqlArtisan-built statements for thousands of rows in one round trip via ODP.NET array binding.
-- **Dialect-aware analyzer**: an opt-in Roslyn analyzer that deterministically flags constructs your target dialect does not support — the second layer of the guard-rail stack ([docs](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md)).
+- **Dialect-aware analyzer**: an opt-in Roslyn analyzer, shipped inside the `SqlArtisan` package, that deterministically flags constructs your target dialect does not support — the second layer of the guard-rail stack. With generated table classes it also flags schema hazards such as `IS NULL` on a `NOT NULL` column or a text column compared to a number ([docs](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md)).
 
 ---
 
@@ -137,6 +137,13 @@ dotnet add package SqlArtisan.Dapper --prerelease    # optional: Dapper executio
 dotnet add package SqlArtisan.ArrayBind --prerelease # optional: Oracle array-bind execution
 ```
 
+To generate table classes from an existing database, install `SqlArtisan.TableClassGen` as a local tool, pinned in the repository that holds the generated classes. Its [README](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md) covers the options and drift checks.
+
+```bash
+dotnet new tool-manifest                                  # once per repository
+dotnet tool install SqlArtisan.TableClassGen --prerelease
+```
+
 ### Quick Start
 
 1. Define your Table Class
@@ -154,11 +161,13 @@ dotnet add package SqlArtisan.ArrayBind --prerelease # optional: Oracle array-bi
             Id = new DbColumn(this, "id");
             Name = new DbColumn(this, "name");
             CreatedAt = new DbColumn(this, "created_at");
+            StatusId = new DbColumn(this, "status_id");
         }
 
         public DbColumn Id { get; }
         public DbColumn Name { get; }
         public DbColumn CreatedAt { get; }
+        public DbColumn StatusId { get; }
     }
     ```
 
@@ -253,8 +262,6 @@ NextValueFor("users_id_seq")       // SQL Server:  NEXT VALUE FOR users_id_seq
 ```
 
 So **cross-database portability is a deliberate non-goal**: target Oracle and you write Oracle SQL; target PostgreSQL and you write PostgreSQL SQL. You trade portability for fidelity — the full power of your database's SQL, never flattened to a lowest common denominator.
-
-Faithful emission is the foundation of a broader mission: SqlArtisan is a deterministic guard rail for SQL written alongside AI, where each verification layer rests on the one below. See [Why SqlArtisan?](#why-sqlartisan) for the full stack.
 
 ---
 
