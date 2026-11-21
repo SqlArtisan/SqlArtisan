@@ -62,6 +62,14 @@ with availability left to the database"). ADR cross-references belong in
 - When listing more than one DBMS, use `Dbms` enum order:
   **MySQL, Oracle, PostgreSQL, SQLite, SQL Server**.
 
+## Package order
+
+The README's Packages table and Installation commands list the packages in one
+order: `SqlArtisan`, `SqlArtisan.Dapper`, `SqlArtisan.ArrayBind`, then the
+`SqlArtisan.TableClassGen` tool. Libraries come before the tool, and the
+Oracle-only `ArrayBind` follows `Dapper`, which every engine uses: alphabetical
+order put it second, where a reader takes it for one of the essentials.
+
 ## Punctuation & formatting
 
 - Em dash: use the **spaced** form — like this — everywhere (U+2014 with one
