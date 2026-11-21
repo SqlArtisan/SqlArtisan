@@ -62,6 +62,14 @@ with availability left to the database"). ADR cross-references belong in
 - When listing more than one DBMS, use `Dbms` enum order:
   **MySQL, Oracle, PostgreSQL, SQLite, SQL Server**.
 
+## Package order
+
+The README's Packages table and Installation commands list the packages in one
+order: `SqlArtisan`, `SqlArtisan.Dapper`, `SqlArtisan.ArrayBind`, then the
+`SqlArtisan.TableClassGen` tool. Libraries come before the tool, and the
+Oracle-only `ArrayBind` follows `Dapper`, which every engine uses: alphabetical
+order put it second, where a reader takes it for one of the essentials.
+
 ## Punctuation & formatting
 
 - Em dash: use the **spaced** form — like this — everywhere (U+2014 with one
@@ -109,6 +117,14 @@ with availability left to the database"). ADR cross-references belong in
   only the emitted text, and examples it matched failed or returned other rows
   when run (#685), so run a new or changed example on an engine before writing
   it — locally, or on its integration lane for an engine not available here.
+- **A README, cookbook or guide example models a query someone would write**,
+  since a reader judges the library by it: every filter can change the result
+  (no `id > 0` on a key), and a flag names the choice it stands for rather than
+  pairing a bare status code with an "active" switch, which reads as an
+  unexplained soft-delete column. Reference pages (`query-statements.md`,
+  `expressions.md`, `functions.md`) keep minimal operands such as `u.Id < 10`:
+  an entry shows one construct, and a realistic filter beside it would only
+  hide what the construct changes.
 - **No version floor in a reference page.** A floor lives only where a test
   keeps it tied to `DialectMatrix`: `docs/analyzer.md`'s version-bound register
   and XML `<remarks>` (ADR 0020). Reference pages state which dialects support
@@ -138,11 +154,16 @@ with availability left to the database"). ADR cross-references belong in
   requires each to have a matching embedded section), while `## Optional`
   pages kept *out* of the bundle use `github.com` browse URLs (`blob`/`tree`)
   — the CHANGELOG (its history names since-removed APIs) and the ADR corpus.
-- Adding/renaming/moving a `## ` section in `docs/expressions.md` or
-  `docs/functions.md` must update `docs/README.md`'s index **and** the root
-  README capability-map row, both **in page order** — `DocsIndexTests` gates
-  missing links on both, plus order and stale anchors on the root README row
-  (#210, #340) — and usually `llms.txt` (descriptor prose, ungated).
+- Adding/renaming/moving a `## ` section in `docs/analyzer.md`,
+  `docs/cookbook.md`, `docs/expressions.md` or `docs/functions.md` must update
+  `docs/README.md`'s index, in page order — `DocsIndexTests` gates a missing
+  link (#210) — and usually `llms.txt` (descriptor prose, ungated).
+- The root README's capability map lists each page's **highlights**, not its
+  every section: the section index is `docs/README.md`'s, and mirroring two pages
+  there as well (#340) made the map the README's longest section without
+  adding a destination.
+  `DocsIndexTests` holds every anchor the root README links into a repository
+  page to a heading that page still has, so a rename that strands one fails.
 
 ## Hazard callouts
 

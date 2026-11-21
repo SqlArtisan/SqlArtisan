@@ -36,9 +36,11 @@ use; if a new example needs a new table/column, extend `SCAFFOLD` there.
 Score the docs against these. The scripts cover 2–5 and parts of 6/10.
 
 1. **Structure / information architecture.** README section order follows the
-   evaluation funnel — *discover → use → deepen → meta* (Why / Key Features /
-   Performance → Getting Started / Configuration → Design Philosophy /
-   Documentation → Contributing / Changelog / License). README is a lean
+   evaluation funnel — *discover → use → deepen → meta* (Why → Getting
+   Started / Configuration → Design Philosophy / Performance / Documentation →
+   Contributing / Changelog / License). Why carries the pitch a feature list
+   would repeat, and Performance is evidence Why links to, so a reader reaches
+   installation without passing either. README is a lean
    landing + capability map; `docs/` holds the reference. Index/TOC present and
    right-sized; file split neither too coarse nor too fine.
 
@@ -91,7 +93,7 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
 
 8. **Conciseness — no redundancy.** Section volume is proportionate (watch the
    longest, usually Quick Start). No near-duplicate sentences across sections
-   (e.g. the Why close vs a Key Features bullet) — differentiate the angle.
+   (e.g. the Why close vs the Performance lead) — differentiate the angle.
    Before flagging redundancy or an inconsistency, check whether a nearby
    note/column already reconciles it: a version gap an adjacent parenthetical
    explains is not an inconsistency, and an explanatory column that carries the
