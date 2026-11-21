@@ -16,11 +16,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   run. (#852)
 - The README's Quick Start table class declares the `StatusId` column its first
   example filters on, so the two compile together. Installation adds the
-  `SqlArtisan.TableClassGen` local-tool commands, and Key Features names its
-  `--check` drift report, the analyzer's schema-aware warnings and that the
-  analyzer ships inside the `SqlArtisan` package. Configuration shows the one
-  `.editorconfig` line that turns the analyzer on, which reports nothing until
-  a target dialect is set.
+  `SqlArtisan.TableClassGen` local-tool commands and names its `--check` drift
+  report. Configuration shows the one `.editorconfig` line that turns the
+  analyzer on, which reports nothing until a target dialect is set, and Why
+  SqlArtisan? says the analyzer ships inside the `SqlArtisan` package and flags
+  schema hazards too. The README drops Key Features, whose bullets repeated
+  Why SqlArtisan? and the Packages table; Packages moves under Getting Started,
+  and Performance follows Design Philosophy, so installation comes right after
+  the pitch.
 
 ### Build
 - `dotnet pack` validates each of the four packages against the last published
