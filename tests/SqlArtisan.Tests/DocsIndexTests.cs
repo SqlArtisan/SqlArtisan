@@ -21,15 +21,6 @@ public class DocsIndexTests
         "docs/functions.md",
     ];
 
-    // Pages whose root-README capability-map row mirrors the full `## ` section
-    // list (#340). The query-statements, cookbook, and analyzer rows deliberately
-    // curate a subset (grouped subsections / highlights), so they stay manual.
-    private static readonly string[] s_capabilityMapMirroredPages =
-    [
-        "docs/expressions.md",
-        "docs/functions.md",
-    ];
-
     [Fact]
     public void DocsReadme_EveryReferenceSection_IsLinked()
     {
@@ -64,58 +55,30 @@ public class DocsIndexTests
         }
     }
 
-    // The root README's capability map ships to nuget.org and drifted the same
-    // way docs/README.md used to (#210), so its full-mirror rows get the same
-    // mechanical gate: every section linked, in page order, no stale anchors.
+    // The root README's capability map curates highlights and leaves the full index to
+    // docs/README.md (#340 had mirrored two pages there), so what it must hold is that
+    // every anchor it links into a repository page names a heading that page still has.
     [Fact]
-    public void ReadmeCapabilityMap_MirroredPages_LinkEverySectionInOrder()
+    public void ReadmeRepositoryLinks_EveryAnchor_NamesAHeading()
     {
         string root = FindRepoRoot();
         string readme = File.ReadAllText(Path.Combine(root, "README.md"));
+        MatchCollection links = Regex.Matches(
+            readme,
+            @"https://github\.com/h-tacayama/SqlArtisan/blob/main/"
+                + @"(?<path>[\w./-]+\.md)#(?<anchor>[\w-]+)");
 
-        foreach (string page in s_capabilityMapMirroredPages)
+        Assert.NotEmpty(links);
+
+        foreach (Match link in links)
         {
-            string[] lines = File.ReadAllLines(Path.Combine(root, page));
-            string fileName = Path.GetFileName(page);
-            List<string> anchors = [];
+            string path = link.Groups["path"].Value;
+            HashSet<string> anchors = HeadingAnchors(Path.Combine(root, path));
 
-            foreach (string line in lines)
-            {
-                if (!line.StartsWith("## ", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                string heading = line[3..].Trim();
-
-                if (heading != "Contents")
-                {
-                    anchors.Add($"{fileName}#{ToGitHubAnchor(heading)}");
-                }
-            }
-
-            int position = -1;
-
-            foreach (string anchor in anchors)
-            {
-                int found = readme.IndexOf(anchor, StringComparison.Ordinal);
-
-                Assert.True(
-                    found >= 0,
-                    $"README.md's capability map has no link to {anchor} — add it in page order.");
-                Assert.True(
-                    found > position,
-                    $"README.md's capability map lists {anchor} out of page order.");
-                position = found;
-            }
-
-            foreach (Match link in Regex.Matches(readme, $@"{Regex.Escape(fileName)}#([a-z0-9-]+)"))
-            {
-                Assert.True(
-                    anchors.Contains(link.Value),
-                    $"README.md links {link.Value}, which is not a `## ` section of {page} — "
-                        + "fix or remove the stale anchor.");
-            }
+            Assert.True(
+                anchors.Contains(link.Groups["anchor"].Value),
+                $"README.md links {path}#{link.Groups["anchor"].Value}, which names no heading "
+                    + "there — fix or remove the stale anchor.");
         }
     }
 
@@ -169,6 +132,39 @@ public class DocsIndexTests
 
         Assert.NotNull(dir);
         return dir.FullName;
+    }
+
+    // GitHub suffixes a repeated slug with -1, -2, …; headings inside code fences are text.
+    private static HashSet<string> HeadingAnchors(string file)
+    {
+        HashSet<string> anchors = [];
+        bool inFence = false;
+
+        foreach (string line in File.ReadLines(file))
+        {
+            if (line.TrimStart().StartsWith("```", StringComparison.Ordinal))
+            {
+                inFence = !inFence;
+                continue;
+            }
+
+            Match heading = Regex.Match(line, "^#{1,6} (.+)$");
+
+            if (inFence || !heading.Success)
+            {
+                continue;
+            }
+
+            string slug = ToGitHubAnchor(heading.Groups[1].Value.Trim());
+            string anchor = slug;
+
+            for (int n = 1; !anchors.Add(anchor); n++)
+            {
+                anchor = $"{slug}-{n}";
+            }
+        }
+
+        return anchors;
     }
 
     // GitHub's heading-to-anchor slug: lowercase, drop everything that is not a

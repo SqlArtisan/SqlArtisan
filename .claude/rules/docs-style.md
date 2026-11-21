@@ -138,11 +138,16 @@ with availability left to the database"). ADR cross-references belong in
   requires each to have a matching embedded section), while `## Optional`
   pages kept *out* of the bundle use `github.com` browse URLs (`blob`/`tree`)
   — the CHANGELOG (its history names since-removed APIs) and the ADR corpus.
-- Adding/renaming/moving a `## ` section in `docs/expressions.md` or
-  `docs/functions.md` must update `docs/README.md`'s index **and** the root
-  README capability-map row, both **in page order** — `DocsIndexTests` gates
-  missing links on both, plus order and stale anchors on the root README row
-  (#210, #340) — and usually `llms.txt` (descriptor prose, ungated).
+- Adding/renaming/moving a `## ` section in `docs/analyzer.md`,
+  `docs/cookbook.md`, `docs/expressions.md` or `docs/functions.md` must update
+  `docs/README.md`'s index, in page order — `DocsIndexTests` gates a missing
+  link (#210) — and usually `llms.txt` (descriptor prose, ungated).
+- The root README's capability map lists each page's **highlights**, not its
+  every section: the full index is `docs/README.md`'s, and mirroring two pages
+  there as well (#340) made the map the README's longest section without
+  adding a destination.
+  `DocsIndexTests` holds every anchor the root README links into a repository
+  page to a heading that page still has, so a rename that strands one fails.
 
 ## Hazard callouts
 

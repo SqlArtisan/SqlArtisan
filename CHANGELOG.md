@@ -23,7 +23,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   schema hazards too. The README drops Key Features, whose bullets repeated
   Why SqlArtisan? and the Packages table; Packages moves under Getting Started,
   and Performance follows Design Philosophy, so installation comes right after
-  the pitch.
+  the pitch. The Documentation map links each reference page's highlights
+  rather than its every section, pointing to the reference home for the full
+  index, and Performance states each benchmark fact once.
 
 ### Build
 - `dotnet pack` validates each of the four packages against the last published
