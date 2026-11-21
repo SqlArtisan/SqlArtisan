@@ -64,22 +64,22 @@ public class ReadmeExampleTests
     [Fact]
     public void ReadmeWhyExample_CorrectSql()
     {
-        bool onlyActive = true;
+        bool filterByDate = true;
         UsersTable u = new();
 
         SqlStatement sql =
             Select(u.Id, u.Name, u.CreatedAt)
             .From(u)
-            .Where(u.Id > 0 & u.Name.Like("A%") & ConditionIf(onlyActive, u.StatusId == 1))
+            .Where(
+                u.Name.Like("A%")
+                & ConditionIf(filterByDate, u.CreatedAt >= new DateTime(2026, 1, 1)))
             .Build();
 
         Assert.Equal(
-            "SELECT id, name, created_at FROM users "
-                + "WHERE (id > :0) AND (name LIKE :1) AND (status_id = :2)",
+            "SELECT id, name, created_at FROM users WHERE (name LIKE :0) AND (created_at >= :1)",
             sql.Text);
-        Assert.Equal(0, sql.Parameters.Get<int>(":0"));
-        Assert.Equal("A%", sql.Parameters.Get<string>(":1"));
-        Assert.Equal(1, sql.Parameters.Get<int>(":2"));
+        Assert.Equal("A%", sql.Parameters.Get<string>(":0"));
+        Assert.Equal(new DateTime(2026, 1, 1), sql.Parameters.Get<DateTime>(":1"));
         Assert.Contains($"// {sql.Text}\n", ReadReadme(), StringComparison.Ordinal);
     }
 
@@ -110,7 +110,6 @@ public class ReadmeExampleTests
             Id = new DbColumn(this, "id");
             Name = new DbColumn(this, "name");
             CreatedAt = new DbColumn(this, "created_at");
-            StatusId = new DbColumn(this, "status_id");
         }
 
         public DbColumn Id { get; }
@@ -118,7 +117,5 @@ public class ReadmeExampleTests
         public DbColumn Name { get; }
 
         public DbColumn CreatedAt { get; }
-
-        public DbColumn StatusId { get; }
     }
 }

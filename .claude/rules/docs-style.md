@@ -117,6 +117,10 @@ order put it second, where a reader takes it for one of the essentials.
   only the emitted text, and examples it matched failed or returned other rows
   when run (#685), so run a new or changed example on an engine before writing
   it — locally, or on its integration lane for an engine not available here.
+- **An example models a query someone would write**, since a reader judges the
+  library by it: every filter can change the result (no `id > 0` on a key), and
+  a flag names the choice it stands for rather than pairing a bare status code
+  with an "active" switch, which reads as an unexplained soft-delete column.
 - **No version floor in a reference page.** A floor lives only where a test
   keeps it tied to `DialectMatrix`: `docs/analyzer.md`'s version-bound register
   and XML `<remarks>` (ADR 0020). Reference pages state which dialects support

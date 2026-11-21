@@ -38,16 +38,18 @@ When an AI coding assistant writes your SQL, a new failure mode appears: plausib
 4. **Integration matrix** — analyzer entries are verified against live engines.
 
 ```csharp
-bool onlyActive = true;
+bool filterByDate = true; // e.g. a search-form checkbox
 UsersTable u = new();
 
 SqlStatement sql =
     Select(u.Id, u.Name, u.CreatedAt)
     .From(u)
-    .Where(u.Id > 0 & u.Name.Like("A%") & ConditionIf(onlyActive, u.StatusId == 1))
+    .Where(
+        u.Name.Like("A%")
+        & ConditionIf(filterByDate, u.CreatedAt >= new DateTime(2026, 1, 1)))
     .Build();
 
-// SELECT id, name, created_at FROM users WHERE (id > :0) AND (name LIKE :1) AND (status_id = :2)
+// SELECT id, name, created_at FROM users WHERE (name LIKE :0) AND (created_at >= :1)
 ```
 
 Building a statement costs little — see [Performance](#performance).
@@ -118,13 +120,11 @@ dotnet tool install SqlArtisan.TableClassGen --prerelease
             Id = new DbColumn(this, "id");
             Name = new DbColumn(this, "name");
             CreatedAt = new DbColumn(this, "created_at");
-            StatusId = new DbColumn(this, "status_id");
         }
 
         public DbColumn Id { get; }
         public DbColumn Name { get; }
         public DbColumn CreatedAt { get; }
-        public DbColumn StatusId { get; }
     }
     ```
 
@@ -156,7 +156,7 @@ dotnet tool install SqlArtisan.TableClassGen --prerelease
     ISqlBuilder sql =
         Select(u.Id, u.Name, u.CreatedAt)
         .From(u)
-        .Where(u.Id > 0 & u.Name.Like("A%"))
+        .Where(u.Name.Like("A%"))
         .OrderBy(u.Id);
 
     // Dapper: Set true to map snake_case columns to PascalCase/camelCase C# members.

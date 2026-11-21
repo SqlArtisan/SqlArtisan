@@ -14,8 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Dapper.SqlBuilder in one.
   The README and `docs/comparison.md` said only Sqlify was faster, in every
   run. (#852)
-- The README's Quick Start table class declares the `StatusId` column its first
-  example filters on, so the two compile together. Installation adds the
+- The README's first example filtered on a `StatusId` column the Quick Start
+  table class does not declare; it now filters on the class's own columns, so
+  the two compile together, and neither example carries an always-true
+  `id > 0` filter. Installation adds the
   `SqlArtisan.TableClassGen` local-tool commands and names its `--check` drift
   report. Configuration shows the one `.editorconfig` line that turns the
   analyzer on, which reports nothing until a target dialect is set, and Why
