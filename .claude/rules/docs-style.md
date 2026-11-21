@@ -159,7 +159,7 @@ order put it second, where a reader takes it for one of the essentials.
   `docs/README.md`'s index, in page order — `DocsIndexTests` gates a missing
   link (#210) — and usually `llms.txt` (descriptor prose, ungated).
 - The root README's capability map lists each page's **highlights**, not its
-  every section: the full index is `docs/README.md`'s, and mirroring two pages
+  every section: the section index is `docs/README.md`'s, and mirroring two pages
   there as well (#340) made the map the README's longest section without
   adding a destination.
   `DocsIndexTests` holds every anchor the root README links into a repository

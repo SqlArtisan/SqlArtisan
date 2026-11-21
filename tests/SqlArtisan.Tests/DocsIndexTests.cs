@@ -55,7 +55,7 @@ public class DocsIndexTests
         }
     }
 
-    // The root README's capability map curates highlights and leaves the full index to
+    // The root README's capability map curates highlights and leaves the section index to
     // docs/README.md (#340 had mirrored two pages there), so what it must hold is that
     // every anchor it links into a repository page names a heading that page still has.
     [Fact]

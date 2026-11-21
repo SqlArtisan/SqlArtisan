@@ -250,7 +250,7 @@ The lightweight builders allocate the same bytes every run; times do not repeat.
 
 ## Documentation
 
-Each example shows the C# you write and the SQL it produces, for **MySQL, Oracle, PostgreSQL, SQLite, and SQL Server**; signatures and emitted SQL are also visible inline via IntelliSense. The highlights below link into the reference; the [reference home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md) indexes every section of every page.
+Each example shows the C# you write and the SQL it produces, for **MySQL, Oracle, PostgreSQL, SQLite, and SQL Server**; signatures and emitted SQL are also visible inline via IntelliSense. The highlights below link into the reference; the [reference home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md) lists every page with its main sections.
 
 | Reference | Covers |
 |---|---|
