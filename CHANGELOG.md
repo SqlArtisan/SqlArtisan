@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [1.0.0-rc.2] - 2026-11-22
 ### Docs
 - A `sa-docs-audit` pass over `docs/` corrected the reference pages where they
   misled. The negative-offset warning shows `OffsetRows(...)` beside
