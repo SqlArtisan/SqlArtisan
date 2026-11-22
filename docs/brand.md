@@ -143,8 +143,11 @@ Derived from the pillars and personality above; each rule names its source.
 - **Legible small.** Readable at 32 px (IDE package lists) and recognizable at
   64 px (nuget.org search), on light and dark backgrounds alike. A detail
   that disappears at 32 px is cut. *(Touchpoints)*
-- **Type.** A geometric sans for the wordmark (Inter Display ExtraBold,
-  outlined in the logo files); monospace only where code is shown.
+- **Type.** Plus Jakarta Sans for the wordmark (ExtraBold) and secondary
+  text (SemiBold), outlined in the logo files; monospace only where code is
+  shown. It is modern and slightly soft without another product's look; Inter,
+  the default of most developer tools, reads as a template the way a stock
+  framework color does. Both faces are under the SIL Open Font License.
 - **Avoid.** The look of other products' marks, the .NET brand's own colors
   as the primary color, and stock database clip art.
 
@@ -192,7 +195,7 @@ than the traditional 漆黒, whose violet cast tints the frame.
 |---|---|
 | `icon.svg` | The source of every other file |
 | `icon.png` | 128 px, packed as every NuGet package's icon |
-| `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds |
+| `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds: the capitals stand 52% of the icon's height, a quarter of it apart |
 | `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
 
 **Rules.** The pen and asterisk fill about 70% of the frame, the asterisk
