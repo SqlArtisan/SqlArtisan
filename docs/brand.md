@@ -205,13 +205,17 @@ so no viewer needs the font.
 | Element | Value |
 |---|---|
 | Frame | 512 grid, corner radius 104, a 10-unit edge inside the square |
-| Pen | 45°; its bounding box fills 69% of the frame, centered |
+| Pen | 45°; its bounding box is 69% of the frame; its area centroid sits on the frame's center |
 | Pen body | A cylinder of radius 120 (lid ellipse 120 × 32) holding three 44-unit disks, divided by 13-unit black arcs; each disk's light has radius 11, at 55% of the radius to the right |
 | Lockup | The wordmark's capitals stand 52% of the icon's height, a quarter of that height from it |
 | Social preview | 1280 × 640; the pen 330 units wide; wordmark capitals 84, tagline capitals 34 |
 
 The pen fills 69% rather than more because it is a solid mass: a heavy mark
 needs more clear space than a line mark of the same size to look the same size.
+It is centered on its area centroid, not its bounding box. At 45° the point
+reaches the box's bottom-left corner while the round lid leaves the top-right
+one empty, so the box's center sits off the mark's mass and the top-right
+reads as a gap; the centroid balances the mark the way the eye weighs it.
 
 **Files** (`assets/`):
 
