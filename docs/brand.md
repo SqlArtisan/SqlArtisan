@@ -206,7 +206,7 @@ so no viewer needs the font.
 |---|---|
 | Frame | 512 grid, corner radius 104, a 10-unit edge inside the square |
 | Pen | 45°; its bounding box is 69% of the frame; its area centroid sits on the frame's center |
-| Pen body | A cylinder of radius 120 (lid ellipse 120 × 32) holding three 44-unit disks, divided by 13-unit black arcs; each disk's light has radius 11, at 55% of the radius to the right |
+| Pen body | A cylinder of radius 120 (lid ellipse 120 × 32) holding three 44-unit disks, divided by 13-unit black grooves — each the band between two parallel arcs, so its ends stand on the cylinder's sides as it turns out of sight; each disk's light has radius 11, at 55% of the radius to the right |
 | Lockup | The wordmark's capitals stand 52% of the icon's height, a quarter of that height from it |
 | Social preview | 1280 × 640; the pen 330 units wide; wordmark capitals 84, tagline capitals 34 |
 
