@@ -9,18 +9,23 @@
     <Copyright>Copyright (c) h.tacayama 2025</Copyright>
 
     <Authors>h.tacayama</Authors>
-    <Description>Dapper integration for SqlArtisan. Enables effortless execution of your SqlArtisan queries.</Description>
-    <PackageTags>database sql sqlbuilder query querybuilder mysql oracle postgresql sqlite sqlserver dapper</PackageTags>
+    <Description>Dapper integration for SqlArtisan: IDbConnection extensions that build a SqlArtisan statement for the connection's dialect and run it through Dapper's Query and Execute verbs.</Description>
+    <PackageTags>database sql sqlbuilder querybuilder dapper sqlmapper mysql oracle postgresql sqlite sqlserver</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 
     <PackageProjectUrl>https://github.com/h-tacayama/SqlArtisan</PackageProjectUrl>
     <RepositoryUrl>https://github.com/h-tacayama/SqlArtisan</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\..\README.md" Link="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\assets\icon.png" Link="icon.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>

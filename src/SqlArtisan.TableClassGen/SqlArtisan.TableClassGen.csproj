@@ -12,13 +12,14 @@
 
     <Authors>h.tacayama</Authors>
     <Description>Generate C# table classes from your database for SqlArtisan, enabling robust type safety and IntelliSense in your query building.</Description>
-    <PackageTags>database sql sqlbuilder query querybuilder mysql oracle postgresql sqlite sqlserver dapper</PackageTags>
+    <PackageTags>database sql codegen scaffolding schema dotnet-tool mysql oracle postgresql sqlite sqlserver</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 
     <PackageProjectUrl>https://github.com/h-tacayama/SqlArtisan</PackageProjectUrl>
     <RepositoryUrl>https://github.com/h-tacayama/SqlArtisan</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
 
     <PackAsTool>True</PackAsTool>
     <ToolCommandName>sa-tableclassgen</ToolCommandName>
@@ -54,6 +55,10 @@
 
   <ItemGroup>
     <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\assets\icon.png" Link="icon.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
