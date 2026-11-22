@@ -130,13 +130,15 @@ Derived from the pillars and personality above; each rule names its source.
   name sits beside the mark wherever it is shown small). A database cylinder
   alone is generic and says neither half. *(Name)*
 - **Few, exact shapes.** Clean geometry, crisp edges, no 3D, gloss or texture
-  that hides the form. *(Personality: honest — nothing hidden)*
+  that hides the form. The one allowance is the frame's: a faint top-to-bottom
+  shade and a light edge, so a dark square keeps its outline on a dark page.
+  *(Personality: honest — nothing hidden)*
 - **A solid footing with one element in motion.** A heavy, stable mass (thick
   strokes, a squared base) carries robustness; one element set at an angle or
   mid-stroke carries nimbleness. *(Personality: robust × nimble)*
-- **A deep base with one bright accent.** A deep, saturated base (ink navy or
-  deep teal) for the solid footing, and a single bright warm accent (amber or
-  copper) for the moving element. One accent, not a palette.
+- **A deep base with one bright accent.** A deep base for the solid footing,
+  and a single bright warm accent for the moving element. One accent, not a
+  palette, and not a stock framework color: those read as a template.
   *(Personality: robust × nimble)*
 - **Legible small.** Readable at 32 px (IDE package lists) and recognizable at
   64 px (nuget.org search), on light and dark backgrounds alike. A detail
@@ -148,24 +150,41 @@ Derived from the pillars and personality above; each rule names its source.
 
 ## The mark
 
-A database cylinder sharpened into a fountain-pen nib, held at 45°, with the
-asterisk it has just written ahead of its tip. Each part reads as one idea:
+A fountain-pen nib cut from a database cylinder, held at 45°, with the
+asterisk it has just written ahead of its tip.
 
 | Part | Reads as |
 |---|---|
-| The white lid and the two bands | the database |
-| The nib's point, slit and breather hole | writing it by hand — the craft |
+| The pen's body: the lid and the two bands | the database the pen is cut from |
+| The nib's point, slit and breather hole | writing by hand — the craft |
 | The `*` ahead of the tip | SQL (`SELECT *`), the thing written |
+
+The pen is shaped by the database because the library is: TableClassGen
+generates the table classes from the live schema, and the analyzer checks
+queries against what it records. So the mark reads as *SQL written with a tool
+cut to your database's shape*.
+
+The nib is gold because working fountain-pen nibs are. A gold nib does not
+corrode in ink and flexes under the hand, so it lasts and writes smoothly —
+the robust and nimble traits in one material, and what it writes stays as
+written. The gold-on-black pairing also follows maki-e, gold drawn by hand
+onto black lacquer. The gold is the material of a working nib, not ornament,
+and the story is told that way.
 
 It carries no letters, so it has to be learned; until it is, it appears with
 the wordmark wherever the name is not already beside it.
 
 | Color | Hex | Used for |
 |---|---|---|
-| Navy | `#12263F` | The base: background and the nib's cut lines |
-| Amber | `#F59E0B` | The tool — the one accent |
-| White | `#F8FAFC` | The lid and the ink |
-| Muted | `#9FB0C6` | Secondary text on navy |
+| Gold (黄金) | `#E6B422` | The pen — the one accent |
+| Gofun white (胡粉色) | `#FFFFFC` | The lid and the asterisk |
+| Lacquer black | `#0E0E10` | The nib's cut lines; the frame shades from `#26262B` at the top to `#0B0B0D` |
+| Edge | `#3A3A40` | The frame's outline, so the square holds on dark pages |
+| Muted | `#A1A1AA` | Secondary text on black |
+
+Gold and gofun white are commonly cited values for the traditional Japanese
+colors of those names; references differ slightly. The black is neutral rather
+than the traditional 漆黒, whose violet cast tints the frame.
 
 **Files** (`assets/`):
 
@@ -176,10 +195,12 @@ the wordmark wherever the name is not already beside it.
 | `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds |
 | `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
 
-**Rules.** The asterisk stays clear of the tip: touching, it reads as hanging
-from the nib, and placed on the nib face it reads as something else entirely.
-The 45° angle is the mark's one moving element, so it is not straightened. The
-colors are not swapped or recolored, and the mark is not shown below 32 px.
+**Rules.** The pen and asterisk fill about 70% of the frame, the asterisk
+large enough to stay an asterisk at 32 px. The asterisk stays clear of the tip:
+touching, it reads as hanging from the nib, and placed on the nib face it reads
+as something else entirely. The 45° angle is the mark's one moving element, so
+it is not straightened. The colors are not swapped or recolored, and the mark
+is not shown below 32 px.
 
 ## Touchpoints
 
