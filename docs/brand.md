@@ -125,10 +125,10 @@ package ID and the namespace.
 
 Derived from the pillars and personality above; each rule names its source.
 
-- **Concept: a craftsman's tool meeting SQL.** The mark shows *Artisan* (a
-  hand tool) acting on *SQL* (a database or a code token, never letters: the
-  name sits beside the mark wherever it is shown small). A database cylinder
-  alone is generic and says neither half. *(Name)*
+- **Concept: a craftsman's tool made of the database.** The mark shows
+  *Artisan* (a hand tool) and the database it writes for as one shape, with no
+  letters or code glyph: the name sits beside the mark wherever it is shown
+  small. A database cylinder alone is generic and says neither half. *(Name)*
 - **Few, exact shapes.** Clean geometry, crisp edges, no 3D, gloss or texture
   that hides the form. The one allowance is the frame's: a faint top-to-bottom
   shade and a light edge, so a dark square keeps its outline on a dark page.
@@ -153,35 +153,40 @@ Derived from the pillars and personality above; each rule names its source.
 
 ## The mark
 
-A fountain-pen nib cut from a database cylinder, held at 45°, with the
-asterisk it has just written ahead of its tip.
+A fountain-pen nib cut from a database cylinder, held at 45°.
 
 | Part | Reads as |
 |---|---|
-| The pen's body: the lid and the two bands | the database the pen is cut from |
+| The white lid, three stacked disks and a white light on each | the database, drawn as the common database icon draws it |
 | The nib's point, slit and breather hole | writing by hand — the craft |
-| The `*` ahead of the tip | SQL (`SELECT *`), the thing written |
 
-The pen is shaped by the database because the library is: TableClassGen
-generates the table classes from the live schema, and the analyzer checks
-queries against what it records. So the mark reads as *SQL written with a tool
-cut to your database's shape*.
+**Why the pen is the database.** The library is shaped by the database it
+writes for: TableClassGen generates the table classes from the live schema, and
+the analyzer checks queries against what they record. So the mark reads as a
+tool cut to your database's shape.
 
-The nib is gold because working fountain-pen nibs are. A gold nib does not
-corrode in ink and flexes under the hand, so it lasts and writes smoothly —
-the robust and nimble traits in one material, and what it writes stays as
-written. The gold-on-black pairing also follows maki-e, gold drawn by hand
-onto black lacquer. The gold is the material of a working nib, not ornament,
-and the story is told that way.
+**Why gold.** Working fountain-pen nibs are gold: a gold nib does not corrode
+in ink and flexes under the hand, so it lasts and writes smoothly — the robust
+and nimble traits in one material — and what it writes stays as written.
+Gold on black also follows maki-e, gold drawn by hand onto black lacquer. The
+gold is the material of a working nib, not ornament, and the story is told
+that way.
 
-It carries no letters, so it has to be learned; until it is, it appears with
-the wordmark wherever the name is not already beside it.
+**Why no glyph.** An asterisk read as `SELECT *`, the wildcard at odds with
+a type-safe library's named columns, and is close to the spark several AI
+products use; a semicolon read as punctuation; the letters `SQL` vanished below
+64 px. The database's shape carries *SQL*, and the name beside the mark carries
+the rest. The mark has to be learned; until it is, it appears with the
+wordmark wherever the name is not already beside it.
+
+### Colors
 
 | Color | Hex | Used for |
 |---|---|---|
 | Gold (黄金) | `#E6B422` | The pen — the one accent |
-| Gofun white (胡粉色) | `#FFFFFC` | The lid and the asterisk |
-| Lacquer black | `#0E0E10` | The nib's cut lines; the frame shades from `#26262B` at the top to `#0B0B0D` |
+| Gofun white (胡粉色) | `#FFFFFC` | The lid, the disks' lights, the wordmark on dark |
+| Lacquer black | `#0E0E10` | The nib's cut lines and the wordmark on light |
+| Frame shade | `#26262B` → `#0B0B0D` | The frame, top to bottom |
 | Edge | `#3A3A40` | The frame's outline, so the square holds on dark pages |
 | Muted | `#A1A1AA` | Secondary text on black |
 
@@ -189,21 +194,38 @@ Gold and gofun white are commonly cited values for the traditional Japanese
 colors of those names; references differ slightly. The black is neutral rather
 than the traditional 漆黒, whose violet cast tints the frame.
 
+### Type
+
+Plus Jakarta Sans, under the SIL Open Font License: ExtraBold for the
+wordmark, SemiBold for secondary text, kerned and outlined in the asset files
+so no viewer needs the font.
+
+### Proportions
+
+| Element | Value |
+|---|---|
+| Frame | 512 grid, corner radius 104, a 10-unit edge inside the square |
+| Pen | 45°; its bounding box fills 69% of the frame, centered |
+| Pen body | A cylinder of radius 120 (lid ellipse 120 × 32) holding three 44-unit disks, divided by 13-unit black arcs; each disk's light has radius 11, at 55% of the radius to the right |
+| Lockup | The wordmark's capitals stand 52% of the icon's height, a quarter of that height from it |
+| Social preview | 1280 × 640; the pen 330 units wide; wordmark capitals 84, tagline capitals 34 |
+
+The pen fills 69% rather than more because it is a solid mass: a heavy mark
+needs more clear space than a line mark of the same size to look the same size.
+
 **Files** (`assets/`):
 
 | File | Use |
 |---|---|
-| `icon.svg` | The source of every other file |
+| `icon.svg` | The source of the mark; every other file embeds it |
 | `icon.png` | 128 px, packed as every NuGet package's icon |
-| `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds: the capitals stand 52% of the icon's height, a quarter of it apart |
-| `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
+| `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds |
+| `social-preview.svg`, `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
 
-**Rules.** The pen and asterisk fill about 70% of the frame, the asterisk
-large enough to stay an asterisk at 32 px. The asterisk stays clear of the tip:
-touching, it reads as hanging from the nib, and placed on the nib face it reads
-as something else entirely. The 45° angle is the mark's one moving element, so
-it is not straightened. The colors are not swapped or recolored, and the mark
-is not shown below 32 px.
+**Rules.** The 45° angle is the mark's one moving element, so it is not
+straightened: upright, the nib's outline reads as a shield. The colors are not
+swapped or recolored, and the mark is not shown below 32 px, where the disks'
+lights disappear but the stacked disks still read.
 
 ## Touchpoints
 
