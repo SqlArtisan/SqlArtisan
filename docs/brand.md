@@ -1,8 +1,9 @@
 # SqlArtisan Brand Brief (Draft)
 
-**Status:** Draft, under discussion. Not a reference page: it is not linked from
-the reference home or `llms.txt`, and nothing here is a promise to users until
-it reaches the surfaces listed under [Touchpoints](#touchpoints).
+**Status:** Draft; audience order, pillars and personality agreed. Not a
+reference page: it is not linked from the reference home or `llms.txt`, and
+nothing here is a promise to users until it reaches the surfaces listed under
+[Touchpoints](#touchpoints).
 
 This page is the single source the name, the words and the visuals are derived
 from. A visual or verbal choice is settled only when it can be traced back to a
@@ -18,7 +19,6 @@ line here; one that cannot is taste, and taste is what this page replaces.
 - [Name and tagline](#name-and-tagline)
 - [Visual direction](#visual-direction)
 - [Touchpoints](#touchpoints)
-- [Open questions](#open-questions)
 
 ---
 
@@ -37,7 +37,9 @@ room for one.
    story.
 3. **Oracle shops.** Japanese enterprise systems in particular — an
    unmeasured hypothesis. Array bind (one round trip per batch) and live
-   verification on two Oracle versions are the hook.
+   verification on two Oracle versions are the hook. Named here and in
+   Japanese-language articles, never on the README or a package description:
+   there it would read as narrowing a five-engine library.
 
 **Not the audience**, stated so no message courts them: teams that need one
 query to run unchanged on several engines, want change tracking and
@@ -74,20 +76,18 @@ one of them.
 
 ## Personality
 
-If SqlArtisan were a person, it would be a craftsman: one who shows you the
-material, tells you plainly what the tool will and will not do, and takes
-pride in exact work. In archetype terms it is the **Creator** (the maker,
-the craftsman), not the Magician (transformation you cannot see) or the
-Everyman (one size for all).
+Three traits, one per pillar, so the character and the promise share a
+structure: a trait no pillar backs would be a claim without proof.
 
-| It is | It is not |
-|---|---|
-| **Precise** — exact, measured, specific | pedantic or fussy |
-| **Honest** — says what it does not do, and why | apologetic, or blunt for show |
-| **Crafted** — deliberate, finished, made with care | ornate or decorative |
+| It is | It is not | Pillar |
+|---|---|---|
+| **Honest** — shows the SQL it runs, and says what it does not do | apologetic, or blunt for show | Faithful |
+| **Robust** — holds under load and under mistakes; fails at build time, not in production | heavy or rigid | Verified |
+| **Nimble** — light to adopt and cheap to run | flimsy or casual | Lean |
 
-The tension between *precise* (cool, technical) and *crafted* (warm, human) is
-the brand's character; the visuals carry both.
+The tension between *robust* (solid, load-bearing) and *nimble* (light, quick)
+is the brand's character; the visuals carry both. Craft is not a trait here:
+the name carries it, so the mark draws its craftsman's tool from the name.
 
 ## Voice
 
@@ -127,14 +127,16 @@ Derived from the pillars and personality above; each rule names its source.
 - **Concept: a craftsman's tool meeting SQL.** The mark shows *Artisan* (a
   hand tool — chisel, pen nib) acting on *SQL* (the letters, or a code
   token). A database cylinder alone is generic and says neither half.
-  *(Name, Personality: crafted)*
+  *(Name)*
 - **Few, exact shapes.** Clean geometry, crisp edges, no 3D, gloss or texture
-  that hides the form. *(Personality: precise; Pillar: faithful — nothing
-  hidden)*
-- **A cool base with one warm accent.** A deep technical base (ink navy or
-  deep teal) for precision, and a single warm material accent (amber, copper,
-  wood) for craft. One accent, not a palette. *(Personality: precise ×
-  crafted)*
+  that hides the form. *(Personality: honest — nothing hidden)*
+- **A solid footing with one element in motion.** A heavy, stable mass (thick
+  strokes, a squared base) carries robustness; one element set at an angle or
+  mid-stroke carries nimbleness. *(Personality: robust × nimble)*
+- **A deep base with one bright accent.** A deep, saturated base (ink navy or
+  deep teal) for the solid footing, and a single bright warm accent (amber or
+  copper) for the moving element. One accent, not a palette.
+  *(Personality: robust × nimble)*
 - **Legible small.** Readable at 32 px (IDE package lists) and recognizable at
   64 px (nuget.org search), on light and dark backgrounds alike. A detail
   that disappears at 32 px is cut. *(Touchpoints)*
@@ -157,16 +159,3 @@ Where the brand is applied, and the gaps found while drafting this page.
 
 NuGet metadata ships only with a new package version, and any change under
 `src/` requires a new release candidate before 1.0.0.
-
-## Open questions
-
-1. **Audience order.** Is the AI-assistant audience second (growth story) or
-   first (mission)? It decides whether the README and the launch lead with
-   *Write SQL, in C#* or with the guard rail.
-2. **Is *Lean* a pillar?** Performance is real and measured, but it is a
-   reason to stay more than a reason to come; it could move to a supporting
-   line under *Faithful*.
-3. **Oracle as a named audience.** Naming it sharpens the Japanese-market
-   story; it may also read as narrowing a five-engine library.
-4. **The personality adjectives.** *Precise, honest, crafted* fixes the visual
-   direction above; a different three changes the icon.
