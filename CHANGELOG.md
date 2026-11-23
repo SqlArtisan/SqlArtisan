@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Docs
-- The README opens with the SqlArtisan icon.
+- The README opens with a banner of the SqlArtisan mark, name and tagline.
 
 ### Build
 - Every package carries the SqlArtisan icon. Package tags name what each
