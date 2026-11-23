@@ -243,7 +243,7 @@ Where the brand is applied, and the gaps found while drafting this page.
 
 | Surface | Carries | Current gap |
 |---|---|---|
-| GitHub repository | Description, topics, homepage, social preview | Topics empty; homepage empty; `social-preview.png` not yet uploaded (repository settings) |
+| GitHub repository | Description (the `SqlArtisan` package's), topics, homepage (the nuget.org page), social preview | — |
 | NuGet packages (4) | Icon, description, tags, README | Each package's README opens with the banner; `SqlArtisan` shows the repository's, the others their own. All of it lands in the next package version |
 | README | The banner in place of a title (a PNG on its own panel: nuget.org shows no inline HTML and no relative image path, so no light/dark switch), promise, pillars | — |
 | docs/ | Voice | — |
