@@ -244,7 +244,7 @@ Where the brand is applied, and the gaps found while drafting this page.
 | Surface | Carries | Current gap |
 |---|---|---|
 | GitHub repository | Description (the `SqlArtisan` package's), topics, homepage (the nuget.org page), social preview | — |
-| NuGet packages (4) | Icon, description, tags, README | Each package's README opens with the banner; `SqlArtisan` shows the repository's, the others their own. All of it lands in the next package version |
+| NuGet packages (4) | Icon, description, tags, README, the reserved `SqlArtisan` ID prefix (its check mark on every package) | Each package's README opens with the banner; `SqlArtisan` shows the repository's, the others their own. All of it but the prefix, reserved on nuget.org itself, lands in the next package version |
 | README | The banner in place of a title (a PNG on its own panel: nuget.org shows no inline HTML and no relative image path, so no light/dark switch), promise, pillars | — |
 | docs/ | Voice | — |
 | Articles and announcements | Positioning, audience order | None yet; 1.0.0 is the planned launch point |
