@@ -17,7 +17,7 @@ Does this sound familiar?
 > - Building a query dynamically means concatenating strings through your logic.
 > - Every value needs a hand-written `DbParameter` — tedious and easy to get wrong.
 
-SqlArtisan lets you write that SQL in C# instead: the query reads as the SQL it emits, conditions join with plain C# instead of string concatenation, and every literal becomes a bind parameter automatically.
+SqlArtisan lets you write that SQL in C# instead: the query reads as the SQL it emits, conditions join with plain C# instead of string concatenation, and literals become bind parameters automatically.
 
 When an AI coding assistant writes your SQL, a new failure mode appears: plausible queries that look right but mix dialects, misname columns, or silently change semantics. SqlArtisan is a deterministic guard rail — four verification layers catch these mistakes before the query reaches a database:
 
