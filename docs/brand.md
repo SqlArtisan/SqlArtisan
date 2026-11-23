@@ -249,5 +249,13 @@ Where the brand is applied, and the gaps found while drafting this page.
 | docs/ | Voice | — |
 | Articles and announcements | Positioning, audience order | None yet; 1.0.0 is the planned launch point |
 
+The three opening summaries each have one job, so they do not drift into
+near-copies. The repository description is the `SqlArtisan` package's, read
+with no page around it. The README's first paragraph is that description
+without the tagline, which the banner shows, and with the Lean pillar added;
+on nuget.org it is the first text a reader sees. The sentence under *Why
+SqlArtisan?* answers the pains listed above it, one each, and repeats no
+summary.
+
 NuGet metadata ships only with a new package version, and any change under
 `src/` requires a new release candidate before 1.0.0.
