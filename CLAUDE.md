@@ -42,6 +42,7 @@ building on ADRs 0001–0003/0007. See `docs/adr/README.md` for the full index.
 | `docs/` | User-facing docs: `query-statements`, `expressions`, `functions`, `analyzer`, `cookbook`, `comparison`, `versioning`, plus `guides/` (Dapper quickstart, AI assistants, Oracle array bind). |
 | `docs/adr/` | Architecture Decision Records (see `docs/adr/README.md` for the index). |
 | `llms.txt` | LLM-friendly index with raw GitHub URLs to all documentation. |
+| `assets/` | Brand files: the icon (SVG; the 128 px PNG every package packs), the logo lockups and the social preview, all written by `tools/brand/build.py` — never edited by hand. `docs/brand.md` § The mark explains them. |
 | `Directory.Build.props` | Centralized version, Source Link, AOT compatibility, analyzer mode. |
 
 Supported DBMS (`Dbms` enum): MySql, Oracle, PostgreSql, Sqlite, SqlServer.

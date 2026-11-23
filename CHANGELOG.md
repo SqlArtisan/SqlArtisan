@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Build
+- Every package carries the SqlArtisan icon. Package tags name what each
+  package does: `SqlArtisan` adds `typesafe`, `analyzer` and `roslyn` and drops
+  `dapper`, `SqlArtisan.Dapper` adds `sqlmapper`, and `SqlArtisan.TableClassGen`
+  tags itself as a code generator. `SqlArtisan.Dapper`'s description names the
+  verbs it runs.
 
 ## [1.0.0-rc.2] - 2026-11-22
 ### Docs
