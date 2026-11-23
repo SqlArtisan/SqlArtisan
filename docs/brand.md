@@ -225,6 +225,7 @@ reads as a gap; the centroid balances the mark the way the eye weighs it.
 | `icon.png` | 128 px, packed as every NuGet package's icon |
 | `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds |
 | `social-preview.svg`, `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
+| `banner.svg`, `banner.png` | 1280 × 320 (the PNG at twice that), the README's header: mark, wordmark and tagline, edged like the icon |
 
 **Rules.** The 45° angle is the mark's one moving element, so it is not
 straightened: upright, the nib's outline reads as a shield. The colors are not
@@ -239,7 +240,7 @@ Where the brand is applied, and the gaps found while drafting this page.
 |---|---|---|
 | GitHub repository | Description, topics, homepage, social preview | Topics empty; homepage empty; `social-preview.png` not yet uploaded (repository settings) |
 | NuGet packages (4) | Icon, description, tags | Icon, tags and `SqlArtisan.Dapper`'s description land in the next package version |
-| README | Tagline, promise, pillars | — |
+| README | The banner in place of a title (a PNG on its own panel: nuget.org shows no inline HTML and no relative image path, so no light/dark switch), promise, pillars | — |
 | docs/ | Voice | — |
 | Articles and announcements | Positioning, audience order | None yet; 1.0.0 is the planned launch point |
 

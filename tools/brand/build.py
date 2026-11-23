@@ -166,14 +166,39 @@ def lockup(icon_inner, fill, h=128, cap=0.52, gap=0.25):
     )
 
 
+def tagline(size):
+    d, w = outline(SEMIBOLD, "Write SQL, in C#", size, 0, 0)
+    # The face spaces "#." loosely; close the full stop up to the hash.
+    dot, wdot = outline(SEMIBOLD, ".", size, w - 0.05 * size, 0)
+    return d + dot, w + wdot - 0.05 * size
+
+
+def banner(art):
+    """The README's header: the mark, the wordmark and the tagline on a panel of the frame's
+    colors, edged like the icon so it holds on a dark page."""
+    w, h = 1280, 320
+    d1, w1 = outline(BOLD, "SqlArtisan", 64 / cap_height(BOLD), 0, 0)
+    d2, w2 = tagline(26 / cap_height(SEMIBOLD))
+    iw, gap = 250, 36
+    x0 = (w - (iw + gap + max(w1, w2))) / 2
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}">'
+        '<title>SqlArtisan — Write SQL, in C#.</title>'
+        '<defs><linearGradient id="bn" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#1C1C20"/><stop offset="1" stop-color="#0B0B0D"/>'
+        f'</linearGradient></defs><rect width="{w}" height="{h}" rx="24" fill="url(#bn)"/>'
+        f'<rect x="2" y="2" width="{w - 4}" height="{h - 4}" rx="22" fill="none" '
+        'stroke="#3A3A40" stroke-width="4"/>'
+        f'<g transform="translate({x0:.1f} {h / 2 - iw / 2}) scale({iw / 512})">{art}</g>'
+        f'<g transform="translate({x0 + iw + gap:.1f} {h / 2})">'
+        f'<path d="{d1}" fill="{GOFUN}" transform="translate(0 -4)"/>'
+        f'<path d="{d2}" fill="{MUTED}" transform="translate(2 60)"/></g></svg>\n'
+    )
+
+
 def social_preview(art):
     d1, w1 = outline(BOLD, "SqlArtisan", 84 / cap_height(BOLD), 0, 0)
-    small = 34 / cap_height(SEMIBOLD)
-    d2, w2 = outline(SEMIBOLD, "Write SQL, in C#", small, 0, 0)
-    # The face spaces "#." loosely; close the full stop up to the hash.
-    dot, wdot = outline(SEMIBOLD, ".", small, w2 - 0.05 * small, 0)
-    d2 += dot
-    w2 += wdot - 0.05 * small
+    d2, w2 = tagline(34 / cap_height(SEMIBOLD))
     iw, gap = 330, 48
     x0 = (1280 - (iw + gap + max(w1, w2))) / 2
     return (
@@ -199,11 +224,14 @@ def main():
         "logo.svg": lockup(inner, INK),
         "logo-dark.svg": lockup(inner, GOFUN),
         "social-preview.svg": social_preview(art),
+        "banner.svg": banner(art),
     }
     for name, text in files.items():
         (ASSETS / name).write_text(text, encoding="utf-8")
     raster("png", ASSETS / "icon.svg", 128, 128, ASSETS / "icon.png", "transparent")
     raster("png", ASSETS / "social-preview.svg", 1280, 640, ASSETS / "social-preview.png", "opaque")
+    # Twice its layout size, so it stays sharp on high-density screens at the README's width.
+    raster("png", ASSETS / "banner.svg", 2560, 640, ASSETS / "banner.png", "transparent")
 
 
 if __name__ == "__main__":
