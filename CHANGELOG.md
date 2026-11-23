@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   each pain listed above it.
 - The README's *Design Philosophy* and *Why SqlArtisan?* sections drop sentences
   that restated the ones before them.
+- The README's Quick Start says its query drops the top example's `Build()`,
+  since the Dapper extension builds it for the connection's dialect.
 
 ### Build
 - Every package carries the SqlArtisan icon. Package tags name what each
