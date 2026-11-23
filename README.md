@@ -22,7 +22,7 @@ SqlArtisan lets you write that SQL in C# instead: the query reads as the SQL it 
 When an AI coding assistant writes your SQL, a new failure mode appears: plausible queries that look right but mix dialects, misname columns, or silently change semantics. SqlArtisan is a deterministic guard rail — four verification layers catch these mistakes before the query reaches a database:
 
 1. **Types** — column names and statement structure are compile-checked; a wrong name fails the build.
-2. **Analyzer** — the opt-in Roslyn analyzer, shipped inside the `SqlArtisan` package, flags constructs your target dialect does not support, catching a common AI failure mode (mixing dialects from training data). With generated table classes it also flags schema hazards, such as `IS NULL` on a `NOT NULL` column or a text column compared to a number.
+2. **Analyzer** — the opt-in Roslyn analyzer, shipped inside the `SqlArtisan` package, flags constructs your target dialect does not support. With generated table classes it also flags schema hazards, such as `IS NULL` on a `NOT NULL` column or a text column compared to a number.
 3. **Exact-SQL tests** — `Build()` is deterministic, so a unit test pins the reviewed SQL as a regression contract.
 4. **Integration matrix** — analyzer entries are run against live engines, apart from a few named exceptions ([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)).
 
@@ -153,9 +153,8 @@ dotnet tool install SqlArtisan.TableClassGen --prerelease
     // Dapper: Set true to map snake_case columns to PascalCase/camelCase C# members.
     Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
-    // 'connection' is your IDbConnection. SqlArtisan auto-detects the DBMS
-    // (MySQL, Oracle, PostgreSQL, SQLite, SQL Server) & applies
-    // the correct bind-parameter prefix (e.g., ':' or '@').
+    // 'connection' is your IDbConnection. SqlArtisan detects the DBMS from it
+    // and applies its bind-parameter prefix (e.g., ':' or '@').
     IEnumerable<UserDto> users = await connection.QueryAsync<UserDto>(sql);
     ```
 
@@ -208,9 +207,7 @@ This is separate from `SetDefaultDbms`: that call sets the dialect `Build()` emi
 
 ## Design Philosophy
 
-SqlArtisan's principle is simple: **the SQL you write is the SQL that runs.** Your C# maps directly to SQL — no translation layer second-guesses your intent.
-
-Full ORMs hide SQL behind object graphs; portability-focused builders rewrite your query per database. SqlArtisan does neither. It's for developers who *want* to write SQL — type-safely and composably in C#, not as fragile strings.
+SqlArtisan's principle is simple: **the SQL you write is the SQL that runs.** Full ORMs hide SQL behind object graphs, and portability-focused builders rewrite your query per database; SqlArtisan maps your C# straight to SQL, with no translation layer second-guessing your intent.
 
 It normalizes only mechanical dialect details — bind-parameter markers (`:0` vs `@0`), alias quoting (`"` vs MySQL's backtick), and same-meaning token spellings such as the UPSERT excluded-row name — and never rewrites SQL grammar. Where dialects diverge, it exposes distinct, dialect-faithful APIs:
 

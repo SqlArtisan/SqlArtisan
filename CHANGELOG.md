@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The README's first paragraph matches the `SqlArtisan` package description and
   names the opt-in analyzer, and the sentence under *Why SqlArtisan?* answers
   each pain listed above it.
+- The README's *Design Philosophy* and *Why SqlArtisan?* sections drop sentences
+  that restated the ones before them.
 
 ### Build
 - Every package carries the SqlArtisan icon. Package tags name what each
