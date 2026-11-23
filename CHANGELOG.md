@@ -6,17 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Docs
-- The README opens with a banner of the SqlArtisan mark, name and tagline.
-- The README's first paragraph matches the `SqlArtisan` package description and
-  names the opt-in analyzer, and the sentence under *Why SqlArtisan?* answers
-  each pain listed above it.
-- The README's *Design Philosophy* and *Why SqlArtisan?* sections drop sentences
-  that restated the ones before them.
-- The README's Quick Start says its query drops the top example's `Build()`,
-  since the Dapper extension builds it for the connection's dialect.
-- The README's performance table names each builder and the parameter
-  collection it returns in place of the benchmark's method names, which the
-  benchmark project's README now maps to its rows.
+- The README opens with a banner of the SqlArtisan mark, name and tagline, and
+  its first paragraph is the `SqlArtisan` package description, naming the
+  opt-in analyzer. Quick Start says why its query has no `Build()`: the Dapper
+  extension builds it for the connection's dialect. The performance table names
+  each builder and where its bind values end up, in place of the benchmark's
+  method names; the benchmark project's README maps each method to its row.
+- `docs/query-statements.md` no longer says every literal becomes a bind
+  parameter: forced literals, such as a `LIKE ... ESCAPE` character or a
+  separator, and `Sql.Null` are written into the SQL text.
 
 ### Build
 - Every package carries the SqlArtisan icon. Package tags name what each

@@ -237,7 +237,7 @@ Every entrant builds the same query's SQL string **and** its bind parameters, me
 | SqlKata | its own | 38,031.3 ns | 54.01 KB |
 | EF Core (ORM reference²) | the `DbCommand`'s | 25,648.2 ns | 15.71 KB |
 
-The lightweight builders allocate the same bytes every run; times do not repeat. Across three runs an entrant's time varied by up to about 40%: Sqlify beat both SqlArtisan entrants in two, Dapper.SqlBuilder in one, and no builder in the third. The table shows one run, builders sorted by allocation. *Parameters* is the collection an entrant hands back: SqlArtisan appears twice, once with its own and once converted to Dapper's, the form `SqlArtisan.Dapper` passes on.
+The lightweight builders allocate the same bytes every run; times do not repeat. Across three runs an entrant's time varied by up to about 40%: Sqlify beat both SqlArtisan entrants in two, Dapper.SqlBuilder in one, and no builder in the third. The table shows one run, builders sorted by allocation. *Parameters* is the collection an entrant's bind values end up in: SqlArtisan appears twice, once with its own and once converted to Dapper's, the form `SqlArtisan.Dapper` passes on.
 
 ¹ Raw `StringBuilder` + Dapper `DynamicParameters` — the floor, with no type safety or dialect handling. ² EF Core is a full-ORM **reference** (different work, caches compiled queries), shown only for scale.
 

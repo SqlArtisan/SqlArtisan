@@ -90,6 +90,24 @@ public class BenchmarkDocsTests
         Assert.Equal(declared, documented);
     }
 
+    // Footnote marks and bold are the README's presentation, not part of what a row names.
+    [Fact]
+    public void MethodTable_Rows_MatchTheRootReadmeTable()
+    {
+        string root = FindRepoRoot();
+        string readme = File.ReadAllText(Path.Combine(root, "README.md"));
+
+        string[] mapped = [.. TableRows(ReadDocs(root), "| Method |")
+            .Select(cells => RowKey(cells[1], cells[2]))
+            .Order()];
+
+        string[] published = [.. TableRows(readme, "| Builder |")
+            .Select(cells => RowKey(cells[0], cells[1]))
+            .Order()];
+
+        Assert.Equal(published, mapped);
+    }
+
     [Fact]
     public void CrossLibraryEntrants_EveryBenchmark_ReturnsSqlAndParameterCount()
     {
@@ -144,6 +162,9 @@ public class BenchmarkDocsTests
 
         return documented;
     }
+
+    private static string RowKey(string builder, string parameters) =>
+        $"{Regex.Replace(builder, @"[¹²³*]", string.Empty).Trim()} | {parameters.Trim()}";
 
     private static IEnumerable<string[]> TableRows(string markdown, string header)
     {

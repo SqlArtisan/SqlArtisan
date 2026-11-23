@@ -65,7 +65,7 @@ Entrants fall into three categories, and only one of them is a comparison:
 | `ORM reference` | EF Core | Materially different work; shown only for scale |
 
 Each row of the root README's table is one method of `SqlBuilderBenchmarks`, the
-name BenchmarkDotNet prints:
+name BenchmarkDotNet prints; the Builder and Parameters cells are that row's own:
 
 | Method | Builder | Parameters |
 |---|---|---|
@@ -76,7 +76,7 @@ name BenchmarkDotNet prints:
 | `Sqlify_SpecificParams` | Sqlify | its own |
 | `SqlKata_SpecificParams` | SqlKata | its own |
 | `SqlArtisan_SpecificParams` | SqlArtisan | its own (`SqlParameters`) |
-| `SqlArtisan_DapperDynamicParams` | SqlArtisan | Dapper `DynamicParameters`, via `ToDynamicParameters()` |
+| `SqlArtisan_DapperDynamicParams` | SqlArtisan | Dapper `DynamicParameters` |
 | `EfCore_Reference` | EF Core (ORM reference) | the `DbCommand`'s |
 
 linq2db and EF Core reuse a connection object and a `DbContext` created once in
