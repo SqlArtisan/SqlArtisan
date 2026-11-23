@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   that restated the ones before them.
 - The README's Quick Start says its query drops the top example's `Build()`,
   since the Dapper extension builds it for the connection's dialect.
+- The README's performance table names each builder and the parameter
+  collection it returns in place of the benchmark's method names, which the
+  benchmark project's README now maps to its rows.
 
 ### Build
 - Every package carries the SqlArtisan icon. Package tags name what each
