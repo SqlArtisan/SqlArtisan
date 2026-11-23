@@ -64,6 +64,21 @@ Entrants fall into three categories, and only one of them is a comparison:
 | `Baseline` | A hand-written `StringBuilder` + Dapper `DynamicParameters` | The floor — no type safety, no dialect handling |
 | `ORM reference` | EF Core | Materially different work; shown only for scale |
 
+Each row of the root README's table is one method of `SqlBuilderBenchmarks`, the
+name BenchmarkDotNet prints; the Builder and Parameters cells are that row's own:
+
+| Method | Builder | Parameters |
+|---|---|---|
+| `StringBuilder_DapperDynamicParams` | `StringBuilder` (baseline) | Dapper `DynamicParameters` |
+| `DapperSqlBuilder_DapperDynamicParams` | Dapper.SqlBuilder | Dapper `DynamicParameters` |
+| `InterpolatedSql_SpecificParams` | InterpolatedSql | its own |
+| `Linq2db_TypedParams` | linq2db | its own |
+| `Sqlify_SpecificParams` | Sqlify | its own |
+| `SqlKata_SpecificParams` | SqlKata | its own |
+| `SqlArtisan_SpecificParams` | SqlArtisan | its own (`SqlParameters`) |
+| `SqlArtisan_DapperDynamicParams` | SqlArtisan | Dapper `DynamicParameters` |
+| `EfCore_Reference` | EF Core (ORM reference) | the `DbCommand`'s |
+
 linq2db and EF Core reuse a connection object and a `DbContext` created once in
 `[GlobalSetup]` — neither is ever opened — and EF Core caches the compiled query
 plan, so the loop measures warm steady state rather than first-call cost.

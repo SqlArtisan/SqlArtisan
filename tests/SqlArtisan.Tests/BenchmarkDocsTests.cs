@@ -70,6 +70,44 @@ public class BenchmarkDocsTests
         Assert.Equal(declared, documented);
     }
 
+    // The root README names its rows by builder, not by method, so this table is the one
+    // place a re-measured BenchmarkDotNet row is matched to its README row.
+    [Fact]
+    public void MethodTable_Methods_MatchTheBenchmarkSource()
+    {
+        string root = FindRepoRoot();
+        string source = File.ReadAllText(
+            Path.Combine(root, BenchmarkDir, "SqlBuilderBenchmarks.cs"));
+
+        string[] declared = [.. BenchmarkMethodPattern.Matches(source)
+            .Select(m => m.Groups["name"].Value)
+            .Order()];
+
+        string[] documented = [.. TableRows(ReadDocs(root), "| Method |")
+            .Select(cells => cells[0].Trim('`', ' '))
+            .Order()];
+
+        Assert.Equal(declared, documented);
+    }
+
+    // Footnote marks and bold are the README's presentation, not part of what a row names.
+    [Fact]
+    public void MethodTable_Rows_MatchTheRootReadmeTable()
+    {
+        string root = FindRepoRoot();
+        string readme = File.ReadAllText(Path.Combine(root, "README.md"));
+
+        string[] mapped = [.. TableRows(ReadDocs(root), "| Method |")
+            .Select(cells => RowKey(cells[1], cells[2]))
+            .Order()];
+
+        string[] published = [.. TableRows(readme, "| Builder |")
+            .Select(cells => RowKey(cells[0], cells[1]))
+            .Order()];
+
+        Assert.Equal(published, mapped);
+    }
+
     [Fact]
     public void CrossLibraryEntrants_EveryBenchmark_ReturnsSqlAndParameterCount()
     {
@@ -124,6 +162,9 @@ public class BenchmarkDocsTests
 
         return documented;
     }
+
+    private static string RowKey(string builder, string parameters) =>
+        $"{Regex.Replace(builder, @"[¹²³*]", string.Empty).Trim()} | {parameters.Trim()}";
 
     private static IEnumerable<string[]> TableRows(string markdown, string header)
     {
