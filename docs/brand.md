@@ -227,9 +227,10 @@ reads as a gap; the centroid balances the mark the way the eye weighs it.
 | `social-preview.svg`, `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
 | `banner.svg`, `banner.png` | 1280 × 320 (the PNG at twice that), the README's header: mark, wordmark and tagline, edged like the icon |
 
-Every README, including the four packed into the NuGet packages, references
-`banner.png` at its `main` URL, so a published package page shows the current
-banner — and every one breaks if the file moves. Its path is fixed.
+The four READMEs packed into the NuGet packages — the root one and those under
+`src/*/` — reference `banner.png` at its `main` URL, so a published package page
+shows the current banner, and every one breaks if the file moves. Its path is
+fixed.
 
 **Rules.** The 45° angle is the mark's one moving element, so it is not
 straightened: upright, the nib's outline reads as a shield. The colors are not

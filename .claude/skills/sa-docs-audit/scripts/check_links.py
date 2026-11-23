@@ -11,6 +11,7 @@ to other repos, raw URLs, plain files (no #anchor), and external URLs are skippe
 
 Exit code 0 = all resolve; 1 = broken links found. Run from the repo root.
 """
+import glob
 import os
 import re
 import sys
@@ -32,8 +33,10 @@ FILES = [
     "docs/versioning.md",
     "SECURITY.md",
     "CHANGELOG.md",
-    "src/SqlArtisan.TableClassGen/README.md",
 ]
+# Every package's NuGet landing page, globbed so a package that gains its own
+# README is checked without anyone remembering to list it.
+FILES += sorted(glob.glob("src/*/README.md"))
 
 
 def slug(heading: str) -> str:
