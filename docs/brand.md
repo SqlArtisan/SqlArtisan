@@ -255,7 +255,8 @@ with no page around it. The README's first paragraph is that description
 without the tagline, which the banner shows, and with the Lean pillar added;
 on nuget.org it is the first text a reader sees. The sentence under *Why
 SqlArtisan?* answers the pains listed above it, one each, and repeats no
-summary.
+summary. Each row of the README's Packages table is its package's
+description, shortened to what the table has room for.
 
 NuGet metadata ships only with a new package version, and any change under
 `src/` requires a new release candidate before 1.0.0.

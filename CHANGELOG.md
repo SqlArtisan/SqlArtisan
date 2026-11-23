@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   extension builds it for the connection's dialect. The performance table names
   each builder and where its bind values end up, in place of the benchmark's
   method names; the benchmark project's README maps each method to its row.
+  The Packages table describes each package as its NuGet description does.
 - `docs/query-statements.md` no longer says every literal becomes a bind
   parameter: forced literals, such as a `LIKE ... ESCAPE` character or a
   separator, and `Sql.Null` are written into the SQL text.
@@ -22,8 +23,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   `dapper`, `SqlArtisan.Dapper` adds `sqlmapper`, and `SqlArtisan.TableClassGen`
   tags itself as a code generator. `SqlArtisan.Dapper`'s description names the
   verbs it runs.
-- `SqlArtisan`'s package description names the opt-in analyzer, and
-  `SqlArtisan.TableClassGen`'s names its drift check (`--check`, `--fix`).
+- `SqlArtisan`'s package description names the five engines it supports and the
+  opt-in analyzer, and `SqlArtisan.TableClassGen`'s names its drift check
+  (`--check`, `--fix`).
 - `SqlArtisan.Dapper` and `SqlArtisan.ArrayBind` carry their own NuGet README,
   in place of the repository's, and every package README opens with the banner.
 
