@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [1.0.0-rc.3] - 2026-11-23
 ### Docs
 - The README opens with a banner of the SqlArtisan mark, name and tagline, and
   its first paragraph is the `SqlArtisan` package description, naming the
