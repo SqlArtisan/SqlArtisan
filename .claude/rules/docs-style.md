@@ -51,6 +51,12 @@ with availability left to the database"). ADR cross-references belong in
   too, so under the quickstart's usings a bare `SqlMapper` names it, which mirrors
   the verbs and `AddTypeHandler` / `ResetTypeHandlers` only (CS0426 for
   `SqlMapper.TypeHandler<T>`). A bare `SqlMapper.AddTypeHandler` names SqlArtisan's.
+- **Literals become bind parameters** — a general claim never says *every*
+  literal or *every* value (one about the example shown, whose SQL proves it,
+  may): forced literals (a `LIKE ... ESCAPE` character, a separator, a JSON path, …)
+  and `Sql.Null` are written into the SQL text by design, and `functions.md`
+  § Bind Parameter Types lists them. A reader who trusts "every" passes user
+  input to one of them expecting it bound.
 - **query builder** (not "SQL builder"). Performance wording: **allocation-light**
   / **lowest-allocation** / **fast**, in that hook order ("allocation-light, fast").
 
