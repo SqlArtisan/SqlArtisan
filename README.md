@@ -1,3 +1,5 @@
+![SqlArtisan](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/assets/icon.png)
+
 # SqlArtisan
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

@@ -239,7 +239,7 @@ Where the brand is applied, and the gaps found while drafting this page.
 |---|---|---|
 | GitHub repository | Description, topics, homepage, social preview | Topics empty; homepage empty; `social-preview.png` not yet uploaded (repository settings) |
 | NuGet packages (4) | Icon, description, tags | Icon, tags and `SqlArtisan.Dapper`'s description land in the next package version |
-| README | Tagline, promise, pillars | — |
+| README | The icon above the title (the 128 px PNG: nuget.org shows no inline HTML and no relative image path), tagline, promise, pillars | — |
 | docs/ | Voice | — |
 | Articles and announcements | Positioning, audience order | None yet; 1.0.0 is the planned launch point |
 

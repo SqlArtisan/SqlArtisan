@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Docs
+- The README opens with the SqlArtisan icon.
+
 ### Build
 - Every package carries the SqlArtisan icon. Package tags name what each
   package does: `SqlArtisan` adds `typesafe`, `analyzer` and `roslyn` and drops
