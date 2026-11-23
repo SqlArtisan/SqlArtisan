@@ -132,7 +132,7 @@ dotnet tool install SqlArtisan.TableClassGen --prerelease
 
 3. Build and Execute your Query
 
-    Add `using static SqlArtisan.Sql;` for the entry-point methods (`Select`, `InsertInto`, …), build the query — the one at the top of this page — and execute it, here with Dapper:
+    Add `using static SqlArtisan.Sql;` for the entry-point methods (`Select`, `InsertInto`, …), build the query — the one at the top of this page, without `Build()`: the Dapper extension builds it for the connection's dialect — and execute it, here with Dapper:
 
     ```csharp
     using SqlArtisan;
