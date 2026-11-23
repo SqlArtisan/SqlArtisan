@@ -9,7 +9,7 @@
     <Copyright>Copyright (c) h.tacayama 2025</Copyright>
 
     <Authors>h.tacayama</Authors>
-    <Description>Write SQL, in C#. A type-safe SQL query builder where the SQL you write is the SQL that runs—allocation-light, fast, and automatically parameterized.</Description>
+    <Description>Write SQL, in C#. A type-safe SQL query builder with an opt-in Roslyn analyzer that flags dialect and schema mistakes at build time — the SQL you write is the SQL that runs, automatically parameterized.</Description>
     <PackageTags>database sql sqlbuilder query querybuilder typesafe analyzer roslyn mysql oracle postgresql sqlite sqlserver</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

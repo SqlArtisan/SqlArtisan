@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   `dapper`, `SqlArtisan.Dapper` adds `sqlmapper`, and `SqlArtisan.TableClassGen`
   tags itself as a code generator. `SqlArtisan.Dapper`'s description names the
   verbs it runs.
+- `SqlArtisan`'s package description names the opt-in analyzer, and
+  `SqlArtisan.TableClassGen`'s names its drift check (`--check`, `--fix`).
+- `SqlArtisan.Dapper` and `SqlArtisan.ArrayBind` carry their own NuGet README,
+  in place of the repository's, and every package README opens with the banner.
 
 ## [1.0.0-rc.2] - 2026-11-22
 ### Docs
