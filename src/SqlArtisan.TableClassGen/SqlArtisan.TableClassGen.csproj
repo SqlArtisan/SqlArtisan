@@ -11,7 +11,7 @@
     <Copyright>Copyright (c) h.tacayama 2025</Copyright>
 
     <Authors>h.tacayama</Authors>
-    <Description>Generate C# table classes from your database for SqlArtisan, enabling robust type safety and IntelliSense in your query building.</Description>
+    <Description>Generates C# table classes for SqlArtisan from a live MySQL, Oracle, PostgreSQL, SQLite or SQL Server database, so column names are compile-checked, and reports where the classes have drifted from the schema (--check, --fix).</Description>
     <PackageTags>database sql codegen scaffolding schema dotnet-tool mysql oracle postgresql sqlite sqlserver</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

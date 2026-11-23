@@ -294,7 +294,8 @@ Once approved, do it in one commit:
    after 1.0 is resolved, never suppressed.
 2. If leaving prerelease: remove the `--prerelease` install instructions and
    any "pre-release" notes from `README.md`, `docs/guides/dapper-quickstart.md`,
-   `docs/guides/oracle-array-bind.md`, and `src/SqlArtisan.TableClassGen/README.md`,
+   `docs/guides/oracle-array-bind.md`, and the package READMEs
+   `src/SqlArtisan.{Dapper,ArrayBind,TableClassGen}/README.md`,
    and switch `README.md`'s NuGet version badges from `nuget/vpre` to `nuget/v`:
    `vpre` shows the newest prerelease once one follows the stable release, and
    `v` reads stable releases only, so the switch waits for the first one.

@@ -1,3 +1,5 @@
+![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/assets/banner.png)
+
 # SqlArtisan.TableClassGen
 
 A .NET tool that generates C# table classes from your database for `SqlArtisan`, enabling robust type safety and IntelliSense in your query building.

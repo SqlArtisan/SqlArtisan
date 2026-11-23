@@ -29,8 +29,10 @@ FILES = [
     "docs/guides/oracle-array-bind.md",
     "docs/guides/ai-assistants.md",
     "docs/versioning.md", "SECURITY.md", "CHANGELOG.md",
-    "src/SqlArtisan.TableClassGen/README.md",
 ]
+# Every package's NuGet landing page, globbed so a package that gains its own
+# README is checked without anyone remembering to list it.
+FILES += sorted(str(p) for p in Path("src").glob("*/README.md"))
 CODE_IDENTS = ("PostgreSql", "SqlServer", "MySql", "Sqlite")  # display: PostgreSQL/SQL Server/MySQL/SQLite
 DISPLAY_ORDER = {n: i for i, n in enumerate(("MySQL", "Oracle", "PostgreSQL", "SQLite", "SQL Server"))}
 DBMS_NAME = r"(?:MySQL|Oracle|PostgreSQL|SQLite|SQL Server)"
