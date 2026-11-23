@@ -217,7 +217,7 @@ reaches the box's bottom-left corner while the round lid leaves the top-right
 one empty, so the box's center sits off the mark's mass and the top-right
 reads as a gap; the centroid balances the mark the way the eye weighs it.
 
-**Files** (`assets/`):
+**Files** (`assets/`, all written by `tools/brand/build.py`, which holds the values above):
 
 | File | Use |
 |---|---|
