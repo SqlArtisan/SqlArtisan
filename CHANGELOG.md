@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [1.0.0-rc.4] - 2026-11-26
 ### Build
 - The repository moved to the `SqlArtisan` organization, at
   https://github.com/SqlArtisan/SqlArtisan. Every package's project and
