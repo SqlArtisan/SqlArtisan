@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Docs
+- The README's Context7 badge and the AI assistants guide name the library's
+  Context7 ID as `/sqlartisan/sqlartisan`, under which Context7 now indexes
+  it; the old `/h-tacayama/sqlartisan` ID no longer resolves. `context7.json`
+  stops indexing `tools/`, whose maintainer scripts and brand-build steps
+  are not usage documentation.
 
 ## [1.0.0-rc.4] - 2026-11-26
 ### Build

@@ -40,9 +40,9 @@ pick the API for your target DBMS — and the reference tells it which call
 emits what.
 
 The same reference is also indexed on
-[Context7](https://context7.com/h-tacayama/sqlartisan). If your assistant has
+[Context7](https://context7.com/sqlartisan/sqlartisan). If your assistant has
 the Context7 MCP server (or CLI) configured, name the library ID
-`/h-tacayama/sqlartisan` in your prompt — Context7 then skips its
+`/sqlartisan/sqlartisan` in your prompt — Context7 then skips its
 library-matching step and pulls the SqlArtisan reference directly into
 context.
 
