@@ -1,7 +1,7 @@
 # Query Cookbook
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 Realistic end-to-end queries: the reference pages answer "what does X emit",
 this page answers "how do I write the whole thing". Every recipe shows the C#
@@ -37,7 +37,7 @@ maintained alongside this page — edit the two together.
 ## The Recipe Schema
 
 The recipes share a small web-shop schema. Each table follows the standard
-[table class](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start)
+[table class](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#quick-start)
 pattern — shown once here for `customer` and `orders`, the rest
 (`category`, `product`, `order_item`, `staging_product`) differ only
 in their columns:
@@ -95,7 +95,7 @@ defaults. Names are not unique: two products, or two categories, may share one.
 ### Paginated list with reusable query
 
 A builder chain is
-[single-use](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#reusing-a-builder-chain)
+[single-use](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#reusing-a-builder-chain)
 — once `Build()` runs, that instance is finished. Wrap the chain in a local
 function parameterized by the parts that change; each call builds a fresh chain:
 
@@ -135,7 +135,7 @@ filter can each be off at runtime. `ConditionIf` composes naturally with `JOIN`,
 `GROUP BY`, and `HAVING` — when a filter is off, that predicate drops out of the
 `WHERE` clause and the rest of the query stays intact. With both off, `Build()`
 throws instead (see
-[Dynamic Condition](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#dynamic-condition)).
+[Dynamic Condition](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#dynamic-condition)).
 The report groups by the category's key as well as its name, so two categories
 sharing a name stay apart:
 
@@ -264,10 +264,10 @@ SqlStatement sql =
 
 This shape runs on all five dialects (only markers and quoting differ). On
 MySQL, Oracle, PostgreSQL, and SQL Server, a
-[row-limited `LATERAL` / `APPLY` subquery](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#row-limited-queries-as-subqueries)
+[row-limited `LATERAL` / `APPLY` subquery](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#row-limited-queries-as-subqueries)
 is the per-group top-N alternative (MySQL takes `LATERAL` from a specific
 release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
 
 ### Pivoting rows to columns
 
@@ -346,7 +346,7 @@ Select(p.Name).From(p)
 ```
 
 Over a nullable subquery column, (iii) is the shape the analyzer's
-[`SQLA0201`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#schema-aware-warnings-sqla0200sqla0206)
+[`SQLA0201`](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#schema-aware-warnings-sqla0200sqla0206)
 reports.
 
 ---
@@ -417,7 +417,7 @@ place of `.Limit(20).Offset(40)`.
 
 When *every* `ConditionIf` is excluded, `Build()` throws rather than run an
 unintended full-table read — see
-[Dynamic Condition](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#dynamic-condition).
+[Dynamic Condition](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#dynamic-condition).
 For a screen where all filters can legitimately be off, omit the `Where(...)`
 clause entirely — build separate chains with and without it, keyed on whether
 any filter survived.
@@ -429,7 +429,7 @@ any filter survived.
 ### UPSERT on every dialect
 
 Insert-or-update and insert-or-skip, in each dialect's native spelling — see
-[UPSERT](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#upsert-insert-update-or-skip)
+[UPSERT](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#upsert-insert-update-or-skip)
 for the full reference:
 
 ```csharp
@@ -504,16 +504,16 @@ MergeInto(t).Using(s).On(t.ProductId == s.Column("product_id"))
 ```
 
 `RETURNING` is not available on the MySQL, Oracle and SQL Server forms above —
-see [RETURNING](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#returning-clause).
+see [RETURNING](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#returning-clause).
 On SQL Server, `Build` appends the semicolon `MERGE` requires — see the
-[MERGE reference](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#merge-statement).
+[MERGE reference](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#merge-statement).
 
 ### Synchronizing a table from staging
 
 Catalog sync — reprice rows whose price differs, insert new ones, delete rows
 gone from the source. `WhenNotMatchedBySource()` is PostgreSQL and SQL Server
 syntax; PostgreSQL takes it from the version in the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 On MySQL, Oracle and SQLite, `WhenNotMatchedBySource()` is not available.
 
 ```csharp
@@ -539,4 +539,4 @@ SqlStatement sql =
 ```
 
 On SQL Server, `Build` appends the semicolon `MERGE` requires — see the
-[MERGE reference](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#merge-statement).
+[MERGE reference](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#merge-statement).

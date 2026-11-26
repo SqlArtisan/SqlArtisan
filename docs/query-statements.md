@@ -1,7 +1,7 @@
 # Query Statements
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 > **How to read this reference.** Each entry shows the **C# you write** and the
 > **SQL it emits**. The SQL in comments is line-wrapped for readability; `sql.Text`
@@ -60,7 +60,7 @@ SqlStatement sql =
 ```
 Both markers are list items — a `SELECT` list, and a `RETURNING` or `OUTPUT` list where the engine takes them — plus one aggregate: `Count(Asterisk)` emits `COUNT(*)`, the only aggregate where `*` is legal. Any other expression position (`Upper(...)`, `ORDER BY`, …) throws or does not compile. Oracle rejects either marker before `INTO`; PostgreSQL's `RETURNING` takes both, and SQLite's only the bare `*` (`SQLA0102` reports a table's `.Asterisk` there); SQL Server rejects `OUTPUT *` and the target's `t.*` in an `OUTPUT` on a statement that joins nothing.
 
-Do **not** write `Select("*")` — a string in a value position is always a bind value, never SQL, so it emits `SELECT :0` returning the literal `'*'` per row. The same rule protects every string you bind from injection; `Asterisk` is the SQL spelling. For `EXISTS (SELECT * ...)`, prefer the `Exists(Select(1)...)` idiom — see [Conditions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#conditions).
+Do **not** write `Select("*")` — a string in a value position is always a bind value, never SQL, so it emits `SELECT :0` returning the literal `'*'` per row. The same rule protects every string you bind from injection; `Asterisk` is the SQL spelling. For `EXISTS (SELECT * ...)`, prefer the `Exists(Select(1)...)` idiom — see [Conditions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#conditions).
 
 #### Column Aliases
 ```csharp
@@ -147,7 +147,7 @@ SqlStatement sql =
 // SELECT "u".id, "u".name FROM users "u" WHERE "u".id > :0
 ```
 
-Columns are qualified by the alias — or rendered unqualified when the table has no alias (`new DbTable("users")` → `id`), except in an UPSERT's `DO UPDATE` or `ON DUPLICATE KEY UPDATE`, which qualifies them by the table name ([UPSERT](#upsert-insert-update-or-skip)). `DbTable` works anywhere a table class does, including `INSERT` / `UPDATE` / `DELETE`. For columns referenced repeatedly, or for IntelliSense on column names, declare a typed `DbTableBase` subclass (or generate one with [SqlArtisan.TableClassGen](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md)) instead.
+Columns are qualified by the alias — or rendered unqualified when the table has no alias (`new DbTable("users")` → `id`), except in an UPSERT's `DO UPDATE` or `ON DUPLICATE KEY UPDATE`, which qualifies them by the table name ([UPSERT](#upsert-insert-update-or-skip)). `DbTable` works anywhere a table class does, including `INSERT` / `UPDATE` / `DELETE`. For columns referenced repeatedly, or for IntelliSense on column names, declare a typed `DbTableBase` subclass (or generate one with [SqlArtisan.TableClassGen](https://github.com/SqlArtisan/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md)) instead.
 
 #### FROM-less Queries
 ```csharp
@@ -186,7 +186,7 @@ SqlStatement sql =
 // SELECT "v".v FROM UNNEST(:0) "v"
 ```
 
-`:0` binds the whole `int[]` as one parameter. PostgreSQL only. `.AsTable(alias, columns...)` names the result columns instead — `UNNEST(:0, :1) "t" (x, y)` — one column per array (or per field of a composite-typed array), for unnesting several arrays in parallel. The argument is any array expression: a [`BindArray(...)` parameter](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#any--all-with-a-bound-array-postgresql), an `ARRAY[...]` constructor, or an array-typed column.
+`:0` binds the whole `int[]` as one parameter. PostgreSQL only. `.AsTable(alias, columns...)` names the result columns instead — `UNNEST(:0, :1) "t" (x, y)` — one column per array (or per field of a composite-typed array), for unnesting several arrays in parallel. The argument is any array expression: a [`BindArray(...)` parameter](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#any--all-with-a-bound-array-postgresql), an `ARRAY[...]` constructor, or an array-typed column.
 
 ---
 
@@ -207,7 +207,7 @@ SqlStatement sql =
 // WHERE id = :0
 ```
 
-For a detailed guide on constructing various types of conditions (like **Logical**, **Comparison**, `NULL`, **Pattern Matching**, `BETWEEN`, `IN`, `EXISTS`), including how to use **Dynamic Conditions** (`ConditionIf`), check out the [Expressions: Conditions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#conditions) section.
+For a detailed guide on constructing various types of conditions (like **Logical**, **Comparison**, `NULL`, **Pattern Matching**, `BETWEEN`, `IN`, `EXISTS`), including how to use **Dynamic Conditions** (`ConditionIf`), check out the [Expressions: Conditions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#conditions) section.
 
 ---
 
@@ -249,7 +249,7 @@ On SQL Server, which has no `NATURAL JOIN`, write the match explicitly with
 `On(...)`; on MySQL, which has no `FULL JOIN` at all, `NaturalFullJoin()` is
 unsupported too. SQLite gained `RIGHT JOIN` / `FULL JOIN` and their `NATURAL`
 forms in a specific release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 
 > [!NOTE]
 > On MySQL, `FullJoin()` after an unaliased table emits `FROM t FULL JOIN u`,
@@ -351,7 +351,7 @@ emitted: availability is the target database's concern (and the opt-in
 analyzer's). SQLite supports neither family, and `LATERAL` has no SQL Server
 form. Oracle accepts both families, `LeftJoinLateral` from a specific release,
 and MySQL takes `LATERAL` from a specific release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs). SqlArtisan emits the construct faithfully rather than
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs). SqlArtisan emits the construct faithfully rather than
 gating it at build time.
 
 ---
@@ -391,7 +391,7 @@ SqlStatement sql =
 // id DESC NULLS LAST
 ```
 
-**Dialect note:** `NullsFirst` / `NullsLast` emit `NULLS FIRST` / `NULLS LAST`, which MySQL and SQL Server reject — neither engine has the clause — and SQLite takes from a specific release (see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)). On Oracle and SQL Server, an `OrderBy(...)` in an `IN` / `NOT IN`, `EXISTS` / `NOT EXISTS`, `ANY` / `ALL` / `SOME` or scalar subquery needs a row limit beside it — `FetchFirst(n)` or `OffsetRows(...)` on Oracle, `Top(n)` or `OffsetRows(...)` on SQL Server — and on SQL Server in a derived table, CTE body or `APPLY` source too, which Oracle XE 21.3.0, Free 23ai and SQL Server 2022 require; order the outer query instead where the order picks no rows. On SQL Server a compound's `OrderBy(...)` needs one there too, but a row limit after a compound's last branch pages that branch alone once embedded, so wrap the compound in a derived table (`.AsTable(...)`) or a CTE first and sort and page the query that reads it ([Set Operators](#set-operators)). `SQLA0102` reports those positions.
+**Dialect note:** `NullsFirst` / `NullsLast` emit `NULLS FIRST` / `NULLS LAST`, which MySQL and SQL Server reject — neither engine has the clause — and SQLite takes from a specific release (see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)). On Oracle and SQL Server, an `OrderBy(...)` in an `IN` / `NOT IN`, `EXISTS` / `NOT EXISTS`, `ANY` / `ALL` / `SOME` or scalar subquery needs a row limit beside it — `FetchFirst(n)` or `OffsetRows(...)` on Oracle, `Top(n)` or `OffsetRows(...)` on SQL Server — and on SQL Server in a derived table, CTE body or `APPLY` source too, which Oracle XE 21.3.0, Free 23ai and SQL Server 2022 require; order the outer query instead where the order picks no rows. On SQL Server a compound's `OrderBy(...)` needs one there too, but a row limit after a compound's last branch pages that branch alone once embedded, so wrap the compound in a derived table (`.AsTable(...)`) or a CTE first and sort and page the query that reads it ([Set Operators](#set-operators)). `SQLA0102` reports those positions.
 
 A `string`, `char`, `bool`, date/time, GUID or enum sort key throws `Invalid type for
 OrderByItem: ...` at the call: bound, it would be a constant that sorts
@@ -591,7 +591,7 @@ run only there; elsewhere, use `Except` / `ExceptAll`. `ExceptAll` /
 `IntersectAll` are MySQL, Oracle, and PostgreSQL only — SQLite and SQL Server
 take `ALL` on `UNION` alone. Several of these
 arrived in a specific engine release; the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)
 lists each one, and the analyzer reports it against a declared target version.
 
 At the top level, an `OrderBy(...)` after a `Union` or `UnionAll` branch sorts the
@@ -601,7 +601,7 @@ some or none of the branches select the column, in one position or not, and SQLi
 3.50.4 and SQL Server 2022 run some such keys. On every one of them, order by a
 select-list position (`OrderBy(2)`) or by an alias the first branch selects (`.As(...)`)
 instead. With the analyzer on, `SQLA0102` reports such keys on MySQL, Oracle and
-PostgreSQL ([context rules](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102)).
+PostgreSQL ([context rules](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102)).
 
 > [!NOTE]
 > **On SQL Server, an embedded compound's `OffsetRows(...)` / `FetchNext(...)` page only its last
@@ -762,7 +762,7 @@ SqlStatement sql =
 - `SkipLocked` for `SKIP LOCKED`
 - `Wait()` for `WAIT`
 
-**Dialect note:** `FOR UPDATE` is not available on SQLite and SQL Server. Among the options, `Wait(...)` is Oracle-only, and `Of(...)` has one form per side: `Of(column)` is Oracle's, which MySQL and PostgreSQL reject, and `Of(table, ...)` is theirs (MySQL from a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)), which Oracle rejects. Oracle XE 21.3.0 and PostgreSQL 16 also reject `FOR UPDATE` over a grouped query, where MySQL 8.0 locks the base rows; the analyzer reports that position as `SQLA0102`. Both also reject it beside `Distinct` or an aggregate function in the select list, and PostgreSQL 16 also beside `DistinctOn(...)` or a window function; Oracle XE 21.3.0 runs the window function. `SQLA0102` reports those too. Oracle XE 21.3.0 rejects it after a row-limiting clause as well (`FETCH FIRST` / `OFFSET ... ROWS`), which PostgreSQL 16 runs; MySQL 8.0 has neither clause and runs its own `LIMIT ... FOR UPDATE`. Also `SQLA0102`. Oracle takes `FOR UPDATE` only in a top-level `SELECT`, so Oracle XE 21.3.0 and Free 23ai reject a locked subquery, CTE body or derived table; MySQL 8.0 and PostgreSQL 16 run a locked `IN` subquery, CTE body and derived table. `SQLA0102` reports the Oracle position too.
+**Dialect note:** `FOR UPDATE` is not available on SQLite and SQL Server. Among the options, `Wait(...)` is Oracle-only, and `Of(...)` has one form per side: `Of(column)` is Oracle's, which MySQL and PostgreSQL reject, and `Of(table, ...)` is theirs (MySQL from a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)), which Oracle rejects. Oracle XE 21.3.0 and PostgreSQL 16 also reject `FOR UPDATE` over a grouped query, where MySQL 8.0 locks the base rows; the analyzer reports that position as `SQLA0102`. Both also reject it beside `Distinct` or an aggregate function in the select list, and PostgreSQL 16 also beside `DistinctOn(...)` or a window function; Oracle XE 21.3.0 runs the window function. `SQLA0102` reports those too. Oracle XE 21.3.0 rejects it after a row-limiting clause as well (`FETCH FIRST` / `OFFSET ... ROWS`), which PostgreSQL 16 runs; MySQL 8.0 has neither clause and runs its own `LIMIT ... FOR UPDATE`. Also `SQLA0102`. Oracle takes `FOR UPDATE` only in a top-level `SELECT`, so Oracle XE 21.3.0 and Free 23ai reject a locked subquery, CTE body or derived table; MySQL 8.0 and PostgreSQL 16 run a locked `IN` subquery, CTE body and derived table. `SQLA0102` reports the Oracle position too.
 
 > [!NOTE]
 > **On MySQL, `ForUpdate(...)` after a set operator locks only the last branch's rows.** MySQL 8.0
@@ -775,7 +775,7 @@ Lock each branch's rows in a statement of its own.
 
 ### Pagination
 
-Row limiting is dialect-divergent, so SqlArtisan exposes two faithful families and you choose the one for your target database (see [Design Philosophy](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#design-philosophy)).
+Row limiting is dialect-divergent, so SqlArtisan exposes two faithful families and you choose the one for your target database (see [Design Philosophy](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#design-philosophy)).
 
 #### LIMIT family (MySQL / PostgreSQL / SQLite)
 
@@ -854,7 +854,7 @@ SqlStatement sql =
 
 #### Row-limited queries as subqueries
 
-A query ending in a row-limiting clause is still a subquery: embed it as a [scalar subquery](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#scalar-subquery), an `IN` / `NOT IN` / `EXISTS` / `NOT EXISTS` operand, an `ANY` / `ALL` / `SOME` operand, a CTE body, a derived table (`.AsTable("alias")`), or a `LATERAL` / `APPLY` operand. The canonical per-group top-N:
+A query ending in a row-limiting clause is still a subquery: embed it as a [scalar subquery](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#scalar-subquery), an `IN` / `NOT IN` / `EXISTS` / `NOT EXISTS` operand, an `ANY` / `ALL` / `SOME` operand, a CTE body, a derived table (`.AsTable("alias")`), or a `LATERAL` / `APPLY` operand. The canonical per-group top-N:
 
 ```csharp
 UsersTable u = new("u");
@@ -998,7 +998,7 @@ values**. SqlArtisan refuses to build that form; `Build()` throws:
 
 A `MERGE` target is aliased whatever its subqueries read (see [MERGE Statement](#merge-statement)). Any other table a
 subquery reads without listing it, in any statement, throws `A table a correlated subquery references must be aliased.` for the same
-reason (see [Scalar Subquery](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#scalar-subquery)).
+reason (see [Scalar Subquery](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#scalar-subquery)).
 
 **Dialect note:** On MySQL the `INSERT` target cannot be aliased, so an
 `ON DUPLICATE KEY UPDATE` subquery reads the inserted row through
@@ -1065,7 +1065,7 @@ grammar for this — the SQL you write is the SQL that runs.
 **`UPDATE … FROM` (Oracle, PostgreSQL, SQLite):** the target stays in the
 `UPDATE`, the other tables go in `FROM`, and the join predicate lives in
 `WHERE`. Oracle and SQLite added the form in a specific release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs):
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs):
 
 ```csharp
 AcctTable t = new("t");
@@ -1111,7 +1111,7 @@ Update(t)
 
 Joined `DELETE` follows the same split — Oracle and PostgreSQL use `USING`
 (Oracle from a specific release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)),
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)),
 MySQL and SQL Server re-list the target after `FROM`:
 
 ```csharp
@@ -1126,14 +1126,14 @@ The joined target must be aliased, or the `From(...)`, join or `Using(...)` call
 that joins it throws. A joined `DELETE ... FROM` must re-list the target, in
 `From(...)` or through a join after it, or `Build()` throws, except on Oracle,
 whose `DELETE` takes a `FROM` without the re-list from the release the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)
 names; on SQL Server a joined `UPDATE` must re-list it too
 — T-SQL's joined form takes the target's alias from there — or
 `Build(Dbms.SqlServer)` throws. A re-listed `UPDATE` target off SQL Server throws
 at `Build()`, and so does `DeleteFrom(t).Using(...)` on SQL Server, which has no
 `DELETE ... USING` form. Every other wrong-dialect spelling is emitted as written and rejected
 by the database; with the analyzer configured it is named first — see
-[Context rules](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102).
+[Context rules](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102).
 Oracle and SQLite before the releases that added `UPDATE … FROM` take none of
 the joined forms above, and SQLite has no joined `DELETE` at any version. There,
 a [correlated subquery](#correlated-update--delete) filters the target by the
@@ -1203,7 +1203,7 @@ SqlStatement sql =
 // (:0, :1), (:2, :3), (:4, :5)
 ```
 
-**Note:** Multi-row `VALUES` is supported by MySQL, PostgreSQL, SQLite, and SQL Server. Oracle takes a second row from a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs); below it, `SQLA0102` reports one. For Oracle batch loads on any version, [`SqlArtisan.ArrayBind`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md) runs N single-row statements in one round trip. `Build()` throws on `Returning(...).Into(...)` after a second row on every target, since Oracle, the one engine with `RETURNING ... INTO`, rejects the pair (observed on Oracle Free 23ai); insert one row per statement there.
+**Note:** Multi-row `VALUES` is supported by MySQL, PostgreSQL, SQLite, and SQL Server. Oracle takes a second row from a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs); below it, `SQLA0102` reports one. For Oracle batch loads on any version, [`SqlArtisan.ArrayBind`](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md) runs N single-row statements in one round trip. `Build()` throws on `Returning(...).Into(...)` after a second row on every target, since Oracle, the one engine with `RETURNING ... INTO`, rejects the pair (observed on Oracle Free 23ai); insert one row per statement there.
 
 When the rows come from data rather than fixed literals, pass the whole collection to `Values(...)` in one call — a `List<object[]>`, an `object[][]` (e.g. from `.Select(...).ToArray()`), or any `IEnumerable<object[]>` — instead of a `Values(...)` call per row:
 
@@ -1353,11 +1353,11 @@ MySQL keys off any unique index implicitly (no conflict target). SqlArtisan
 emits the row-alias form (`AS new` … `new.column`) on every
 `OnDuplicateKeyUpdate(...)`, whether or not an assignment reads `Excluded(...)`,
 never the deprecated `VALUES()` function; MySQL added the row alias in a specific release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 
 **Note:** `ON CONFLICT` is PostgreSQL/SQLite-only (SQLite from a specific
 release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)) and `ON DUPLICATE KEY UPDATE`
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)) and `ON DUPLICATE KEY UPDATE`
 is MySQL-only. Oracle and SQL Server use [`MERGE`](#merge-statement) instead.
 With the analyzer configured, `SQLA0100` reports either clause on a dialect
 without it; otherwise the database rejects it.
@@ -1389,7 +1389,7 @@ define — see "The Effect of IGNORE on Statement Execution" in
 `MERGE` is the native UPSERT path for **Oracle** and **SQL Server**, which have
 no `ON CONFLICT` / `ON DUPLICATE KEY UPDATE`. **PostgreSQL** also supports
 `MERGE` — alongside its own `ON CONFLICT` — from a specific release; see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 Start with `MergeInto(target)`, name the data source with `Using(...)`, match
 rows with `On(...)`, then add one or more `WhenMatched` / `WhenNotMatched`
 branches. As elsewhere, the SQL you write is the SQL that runs — the branches
@@ -1426,7 +1426,7 @@ inside the subquery `Using(...)` names instead.
 
 **How many branches each engine takes.** `Build()` does not check this: the
 engine rejects what it cannot take, naming the branch, and the
-[analyzer](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102)
+[analyzer](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102)
 reports a repeated branch in the chain that writes it (`SQLA0102`). Oracle
 accepts one `WHEN MATCHED` and one `WHEN NOT MATCHED` — a second branch of
 either kind is `ORA-00905` (observed on Oracle XE 21.3.0). SQL Server bounds them per
@@ -1501,7 +1501,7 @@ and since Oracle has no `WHEN ... AND`, `THEN DELETE` or `BY SOURCE` branch,
 that carries both an `OrderBy(...)` and a row limit (ORA-38101, naming the sort
 key): one with `OffsetRows(...)`, and one with `FetchFirst(n)` below a specific
 release (see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
 The same query runs in `ThenUpdateSet(...)` and without its `OrderBy(...)`. Both
 the rejections and the runs were observed on Oracle XE 21.3.0 and Free 23ai, and
 `SQLA0102` reports the rejected position. Select the value in a derived table that the `MERGE` uses as
@@ -1579,7 +1579,7 @@ MergeInto(t)
 The alias renders without `AS` — `(…) "s"`, the derived-table spelling every
 dialect accepts. The literal-row source is Oracle, PostgreSQL, and SQL Server
 only, Oracle from a specific release — see the
-[version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+[version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 
 **Per-dialect branches and pitfalls:**
 
@@ -1696,7 +1696,7 @@ SqlArtisan also supports more advanced WITH clause scenarios:
 - **Recursive CTEs** — `WithRecursive()` emits `WITH RECURSIVE`, required by
   MySQL and PostgreSQL and accepted by SQLite (MySQL gained CTE support in a
   specific release — see the
-  [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
+  [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)).
   Oracle — every version, 23ai included (live-verified) — and SQL Server reject
   the `RECURSIVE` keyword; there, recurse with plain `With(...)`. On Oracle a
   recursive body additionally requires the CTE column list — chain
@@ -1829,7 +1829,7 @@ SqlStatement sql =
 // INTO :outId, :outName
 ```
 
-With the Dapper integration ([`SqlArtisan.Dapper`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md)), `ExecuteReturningInto` runs the statement and returns the parameter bag, so the bound output values can be read back by name after execution:
+With the Dapper integration ([`SqlArtisan.Dapper`](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md)), `ExecuteReturningInto` runs the statement and returns the parameter bag, so the bound output values can be read back by name after execution:
 
 ```csharp
 DynamicParameters outputs = connection.ExecuteReturningInto(
@@ -1843,7 +1843,7 @@ int deletedId = outputs.Get<int>("outId");
 string deletedName = outputs.Get<string>("outName");
 ```
 
-**Note:** `RETURNING` is supported by PostgreSQL and SQLite (SQLite gained it in a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)), and Oracle takes it only as `Returning(...).Into(...)`. It is not supported by MySQL or SQL Server (which uses [`OUTPUT`](#output-clause-sql-server)). With the analyzer configured, `SQLA0100` reports `Returning` on MySQL and SQL Server, and `SQLA0102` reports an Oracle `Returning(...)` with no `.Into(...)`.
+**Note:** `RETURNING` is supported by PostgreSQL and SQLite (SQLite gained it in a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)), and Oracle takes it only as `Returning(...).Into(...)`. It is not supported by MySQL or SQL Server (which uses [`OUTPUT`](#output-clause-sql-server)). With the analyzer configured, `SQLA0100` reports `Returning` on MySQL and SQL Server, and `SQLA0102` reports an Oracle `Returning(...)` with no `.Into(...)`.
 
 ## OUTPUT Clause (SQL Server)
 

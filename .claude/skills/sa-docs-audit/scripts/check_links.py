@@ -16,7 +16,7 @@ import os
 import re
 import sys
 
-REPO = "h-tacayama/SqlArtisan"
+REPO = "SqlArtisan/SqlArtisan"
 FILES = [
     "README.md",
     "llms.txt",

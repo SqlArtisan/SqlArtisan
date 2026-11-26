@@ -223,6 +223,7 @@ reads as a gap; the centroid balances the mark the way the eye weighs it.
 |---|---|
 | `icon.svg` | The source of the mark; every other file embeds it |
 | `icon.png` | 128 px, packed as every NuGet package's icon |
+| `avatar.svg`, `avatar.png` | 500 px, the GitHub organization's profile picture: the icon's background carried to the square's edges, with no corner radius or edge, since GitHub rounds and outlines an avatar itself and would show a second frame inside its own |
 | `logo.svg`, `logo-dark.svg` | Mark beside the wordmark, for light and dark backgrounds |
 | `social-preview.svg`, `social-preview.png` | 1280 × 640, the GitHub repository's social preview |
 | `banner.svg`, `banner.png` | 1280 × 320 (the PNG at twice that), the README's header: mark, wordmark and tagline, edged like the icon |
@@ -243,6 +244,7 @@ Where the brand is applied, and the gaps found while drafting this page.
 
 | Surface | Carries | Current gap |
 |---|---|---|
+| GitHub organization | Profile picture (`avatar.png`), which GitHub shows beside the repository's name; description; URL (the nuget.org page) | — |
 | GitHub repository | Description (the `SqlArtisan` package's), topics, homepage (the nuget.org page), social preview | — |
 | NuGet packages (4) | Icon, description, tags, README, the reserved `SqlArtisan` ID prefix (its check mark on every package) | Each package's README opens with the banner; `SqlArtisan` shows the repository's, the others their own. All of it but the prefix, reserved on nuget.org itself, lands in the next package version |
 | README | The banner in place of a title (a PNG on its own panel: nuget.org shows no inline HTML and no relative image path, so no light/dark switch), promise, pillars | — |

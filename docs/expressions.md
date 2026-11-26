@@ -1,7 +1,7 @@
 # Expressions
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 > **How to read this reference.** Each entry shows the **C# you write** and the
 > **SQL it emits**. The SQL in comments is line-wrapped for readability; `sql.Text`
@@ -139,7 +139,7 @@ its *leading* precision, so use `ToSecond(n)` as a sole field for that form.
   `IntervalLiteral(value, leadingField, trailingField)` for a range
   (`INTERVAL '1-2' YEAR TO MONTH`); the field is always required. An interval
   literal never binds its value on Oracle, so for a bound quantity use
-  [`Numtoyminterval(n, unit)` / `Numtodsinterval(n, unit)`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#conversion-functions)
+  [`Numtoyminterval(n, unit)` / `Numtodsinterval(n, unit)`](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#conversion-functions)
   instead.
 - **PostgreSQL** — the same two forms as Oracle (with a precision on
   `ToSecond(n)` only; `SQLA0100` reports one on a leading field), plus the bare `IntervalLiteral(text)` overload with the unit folded into
@@ -163,7 +163,7 @@ SqlStatement sql =
 // FROM users
 ```
 
-- **Oracle, PostgreSQL, SQLite (every version), and SQL Server (from a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs))** — `DoublePipe(a, b, ...)` for the native `||` operator, chaining any number of arguments without nesting.
+- **Oracle, PostgreSQL, SQLite (every version), and SQL Server (from a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs))** — `DoublePipe(a, b, ...)` for the native `||` operator, chaining any number of arguments without nesting.
 - **MySQL** — `Concat(a, b)` / `Concat(a, b, c, ...)` for the `CONCAT` function.
 - **SQL Server** — the existing `+` operator (`u.FirstName + " " + u.LastName`, or `"Dr. " + u.LastName` with the text first) for native concatenation, or the `Concat(a, b, ...)` function.
 - **Oracle's `CONCAT`** takes exactly two arguments — `Concat(a, b, c)` (three or more) is invalid there; use `DoublePipe(...)` for chains of three or more on Oracle.
@@ -251,7 +251,7 @@ SqlStatement sql =
 > A comparison with `Null` (`u.Id == Null`, a simple CASE `When(Null)`), `NotIn(..., Null)`,
 > `Between(Null, x)` and `Like(Null)` are never true, so they match no row. Test with `IsNull` /
 > `IsNotNull`, drop the NULL from a `NotIn(...)` list, or compare the other `Between(...)` bound
-> with `>=` / `<=`; the analyzer reports them as [`SQLA0303`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#comparisons-with-null-sqla0303).
+> with `>=` / `<=`; the analyzer reports them as [`SQLA0303`](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#comparisons-with-null-sqla0303).
 
 ### Pattern Matching Condition
 ```csharp
@@ -370,7 +370,7 @@ SqlStatement sql =
 // OR ("a".id NOT IN (SELECT "c".id FROM users "c"))
 ```
 
-On MySQL, `LIMIT` directly inside an `IN` / `NOT IN` / `ALL` / `ANY` / `SOME` subquery is rejected (observed on MySQL 8.0.46) — route the limited query through a CTE instead. See the [Pagination dialect caveat](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#pagination) for the full per-position rule.
+On MySQL, `LIMIT` directly inside an `IN` / `NOT IN` / `ALL` / `ANY` / `SOME` subquery is rejected (observed on MySQL 8.0.46) — route the limited query through a CTE instead. See the [Pagination dialect caveat](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#pagination) for the full per-position rule.
 
 ### EXISTS Condition
 ```csharp
@@ -586,7 +586,7 @@ PostgreSQL only. `ArrayOverlaps` (`&&`) tests whether two arrays share at least 
 
 String elements form a `text[]`; for another element type, pass typed values (`Array(1, 2)` binds an integer array).
 
-To filter a column against a whole .NET collection bound as a single parameter, see [ANY / ALL with a Bound Array](#any--all-with-a-bound-array-postgresql); to expand an array into rows, see [UNNEST as a Table](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#unnest-as-a-table-postgresql).
+To filter a column against a whole .NET collection bound as a single parameter, see [ANY / ALL with a Bound Array](#any--all-with-a-bound-array-postgresql); to expand an array into rows, see [UNNEST as a Table](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#unnest-as-a-table-postgresql).
 
 ---
 
@@ -607,7 +607,7 @@ SqlStatement sql =
 // LIMIT :1
 ```
 
-`L2Distance` (`<->`), `CosineDistance` (`<=>`), and `NegativeInnerProduct` (`<#>`) work on Oracle and PostgreSQL (Oracle gained the three shared operators in a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)); `L1Distance` (`<+>`), `HammingDistance` (`<~>`), and `JaccardDistance` (`<%>`) are PostgreSQL only, via the pgvector extension. On PostgreSQL all six need the [pgvector](https://github.com/pgvector/pgvector) extension installed in the database (`CREATE EXTENSION vector`); on Oracle the three shared operators are built in.
+`L2Distance` (`<->`), `CosineDistance` (`<=>`), and `NegativeInnerProduct` (`<#>`) work on Oracle and PostgreSQL (Oracle gained the three shared operators in a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs)); `L1Distance` (`<+>`), `HammingDistance` (`<~>`), and `JaccardDistance` (`<%>`) are PostgreSQL only, via the pgvector extension. On PostgreSQL all six need the [pgvector](https://github.com/pgvector/pgvector) extension installed in the database (`CREATE EXTENSION vector`); on Oracle the three shared operators are built in.
 
 A bound vector literal reaches PostgreSQL as `text` — wrap it in `Cast(text, "vector")` (or `Cast(bits, "bit(n)")` for the bit operators) as above. On Oracle, drop the `Cast` — Oracle rejects `CAST(... AS vector)` outright (ORA-22849, observed on Free 23ai); pass the vector string bare (`L2Distance(u.Embedding, "[0.1,0.2,0.3]")`) and Oracle converts the bound string implicitly. `NegativeInnerProduct` returns the **negative** inner product, so the smallest value is still the most similar.
 
@@ -816,7 +816,7 @@ SqlStatement sql =
 // WHERE "u".id = ANY (:0)
 ```
 
-PostgreSQL only. Unlike `In(values)` — one bind per element — the SQL text is identical for every list length, and an empty collection is legal: it binds normally, where `In(...)` rejects an empty list at the call site. Element types follow the [bind-parameter types](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types); the quantifier also accepts any other array expression — an `ARRAY[...]` constructor or an array-typed column.
+PostgreSQL only. Unlike `In(values)` — one bind per element — the SQL text is identical for every list length, and an empty collection is legal: it binds normally, where `In(...)` rejects an empty list at the call site. Element types follow the [bind-parameter types](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types); the quantifier also accepts any other array expression — an `ARRAY[...]` constructor or an array-typed column.
 
 Executing through SqlArtisan.Dapper preserves the array as a single ADO.NET parameter (it is exempt from Dapper's list expansion); Npgsql maps the .NET array to the PostgreSQL array type natively.
 
@@ -879,7 +879,7 @@ SqlStatement sql =
 
 Every `WHEN`, `THEN`, and `ELSE` literal becomes a bind parameter — the 3-arm simple CASE above produces 7 binds (3 match values + 3 result values + 1 ELSE). A 3-column pivot built from single-arm CASEs produces 9. This is the same literals-are-binds design used everywhere else: these values never reach the SQL text, which keeps them injection-safe and lets the engine reuse the execution plan when only the label values change.
 
-Engines cap how many parameters one statement may carry — see your engine's manual for its limit. A CASE in a `SELECT` list that also appears in `GROUP BY` binds its values once when both clauses take the same instance ([GROUP BY and HAVING Clause](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#group-by-and-having-clause)); only a CASE built twice binds them twice.
+Engines cap how many parameters one statement may carry — see your engine's manual for its limit. A CASE in a `SELECT` list that also appears in `GROUP BY` binds its values once when both clauses take the same instance ([GROUP BY and HAVING Clause](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#group-by-and-having-clause)); only a CASE built twice binds them twice.
 
 ---
 
@@ -898,7 +898,7 @@ SqlStatement sql =
 // FROM users
 ```
 
-The target type is emitted verbatim, so write the exact SQL data type for your target database (for example `VARCHAR2(10)` on Oracle, `NVARCHAR(10)` on SQL Server). Consistent with the [Design Philosophy](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#design-philosophy), SqlArtisan does not abstract or translate dialect-specific type names.
+The target type is emitted verbatim, so write the exact SQL data type for your target database (for example `VARCHAR2(10)` on Oracle, `NVARCHAR(10)` on SQL Server). Consistent with the [Design Philosophy](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#design-philosophy), SqlArtisan does not abstract or translate dialect-specific type names.
 
 ---
 
@@ -926,7 +926,7 @@ SqlStatement sql =
 // FROM users
 ```
 
-For a comprehensive list of all available window functions, please refer to the [Functions: Window Functions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#window-functions) section.
+For a comprehensive list of all available window functions, please refer to the [Functions: Window Functions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#window-functions) section.
 
 ### Example using LAG / LEAD
 
@@ -1015,7 +1015,7 @@ SqlStatement sql =
 
 ### Example using an Aggregate
 
-Aggregate functions — `Sum`, `Count`, `Avg`, `Max`, `Min`, and the statistical aggregates listed under [Functions: Aggregate](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#aggregate-functions) — can also be used as window functions via `Over(...)`.
+Aggregate functions — `Sum`, `Count`, `Avg`, `Max`, `Min`, and the statistical aggregates listed under [Functions: Aggregate](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#aggregate-functions) — can also be used as window functions via `Over(...)`.
 
 ```csharp
 UsersTable u = new();
@@ -1036,7 +1036,7 @@ SqlStatement sql =
 
 A `PartitionBy(...)` key is a column, an expression or a subquery. An integer, a string or another value throws `Invalid type for PartitionByItem: ...` at the call: bound, it would partition by a constant.
 
-A `DISTINCT` aggregate — `Count(Distinct, ...)`, `Sum(Distinct, ...)` or `Avg(Distinct, ...)` — takes only `Over()` and `Over(PartitionBy(...))`: an ordered or framed window over one runs on no engine, so it does not compile. Oracle runs those two; MySQL, PostgreSQL, SQLite and SQL Server reject them (observed on MySQL 8.0, Oracle XE 21.3.0 and Free 23ai, PostgreSQL 16 and 17, SQLite 3.50, and SQL Server 2022 and 2025), which the [analyzer](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102) flags.
+A `DISTINCT` aggregate — `Count(Distinct, ...)`, `Sum(Distinct, ...)` or `Avg(Distinct, ...)` — takes only `Over()` and `Over(PartitionBy(...))`: an ordered or framed window over one runs on no engine, so it does not compile. Oracle runs those two; MySQL, PostgreSQL, SQLite and SQL Server reject them (observed on MySQL 8.0, Oracle XE 21.3.0 and Free 23ai, PostgreSQL 16 and 17, SQLite 3.50, and SQL Server 2022 and 2025), which the [analyzer](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#context-rules-sqla0102) flags.
 
 #### Window Frames (ROWS / RANGE)
 
@@ -1114,7 +1114,7 @@ Chain `.Over(...)` afterwards for a filtered window function — `SUM(amount) FI
 
 ## String Aggregation
 
-String aggregation flattens the values of a group into one delimited string. This is the most syntactically divergent feature in scope, so SqlArtisan exposes it per dialect (no unified rewrite): you call the function your target DBMS supports, and the SQL you write is the SQL that runs. SQLite gained `STRING_AGG` in a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+String aggregation flattens the values of a group into one delimited string. This is the most syntactically divergent feature in scope, so SqlArtisan exposes it per dialect (no unified rewrite): you call the function your target DBMS supports, and the SQL you write is the SQL that runs. SQLite gained `STRING_AGG` in a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 
 ### STRING_AGG (PostgreSQL / SQLite / SQL Server)
 

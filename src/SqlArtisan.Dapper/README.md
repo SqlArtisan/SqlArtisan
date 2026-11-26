@@ -1,8 +1,8 @@
-![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/assets/banner.png)
+![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/SqlArtisan/SqlArtisan/main/assets/banner.png)
 
 # SqlArtisan.Dapper
 
-Dapper integration for [SqlArtisan](https://github.com/h-tacayama/SqlArtisan): call
+Dapper integration for [SqlArtisan](https://github.com/SqlArtisan/SqlArtisan): call
 Dapper's verbs on an `IDbConnection` with a SqlArtisan builder in place of a SQL
 string. The extension builds the statement for the connection's dialect, resolved
 from its provider type, and passes the text and bind parameters to Dapper.
@@ -22,7 +22,7 @@ connections.
 
 ## Usage
 
-`UsersTable` is a [table class](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start),
+`UsersTable` is a [table class](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#quick-start),
 and `UserDto` a plain class with settable properties.
 
 ```csharp
@@ -48,12 +48,12 @@ int affected = await connection.ExecuteAsync(
 
 ## Documentation
 
-- [Guide: Dapper + SqlArtisan from Scratch](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md)
+- [Guide: Dapper + SqlArtisan from Scratch](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md)
   — the verbs, their `transaction` / `commandTimeout` / cancellation arguments,
   and mapping columns to members
-- [SqlArtisan README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md)
+- [SqlArtisan README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md)
   — the query builder itself
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/h-tacayama/SqlArtisan/blob/main/LICENSE) file for the full license text.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/SqlArtisan/SqlArtisan/blob/main/LICENSE) file for the full license text.

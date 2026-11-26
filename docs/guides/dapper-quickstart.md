@@ -1,7 +1,7 @@
 # Guide: Dapper + SqlArtisan from Scratch
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 The greenfield path: an empty project to executed, type-safe queries in four
 steps. `SqlArtisan.Dapper` detects the dialect from your connection and runs
@@ -29,7 +29,7 @@ open connections.
 
 ## 2. Create table classes
 
-A [table class](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start)
+A [table class](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#quick-start)
 per database table gives every query IntelliSense and compile-checked
 column names.
 
@@ -140,7 +140,7 @@ IEnumerable<UserSummary> summaries = await connection.QueryAsync<UserSummary>(
 > constructor keeps that member at its default, with no error. Once a dialect is
 > configured, the analyzer reports such an alias where it can read the query.
 
-See [Dapper model aliases](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#dapper-model-aliases-sqla0304)
+See [Dapper model aliases](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#dapper-model-aliases-sqla0304)
 for what `SQLA0304` reads.
 
 As in Dapper, `ExecuteReaderAsync` on a connection typed as `DbConnection`
@@ -168,7 +168,7 @@ Three rules to know from day one:
 
 - **A builder chain is single-use.** The Dapper call runs `Build()` for you,
   which finishes the chain — build a fresh query per call instead of holding
-  one. See [Reusing a builder chain](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#reusing-a-builder-chain).
+  one. See [Reusing a builder chain](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#reusing-a-builder-chain).
 - **Unknown providers need one registration.** `DbmsResolver` knows the common
   connection types; a wrapper or exotic provider registers once at startup:
   `DbmsResolver.RegisterProvider("My.Provider.Connection", Dbms.PostgreSql)`.
@@ -177,22 +177,22 @@ Three rules to know from day one:
   with Dapper and lets a value of a type of your own bind as written
   (`c.Id == customerId`),
   which Dapper's own `AddTypeHandler` does not. Which types it converts:
-  [Bind Parameter Types](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types).
+  [Bind Parameter Types](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types).
 
 Not using Dapper after all? Call `.Build(Dbms.X)` yourself and feed
 `sql.Text` / `sql.Parameters` to raw ADO.NET or any other mapper — see the
-[Quick Start](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start).
+[Quick Start](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#quick-start).
 
 ## 4. Write statements
 
 From here it is the reference material:
 
-- [Query Statements](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md) —
+- [Query Statements](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md) —
   every statement and clause, with the SQL each call emits.
-- [Expressions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md) and
-  [Functions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md) —
+- [Expressions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md) and
+  [Functions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md) —
   conditions, operators, and the built-in function catalog.
-- [Query Cookbook](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/cookbook.md) —
+- [Query Cookbook](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/cookbook.md) —
   realistic end-to-end queries (everyday patterns, reporting, search screens,
   batch DML) to
   start from.
@@ -222,7 +222,7 @@ public void ActiveUsersQuery_CorrectSql()
 }
 ```
 
-The [AI coding assistants guide](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/ai-assistants.md)
+The [AI coding assistants guide](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/ai-assistants.md)
 builds on this pattern, and the
-[cookbook](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/cookbook.md)
+[cookbook](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/cookbook.md)
 pins all of its own recipes this way.

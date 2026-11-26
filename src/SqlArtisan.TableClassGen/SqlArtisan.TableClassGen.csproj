@@ -16,8 +16,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 
-    <PackageProjectUrl>https://github.com/h-tacayama/SqlArtisan</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/h-tacayama/SqlArtisan</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/SqlArtisan/SqlArtisan</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SqlArtisan/SqlArtisan</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
 

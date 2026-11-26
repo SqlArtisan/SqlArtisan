@@ -1,7 +1,7 @@
 # SqlArtisan.Benchmark
 
 The [BenchmarkDotNet](https://benchmarkdotnet.org/) suite behind the numbers in
-the root [README's Performance section](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#performance).
+the root [README's Performance section](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#performance).
 The numbers live there and only there; this page is how you reproduce them.
 
 ## Running it

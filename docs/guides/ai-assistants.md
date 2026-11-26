@@ -1,7 +1,7 @@
 # Guide: Using SqlArtisan with AI Coding Assistants
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 An AI assistant writing raw SQL strings produces *plausible* SQL — nothing
 checks it until it hits the database. SqlArtisan is a deterministic guard
@@ -10,7 +10,7 @@ between generation and production: column names and statement structure are
 compile-checked, the analyzer flags wrong-dialect constructs at build time,
 exact-SQL tests freeze what was reviewed, and analyzer entries are run against
 live engines, apart from a few named exceptions
-([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)). Wrong output becomes a red build instead of
+([CI gates](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)). Wrong output becomes a red build instead of
 a runtime surprise.
 
 This page is the setup that makes those checks bite.
@@ -30,7 +30,7 @@ model of the library plus links to every reference page, each entry paired
 with the SQL it emits:
 
 ```
-https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/llms.txt
+https://raw.githubusercontent.com/SqlArtisan/SqlArtisan/main/llms.txt
 ```
 
 Point your assistant at it (fetch it into context, or list it in your tool's
@@ -68,7 +68,7 @@ var g = Rollup(t.Code, t.Name);
 
 Shipping against more than one engine (or migrating between two)? Set more
 than one `sqlartisan_syntax_*` key — every rule then checks the whole set;
-see [Checking a set of dialects at once](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#checking-a-set-of-dialects-at-once).
+see [Checking a set of dialects at once](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#checking-a-set-of-dialects-at-once).
 
 For an AI-heavy workflow, promote the dialect family to a build error so a
 dialect mismatch the analyzer reports cannot merge:
@@ -82,7 +82,7 @@ newer than your declared version, one in a position it rejects, an over-long
 identifier, a literal value it rejects. Promoting `SQLA0100` alone leaves the
 other four as warnings, and the build succeeds.
 
-The [analyzer reference](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md)
+The [analyzer reference](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md)
 covers the rules, per-construct overrides, mixed-dialect projects, and CI
 gates.
 
@@ -111,7 +111,7 @@ Keeping the connection and output options in `tablegen.json` gives the
 assistant one invocation to remember, and the password stays in the
 environment rather than in a command it might echo. `--format json` returns
 the same report as data. See the
-[TableClassGen README](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md)
+[TableClassGen README](https://github.com/SqlArtisan/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md)
 for the full option list.
 
 ## Pin generated queries with exact-SQL tests
@@ -150,7 +150,7 @@ sql.Parameters.ForEach((name, p) => Console.WriteLine($"{name} = {p.Value}"));
 ```
 
 This repository pins its own
-[cookbook](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/cookbook.md)
+[cookbook](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/cookbook.md)
 recipes the same way.
 
 ## Rules snippet for your agent file
@@ -167,12 +167,12 @@ file, and set the dialect line to your engine:
   translation — always pick the API documented for this DBMS, and treat the
   SQLA01xx dialect warnings as errors to fix, not suppress.
 - API reference (each call shown with its emitted SQL):
-  https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/llms.txt
+  https://raw.githubusercontent.com/SqlArtisan/SqlArtisan/main/llms.txt
 - Reference database tables through their table classes (one `DbTableBase`
   subclass per table); never name a table or column with a string literal.
   Never pass request input where SqlArtisan emits text verbatim — an
   identifier position (listed at
-  https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types)
+  https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types)
   or `Hints(...)`; map it through an allowlist of constants instead — for a
   column, a `switch` onto table-class properties, as the cookbook's runtime
   sort does.

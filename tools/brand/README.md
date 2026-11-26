@@ -1,7 +1,8 @@
 # Brand assets
 
 `build.py` writes every file in `assets/` — the icon, the 128 px PNG every
-package packs, the two logo lockups and the social preview — from the values
+package packs, the GitHub organization's avatar, the two logo lockups, the
+README banner and the social preview — from the values
 at its top. `docs/brand.md` § The mark explains what the values are for; to
 change the mark, change them here and rebuild, never the SVG by hand.
 

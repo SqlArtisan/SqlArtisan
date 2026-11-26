@@ -1,7 +1,7 @@
 # Comparison Guide
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 How SqlArtisan compares to other ways of building SQL in .NET — on the axes
 where the differences are real, not on a feature-checklist scorecard. Every
@@ -84,14 +84,14 @@ between generation and production:
 
 1. **Types** — table classes turn column-name errors into build failures.
 2. **Analyzer** — the opt-in
-   [Roslyn analyzer](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md)
+   [Roslyn analyzer](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md)
    flags wrong-dialect constructs at build time, catching a common AI
    failure mode (mixing dialects from training data).
 3. **Exact-SQL tests** — `Build()` is deterministic, so a unit test
    freezes the reviewed SQL as a regression contract.
 4. **Integration matrix** — analyzer entries are run against live engines,
    apart from a few named exceptions
-   ([CI gates](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)).
+   ([CI gates](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#ci-gates-and-stricter-enforcement)).
 
 Raw SQL strings verify nothing until the database rejects them.
 String-keyed builders type the statement's structure but leave a column typo
@@ -101,7 +101,7 @@ is opaque — you cannot pin it with exact-SQL tests without coupling to the
 ORM's internal translation.
 
 The full setup for AI-assisted workflows is in the
-[AI coding assistants guide](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/ai-assistants.md).
+[AI coding assistants guide](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/ai-assistants.md).
 
 ---
 
@@ -146,7 +146,7 @@ one-liner query methods on top of the builder — so the experience is close
 to "bundled" when you want it, without locking you to a specific executor.
 SqlArtisan.Dapper additionally auto-detects the DBMS from the connection.
 See the
-[Dapper quickstart](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md).
+[Dapper quickstart](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/dapper-quickstart.md).
 
 ---
 
@@ -154,7 +154,7 @@ See the
 
 SqlArtisan minimizes heap allocations — string buffers are recycled from a
 pooled `ArrayPool<T>`. In the project's
-[like-for-like BenchmarkDotNet workload](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.Benchmark),
+[like-for-like BenchmarkDotNet workload](https://github.com/SqlArtisan/SqlArtisan/tree/main/tests/SqlArtisan.Benchmark),
 it allocated the least among the query builders tested — a firm lead; only a
 hand-written `StringBuilder` (no compile-checked names, no dialect handling)
 was lighter. Its build time was in the range of the other lightweight
@@ -162,7 +162,7 @@ builders — across three runs Sqlify beat both SqlArtisan entrants in two,
 Dapper.SqlBuilder in one, and no builder in the third — and an order of
 magnitude below linq2db's and SqlKata's.
 See the
-[benchmark table in the README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#performance)
+[benchmark table in the README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#performance)
 for the numbers, the machine and runtime they were measured on, and re-run
 instructions.
 
