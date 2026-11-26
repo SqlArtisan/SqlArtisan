@@ -37,14 +37,20 @@ CYL = TOP + SEG * N - SEG + 44
 
 FILL = 353  # the mark's rendered bounding box, in the 512 frame (69%)
 
-FRAME = (
+BACKGROUND = (
     '<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">'
     '<stop offset="0" stop-color="#26262B"/><stop offset="1" stop-color="#0B0B0D"/>'
     '</linearGradient></defs>'
-    '<rect width="512" height="512" rx="104" fill="url(#bg)"/>'
+)
+FRAME = (
+    BACKGROUND
+    + '<rect width="512" height="512" rx="104" fill="url(#bg)"/>'
     '<rect x="5" y="5" width="502" height="502" rx="99" fill="none" '
     'stroke="#3A3A40" stroke-width="10"/>'
 )
+# GitHub rounds and outlines an avatar itself; a tile drawn with its own corners and
+# edge would show a second, mismatched frame inside GitHub's, so this one fills the square.
+SQUARE = BACKGROUND + '<rect width="512" height="512" fill="url(#bg)"/>'
 
 
 def nib():
@@ -221,6 +227,10 @@ def main():
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
             f"<title>SqlArtisan</title>{inner}</svg>\n"
         ),
+        "avatar.svg": (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
+            f"<title>SqlArtisan</title>{SQUARE}{art}</svg>\n"
+        ),
         "logo.svg": lockup(inner, INK),
         "logo-dark.svg": lockup(inner, GOFUN),
         "social-preview.svg": social_preview(art),
@@ -229,6 +239,8 @@ def main():
     for name, text in files.items():
         (ASSETS / name).write_text(text, encoding="utf-8")
     raster("png", ASSETS / "icon.svg", 128, 128, ASSETS / "icon.png", "transparent")
+    # Opaque and larger than GitHub draws it, which scales it down and rounds its corners.
+    raster("png", ASSETS / "avatar.svg", 500, 500, ASSETS / "avatar.png", "opaque")
     raster("png", ASSETS / "social-preview.svg", 1280, 640, ASSETS / "social-preview.png", "opaque")
     # Twice its layout size, so it stays sharp on high-density screens at the README's width.
     raster("png", ASSETS / "banner.svg", 2560, 640, ASSETS / "banner.png", "transparent")
