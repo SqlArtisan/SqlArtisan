@@ -1,8 +1,8 @@
-![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/assets/banner.png)
+![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/SqlArtisan/SqlArtisan/main/assets/banner.png)
 
 # SqlArtisan.ArrayBind
 
-Oracle array-bind execution for [SqlArtisan](https://github.com/h-tacayama/SqlArtisan):
+Oracle array-bind execution for [SqlArtisan](https://github.com/SqlArtisan/SqlArtisan):
 build N statements of identical shape (typically one `INSERT`/`UPDATE`/`DELETE` per
 row) the normal way, through the query builder, and run them together in **one
 round trip** via ODP.NET array binding (`OracleCommand.ArrayBindCount`). It builds
@@ -20,7 +20,7 @@ dotnet add package SqlArtisan.ArrayBind --prerelease
 ## Usage
 
 Build one statement per row, keeping the same columns and clause shape across
-rows. `UsersTable` is a [table class](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start).
+rows. `UsersTable` is a [table class](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#quick-start).
 
 ```csharp
 using SqlArtisan;
@@ -56,12 +56,12 @@ transaction.Commit();
 
 ## Documentation
 
-- [Guide: Oracle Array-Bind Execution](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md)
+- [Guide: Oracle Array-Bind Execution](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md)
   — null values and their types, `UPDATE`/`DELETE` batches, and the misuse that
   fails before anything reaches the database
-- [SqlArtisan README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md)
+- [SqlArtisan README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md)
   — the query builder itself
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/h-tacayama/SqlArtisan/blob/main/LICENSE) file for the full license text.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/SqlArtisan/SqlArtisan/blob/main/LICENSE) file for the full license text.

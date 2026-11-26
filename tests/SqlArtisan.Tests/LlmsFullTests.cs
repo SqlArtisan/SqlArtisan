@@ -8,7 +8,7 @@ namespace SqlArtisan.Tests;
 public class LlmsFullTests
 {
     private static readonly Regex RawUrlPattern = new(
-        @"https://raw\.githubusercontent\.com/h-tacayama/SqlArtisan/main/(\S+?)\)",
+        @"https://raw\.githubusercontent\.com/SqlArtisan/SqlArtisan/main/(\S+?)\)",
         RegexOptions.Compiled);
 
     // Matches the whole 3-line delimiter block (border/SOURCE/border), not just

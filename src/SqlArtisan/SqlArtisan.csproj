@@ -14,11 +14,11 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     
-    <PackageProjectUrl>https://github.com/h-tacayama/SqlArtisan</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/h-tacayama/SqlArtisan</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/SqlArtisan/SqlArtisan</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SqlArtisan/SqlArtisan</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>Please see https://github.com/h-tacayama/SqlArtisan/blob/main/CHANGELOG.md for details.</PackageReleaseNotes>
+    <PackageReleaseNotes>Please see https://github.com/SqlArtisan/SqlArtisan/blob/main/CHANGELOG.md for details.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

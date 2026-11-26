@@ -65,7 +65,7 @@ public class DocsIndexTests
         string readme = File.ReadAllText(Path.Combine(root, "README.md"));
         MatchCollection links = Regex.Matches(
             readme,
-            @"https://github\.com/h-tacayama/SqlArtisan/blob/main/"
+            @"https://github\.com/SqlArtisan/SqlArtisan/blob/main/"
                 + @"(?<path>[\w./-]+\.md)#(?<anchor>[\w-]+)");
 
         Assert.NotEmpty(links);

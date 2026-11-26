@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/h-tacayama/SqlArtisan/security/advisories/new) — not a public issue.
+Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/SqlArtisan/SqlArtisan/security/advisories/new) — not a public issue.
 
 Reports are triaged as promptly as possible. This is an individually-maintained
 project, so there's no fixed response SLA or fix timeline. A fix, if made, is
@@ -68,11 +68,11 @@ The companion packages each add one:
   anywhere but the connection, is a vulnerability.
 
 Rejected SQL or a wrong dialect-availability claim is an ordinary bug — open
-a public [issue](https://github.com/h-tacayama/SqlArtisan/issues) for those.
+a public [issue](https://github.com/SqlArtisan/SqlArtisan/issues) for those.
 
 ## Supported versions
 
 Only the latest published version is supported — no backporting; upgrade
 for fixes. See the
-[versioning & support policy](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md)
+[versioning & support policy](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/versioning.md)
 for the full statement.

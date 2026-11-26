@@ -1,4 +1,4 @@
-![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/h-tacayama/SqlArtisan/main/assets/banner.png)
+![SqlArtisan — Write SQL, in C#.](https://raw.githubusercontent.com/SqlArtisan/SqlArtisan/main/assets/banner.png)
 
 # SqlArtisan.TableClassGen
 
@@ -136,7 +136,7 @@ counts them, so run `--check` without `--tables` to confirm nothing is left.
 
 After an upgrade of the tool, `--check` also reports every file whose generated
 text the new release changes, in lines that read like a schema change.
-[Versioning](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)
+[Versioning](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)
 gives the order of runs that tells the two apart.
 
 For the orphan scan, a file under `--output`, in any subdirectory, counts as one of
@@ -218,7 +218,7 @@ reports what a run would write without writing it.
 The keys and values above are part of the tool's command-line surface, so a script
 can rely on them across releases. A minor release may add a key or a `mode` or
 `status` value, so a script ignores a key it does not know and does not fail on a
-value it does not know ([Versioning](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)).
+value it does not know ([Versioning](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)).
 
 ### Options
 
@@ -318,7 +318,7 @@ under it in a query, or nothing for the bare table.
 
 These rules are part of the tool's command-line surface, so a change to the names
 generated for a given catalog is a breaking change
-([Versioning](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)).
+([Versioning](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/versioning.md#tableclassgens-command-line-surface)).
 
 ## Output: Example Table Class
 
@@ -402,4 +402,4 @@ properties.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/h-tacayama/SqlArtisan/blob/main/LICENSE) file for the full license text.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/SqlArtisan/SqlArtisan/blob/main/LICENSE) file for the full license text.

@@ -1,7 +1,7 @@
 # Versioning & Support
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 How version numbers, breaking changes, deprecations, and support windows work
 for the published packages — `SqlArtisan`, `SqlArtisan.Dapper`,
@@ -13,10 +13,10 @@ From **1.0**, SqlArtisan follows [Semantic Versioning](https://semver.org/) —
 breaking changes only in major releases. Until then (0.x and the 1.0.0 release
 candidates), any release may contain breaking changes, each marked
 **Breaking:** in the
-[CHANGELOG](https://github.com/h-tacayama/SqlArtisan/blob/main/CHANGELOG.md).
+[CHANGELOG](https://github.com/SqlArtisan/SqlArtisan/blob/main/CHANGELOG.md).
 A breaking change that slips into a minor or patch release by mistake is
 treated as a bug — please open an
-[issue](https://github.com/h-tacayama/SqlArtisan/issues).
+[issue](https://github.com/SqlArtisan/SqlArtisan/issues).
 
 ## What the public API is
 
@@ -97,7 +97,7 @@ Four cases are specific to this library, beyond the usual API-level changes:
   node moves earlier even where the last release never rendered the node, as
   in a disabled `ConditionIf` operand. A case not known to have failed counts as
   breaking. Adding a type to
-  [Bind Parameter Types](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types)
+  [Bind Parameter Types](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/functions.md#bind-parameter-types)
   is not one: `SqlArtisanConfig.AddValueConverter` and `SqlMapper.AddTypeHandler`
   keep accepting the type, a converter registered for it keeps converting it
   wherever a value binds, `Sql.BindArray` keeps rejecting an array of it while
@@ -164,9 +164,9 @@ back:
     `SQLARTISAN_DB_PASSWORD` environment variable;
   - the exit codes: `0` success or in sync, `1` drift, `2` error;
   - the `--format json` keys and values
-    ([JSON output](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md#json-output));
+    ([JSON output](https://github.com/SqlArtisan/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md#json-output));
   - in a generated file, for a given catalog: the class and property names
-    ([Generated names](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md#generated-names)), the constructor
+    ([Generated names](https://github.com/SqlArtisan/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md#generated-names)), the constructor
     `(string tableAlias = "")`, the base type, and the table and column literals.
 - **Not covered**: the text report, the wording of errors on stderr, the `--help`
   text, and the interactive prompts.
@@ -186,7 +186,7 @@ A generated file needs a `SqlArtisan` at least as new as the tool that wrote it:
 the tool writes its own release's attribute arguments and `DbTypeCategory`
 members, and an older package rejects one it lacks. Install the tool in a local
 tool manifest and upgrade it together with the package
-([Installation](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md#installation)).
+([Installation](https://github.com/SqlArtisan/SqlArtisan/blob/main/src/SqlArtisan.TableClassGen/README.md#installation)).
 
 The report alone cannot tell a release's changes from the schema's, since a
 release may change how a fact is read as well as the layout. Run `--check` with
@@ -203,7 +203,7 @@ API slated for removal is first marked `[Obsolete]` — with a message naming
 the replacement — in a **minor** release, and removed **no earlier than the
 next major**. Removal without that prior `[Obsolete]` step is treated as a
 bug — please open an
-[issue](https://github.com/h-tacayama/SqlArtisan/issues).
+[issue](https://github.com/SqlArtisan/SqlArtisan/issues).
 
 The analyzer's configuration follows the same path. A key slated for removal
 keeps working beside its replacement in a **minor** release, and setting it
@@ -222,19 +222,19 @@ reused.
   older compiler skips the analyzer with warning `CS9057`, which
   `TreatWarningsAsErrors` turns into a build error; the library is unaffected.
 - **Verified engines**: every release passes the
-  [integration test matrix](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
+  [integration test matrix](https://github.com/SqlArtisan/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
   against one representative version each of MySQL, Oracle, PostgreSQL,
   SQLite, and SQL Server — Oracle, PostgreSQL and SQL Server at a second,
   newer one too, where the version bounds between the two are proven (exact
   versions in the analyzer's
-  [verified-against table](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#verified-against-versions)).
+  [verified-against table](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#verified-against-versions)).
   Other engine versions generally work — the emitted SQL is plain text. A
   `SQLA0101` version floor at or below a dialect's verified baseline (the older
   version where two run) is proven live only on its supported side; the
   rejection below it rests on the vendor's documentation.
 - **Support window**: fixes land in the latest release only — the latest
   pre-release before 1.0, the latest minor of the current major after.
-  Vulnerabilities: see [SECURITY.md](https://github.com/h-tacayama/SqlArtisan/blob/main/SECURITY.md).
+  Vulnerabilities: see [SECURITY.md](https://github.com/SqlArtisan/SqlArtisan/blob/main/SECURITY.md).
 
 ## Release cadence
 
@@ -251,7 +251,7 @@ A candidate becomes 1.0.0 once all of these hold:
 
 - at least seven days have passed since it was published, with no bug in its
   code reported against it that 1.0.0 must fix;
-- the [integration test matrix](https://github.com/h-tacayama/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
+- the [integration test matrix](https://github.com/SqlArtisan/SqlArtisan/tree/main/tests/SqlArtisan.IntegrationTests)
   has passed every nightly run over those days. A failure traced to something
   other than the packages' code, such as an engine container that did not
   start or a defect in a test, is fixed and the run repeated, without

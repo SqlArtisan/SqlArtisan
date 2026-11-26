@@ -1,6 +1,6 @@
 # Roslyn Analyzer
 
-[← Back to Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 The analyzer is the second layer of SqlArtisan's deterministic guard-rail
 stack — after compile-time type safety and before exact-SQL tests. It warns
@@ -1038,7 +1038,7 @@ own local, or a readonly field read through `this` or statically, to
 `From(...)` or a later join, and stays silent where it cannot see that, such
 as a parameter or another instance's field. On PostgreSQL write the join as
 `Using(...)`, as Oracle at or past its floor also takes; Oracle below that floor and
-SQLite take no joined form, and a [correlated subquery](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#correlated-update--delete)
+SQLite take no joined form, and a [correlated subquery](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#correlated-update--delete)
 on the aliased target takes its place there.
 
 ```csharp
@@ -1120,7 +1120,7 @@ var q = MergeInto(t).Using(s).On(t.Id == s.Id)
 **A second `VALUES` row.** `Values(...)` called again after a first row emits
 a multi-row `VALUES`, which Oracle rejects below its
 [floor](#version-bound-constructs). For an Oracle batch on any version, use
-[`SqlArtisan.ArrayBind`](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md).
+[`SqlArtisan.ArrayBind`](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md).
 The collection overloads (`Values(rows)`) stay silent: their row count is a
 runtime value.
 
@@ -1294,7 +1294,7 @@ Oracle takes it and SQLite reads it as 0. It is that an offset goes negative by
 arithmetic, so the value this rule can read — a constant typed at the call
 site — is not where it turns bad. Clamp the page number before computing the
 offset; see
-[Pagination](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#pagination).
+[Pagination](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#pagination).
 
 ### A negative `ROUND` scale
 
@@ -1728,7 +1728,7 @@ on the wrong rows or, from a `SET` subquery, writes the wrong values.
 `Build()` rejects this statement at run time; `SQLA0300` is the same finding
 surfaced at compile time, where the fix is cheapest. A MERGE target with no alias
 throws earlier, at `MergeInto(...)`, whatever its subqueries read (see
-[MERGE Statement](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#merge-statement)).
+[MERGE Statement](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#merge-statement)).
 
 ```csharp
 // sqlartisan_syntax_postgresql = any
@@ -2122,7 +2122,7 @@ for, not a bug in the matrix.
   documented set of dialect-neutral members — gate-enforced by the
   repository's tests — but a member in that excluded set gets no dialect
   verdict unless your own `unsupported` override gives it one. See
-  [`DialectMatrix.cs`](https://github.com/h-tacayama/SqlArtisan/blob/main/src/SqlArtisan.Analyzers/DialectMatrix.cs)
+  [`DialectMatrix.cs`](https://github.com/SqlArtisan/SqlArtisan/blob/main/src/SqlArtisan.Analyzers/DialectMatrix.cs)
   for what's entered.
 - **`SQLA0200`–`SQLA0206` and `SQLA0300`–`SQLA0304` need a configured target too.**
   `SQLA0300`–`SQLA0304` and the schema-aware `SQLA0200`–`SQLA0206` do not read

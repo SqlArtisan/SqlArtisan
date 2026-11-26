@@ -1,7 +1,7 @@
 # Guide: Oracle Array-Bind Execution with SqlArtisan.ArrayBind
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 Multi-row `VALUES` is version-dependent on Oracle — the integration suite
 live-verifies 21c rejecting it and 23ai accepting it — so batch loads through
@@ -40,7 +40,7 @@ into the SQL text (changing it row to row), and anywhere else throws, while
 `BindNull()` reserves a real parameter, so a null row binds the same marker a
 non-null row does.
 
-`UsersTable` is a [table class](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md#quick-start).
+`UsersTable` is a [table class](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md#quick-start).
 
 ```csharp
 using System.Data; // for Sql.BindNull(DbType.Int32) below

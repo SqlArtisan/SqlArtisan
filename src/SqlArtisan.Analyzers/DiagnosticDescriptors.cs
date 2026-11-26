@@ -26,7 +26,7 @@ internal static class DiagnosticDescriptors
         "Argument value not supported on the target dialect";
 
     private const string HelpLinkUri =
-        "https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md";
+        "https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md";
 
     // {2} carries its own lead-in phrase per call site — the config surfaces
     // don't all read naturally under one fixed phrase. The id also covers

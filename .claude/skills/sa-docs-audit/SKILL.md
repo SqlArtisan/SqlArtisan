@@ -220,7 +220,7 @@ Score the docs against these. The scripts cover 2–5 and parts of 6/10.
   restates engine behaviour is one more claim to verify; the fact lives in the
   record that holds it (a twin, an ADR, a docs page).
 - **Check open issues before reporting.** Search them for each surviving
-  finding (`gh api -X GET search/issues -f q='repo:h-tacayama/SqlArtisan
+  finding (`gh api -X GET search/issues -f q='repo:SqlArtisan/SqlArtisan
   is:issue is:open <terms>'`). One an open issue already tracks is reported
   as that issue's number in one line, not re-argued; a run kept from issue
   history re-raised the `ConditionIf` null case #859 already holds.

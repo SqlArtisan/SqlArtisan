@@ -1,14 +1,14 @@
 # Functions
 
-[← Back to README](https://github.com/h-tacayama/SqlArtisan/blob/main/README.md) ·
-[Reference Home](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/README.md)
+[← Back to README](https://github.com/SqlArtisan/SqlArtisan/blob/main/README.md) ·
+[Reference Home](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/README.md)
 
 > **How to read this reference.** Each entry maps a C# API to the SQL token it emits.
 > Pick the API for your target DBMS; a single call is not rewritten per dialect.
 > Dialect notes list databases in the order **MySQL, Oracle, PostgreSQL, SQLite, SQL Server**.
 > Notes say which dialects accept a construct, never from which version; where
 > a minimum engine version is recorded, it lives in the
-> [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs),
+> [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs),
 > kept in sync by a test.
 
 ## Contents
@@ -89,7 +89,7 @@ not at the SqlArtisan layer.
 - `Trim()` for `TRIM` (the two-argument `TRIM(trimChar FROM source)` form is not supported by SQLite)
 - `Upper()` for `UPPER`
 
-PostgreSQL and SQL Server gained the `REGEXP_*` family in specific releases — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+PostgreSQL and SQL Server gained the `REGEXP_*` family in specific releases — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 
 > [!WARNING]
 > **`Length(x)` counts bytes on MySQL and characters on Oracle, PostgreSQL and
@@ -112,7 +112,7 @@ PostgreSQL and SQL Server gained the `REGEXP_*` family in specific releases — 
 
 On Oracle, `Concat` takes two arguments; for three or more, use `DoublePipe(a, b, ...)`
 (the `||` operator) — see
-[Expressions: String Concatenation](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#string-concatenation)
+[Expressions: String Concatenation](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#string-concatenation)
 for the full per-dialect guide, including a MySQL semantics trap `||` has that
 `Concat` doesn't.
 
@@ -128,11 +128,11 @@ On Oracle and SQLite, use `Instr()` above instead.
 ## Date and Time Functions
 
 - `AddMonths()` for `ADD_MONTHS` (Oracle)
-- `CurrentDate` for `CURRENT_DATE` (SQL Server gained it in a specific release — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs))
+- `CurrentDate` for `CURRENT_DATE` (SQL Server gained it in a specific release — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs))
 - `CurrentTime()` for `CURRENT_TIME` (not supported by Oracle or SQL Server); `CurrentTime(precision)` for `CURRENT_TIME(precision)` (MySQL, PostgreSQL)
 - `CurrentTimestamp()` for `CURRENT_TIMESTAMP`; `CurrentTimestamp(precision)` for `CURRENT_TIMESTAMP(precision)` (MySQL, Oracle, PostgreSQL)
 - `Date(timevalue[, modifier, ...])` for `DATE` (SQLite; 1-argument form also MySQL/PostgreSQL)
-- `DateAdd()` for `DATE_ADD` (MySQL; PostgreSQL gained it in a specific release, with `IntervalLiteral(...)` only — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs); not `Dateadd()`, SQL Server's `DATEADD` below)
+- `DateAdd()` for `DATE_ADD` (MySQL; PostgreSQL gained it in a specific release, with `IntervalLiteral(...)` only — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs); not `Dateadd()`, SQL Server's `DATEADD` below)
 - `Dateadd()` for `DATEADD` (SQL Server)
 - `Datediff()` for `DATEDIFF` (SQL Server)
 - `DateFormat()` for `DATE_FORMAT` (MySQL)
@@ -155,7 +155,7 @@ On Oracle and SQLite, use `Instr()` above instead.
 `DateAdd()`/`DateSub()` above take their shift amount from an `INTERVAL`
 expression; for Oracle/PostgreSQL date-shift arithmetic (and MySQL's own
 `+`/`-` spelling), see
-[Expressions: Interval Expressions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#interval-expressions).
+[Expressions: Interval Expressions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#interval-expressions).
 
 > [!NOTE]
 > `Date()`/`Datetime()`/`Julianday()`/`Strftime()` apply each modifier in order
@@ -224,11 +224,11 @@ JSON paths are emitted as inline string literals: an expression index over a JSO
 - `JsonValue(jsonDoc, path)` for `JSON_VALUE(jsonDoc, 'path')` (MySQL, Oracle, PostgreSQL, SQL Server)
 - `JsonQuery(jsonDoc, path)` for `JSON_QUERY(jsonDoc, 'path')` (Oracle, PostgreSQL, SQL Server)
 
-`JsonValue` (MySQL, PostgreSQL) and `JsonQuery` (PostgreSQL) have a minimum engine version there — see the [version-bound register](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
+`JsonValue` (MySQL, PostgreSQL) and `JsonQuery` (PostgreSQL) have a minimum engine version there — see the [version-bound register](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/analyzer.md#version-bound-constructs).
 
 JSON **operators** (`->`, `->>`, `#>`, `#>>`, and the JSONB predicates
 `@>` / `?` / `?|` / `?&`) live in
-[Expressions: JSON Operators](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#json-operators)
+[Expressions: JSON Operators](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#json-operators)
 because they are infix operators, not function calls.
 
 ---
@@ -249,7 +249,7 @@ Exposed per dialect (no unified rewrite); each emits its dialect-native syntax v
 - `Freetext(column, freetext)` for `FREETEXT(column, freetext)` (SQL Server, predicate)
 
 Usage examples and each engine's index requirements live in
-[Expressions: Full-Text Search](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#full-text-search).
+[Expressions: Full-Text Search](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#full-text-search).
 
 ---
 
@@ -273,7 +273,7 @@ Chain `.Filter(condition)` on any of these but `Stdev()`, `Stdevp()`, `Var()` an
 `Varp()`, whose one engine, SQL Server, has no `FILTER` (observed on SQL Server
 2022), for conditional aggregation —
 `SUM(x) FILTER (WHERE ...)` (see
-[Expressions: Conditional Aggregation](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#conditional-aggregation-filter)).
+[Expressions: Conditional Aggregation](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#conditional-aggregation-filter)).
 Chain `.Over(...)` to turn any of them into a window function (see
 [Window Functions](#window-functions) below).
 
@@ -337,7 +337,7 @@ Raise that variable when a group can exceed it — see MySQL's
 
 A window function is invalid without `OVER`, so complete each one with
 `.Over(...)` — except `PercentileCont` / `PercentileDisc`, which
-`.WithinGroup(...)` completes, as their entries above say (see [Expressions: Window Functions](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/expressions.md#window-functions)).
+`.WithinGroup(...)` completes, as their entries above say (see [Expressions: Window Functions](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/expressions.md#window-functions)).
 The library enforces this: a bare `Rank()`, `RowNumber()`, etc. is not a usable
 expression, so passing one to `Select(...)` is rejected rather than emitting an
 `OVER`-less token the database would reject.
@@ -383,7 +383,7 @@ takes no `.Over(...)` or `.Filter(...)`, and the call no `DISTINCT`.
 
 ## Bind Parameter Types
 
-SqlArtisan automatically converts C# literal values into bind parameters (to bind one explicitly instead — so its marker can be shared across clauses — use `Sql.Bind(value)`; see [GROUP BY and HAVING Clause](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/query-statements.md#group-by-and-having-clause)). Supported types are as follows:
+SqlArtisan automatically converts C# literal values into bind parameters (to bind one explicitly instead — so its marker can be shared across clauses — use `Sql.Bind(value)`; see [GROUP BY and HAVING Clause](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/query-statements.md#group-by-and-having-clause)). Supported types are as follows:
 
 - **Boolean**: `bool`
 - **Character/String**: `char`, `string`
@@ -416,7 +416,7 @@ An array type that itself has a converter, such as `string[]` after `AddValueCon
 
 Through `SqlArtisan.Dapper`, the handler's `SetValue` runs on a parameter of SqlArtisan's own: it must set `Value` (`DBNull.Value` for SQL NULL) and must not cast to a provider's parameter type, and only the value, `DbType` and size it sets are kept. That value must be a type the converter could return, or every value written as is throws, and one Dapper takes, or the statement fails when it runs: a handler that hands a provider its own type, such as pgvector's `Vector`, or a type Dapper rejects, such as `DateOnly`, keeps its type bound through `new BindValue(value)`. A handler for a type the list names, an interface, an abstract type or `object[]` registers with Dapper alone, as `Dapper.SqlMapper.AddTypeHandler` called directly does. `SqlMapper.ResetTypeHandlers()` clears both registrations.
 
-`new BindValue(value)` hands its value to the execution layer as it is, so a type of your own binds that way only where that layer converts it, as a Dapper type handler does at execution. `SqlArtisan.ArrayBind` takes only the types its [guide](https://github.com/h-tacayama/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md) lists.
+`new BindValue(value)` hands its value to the execution layer as it is, so a type of your own binds that way only where that layer converts it, as a Dapper type handler does at execution. `SqlArtisan.ArrayBind` takes only the types its [guide](https://github.com/SqlArtisan/SqlArtisan/blob/main/docs/guides/oracle-array-bind.md) lists.
 
 > [!WARNING]
 > **Through raw ADO.NET, some providers, among them `MySql.Data` and `System.Data.SQLite`, bind a type they do not know as its `ToString()` text instead of throwing**, so a `new BindValue(value)` of such a type compares against that text. Register a converter and pass the value itself rather than through `new BindValue`, or pass the value the type wraps.
